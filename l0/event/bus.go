@@ -18,9 +18,3 @@ type Bus interface {
 	Publisher
 	io.Closer
 }
-
-type Topic interface {
-	Listen(ctx context.Context, topics ...string) (<-chan Event, error)
-	Publish(ctx context.Context, events ...Event) error
-	io.Closer
-}

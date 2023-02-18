@@ -49,7 +49,7 @@ func (runner *Runner) Run(ctx context.Context) {
 
 			runner.sendEvent(ctx, ExecutedTaskEvent, EventTopic, []byte(task.ID))
 
-			err = runner.outputs.Put(result)
+			err = runner.outputs.Put(ctx, result)
 			if err != nil {
 				log.Printf("failed to save the output of a task (id = '%s'): %s\n", task.ID, err)
 			}

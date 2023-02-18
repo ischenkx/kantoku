@@ -26,18 +26,18 @@ func (s *Storage) Create(ctx context.Context, data []byte) (string, error) {
 	return id, nil
 }
 
-func (s *Storage) Get(ctx context.Context, id string) (*cell.Cell, error) {
+func (s *Storage) Get(ctx context.Context, id string) (cell.Cell, error) {
 	data, err := s.client.Get(ctx, id).Bytes()
 	if err != nil {
-		return nil, err
+		return cell.Cell{}, err
 	}
-	return &cell.Cell{
+	return cell.Cell{
 		ID:   id,
 		Data: data,
 	}, nil
 }
 
-func (s *Storage) Set(ctx context.Context, cell *cell.Cell) error {
+func (s *Storage) Set(ctx context.Context, cell cell.Cell) error {
 	return s.client.Set(ctx, cell.ID, cell.Data, 0).Err()
 }
 

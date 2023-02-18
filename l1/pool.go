@@ -7,7 +7,7 @@ type PoolReader[Item any] interface {
 }
 
 type PoolWriter[Item any] interface {
-	Put(Item) error
+	Put(ctx context.Context, item Item) error
 }
 
 type Pool[Item any] interface {
