@@ -23,7 +23,7 @@ func NewRunner(inputs PoolReader[Task], outputs PoolWriter[Result], executor Exe
 }
 
 func (runner *Runner) Run(ctx context.Context) {
-	// todo: inputs is not closed explicitly in this function
+	// todo: inputs are not closed explicitly in this function
 	// todo: maybe I should create another interface for a
 	// todo: closeable read-only channel (though sounds kinda broken by design)
 	inputs := runner.inputs.Channel(ctx)

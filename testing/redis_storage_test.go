@@ -57,7 +57,7 @@ func TestRedisStorage(t *testing.T) {
 
 	t.Run("set", func(t *testing.T) {
 		id, _ := storage.Create(context.Background(), []byte("test data"))
-		c := &cell.Cell{
+		c := cell.Cell{
 			ID:   id,
 			Data: []byte("new data"),
 		}
