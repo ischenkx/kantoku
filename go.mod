@@ -1,4 +1,4 @@
-module hayaku
+module kantoku
 
 go 1.19
 

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/redis/go-redis/v9"
-	"hayaku/common/codec"
+	"kantoku/common/codec"
 	"log"
 )
 

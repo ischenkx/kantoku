@@ -3,8 +3,8 @@ package redis
 import (
 	"context"
 	"github.com/redis/go-redis/v9"
-	"hayaku/common/codec"
-	"hayaku/l0/event"
+	"kantoku/common/codec"
+	"kantoku/l0/event"
 	"log"
 	"strings"
 )

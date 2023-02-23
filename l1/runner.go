@@ -2,7 +2,7 @@ package l1
 
 import (
 	"context"
-	"hayaku/l0/event"
+	"kantoku/l0/event"
 	"log"
 )
 
