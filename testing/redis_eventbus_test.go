@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/redis/go-redis/v9"
-	redisEB "hayaku/impl/l0/event/redis"
+	redisEB "hayaku/impl/l0/event/poller"
 	"hayaku/l0/event"
 	"io"
 	"strconv"

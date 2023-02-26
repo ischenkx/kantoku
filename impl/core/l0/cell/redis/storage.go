@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/redis/go-redis/v9"
 	"github.com/satori/go.uuid"
-	"kantoku/l0/cell"
+	"kantoku/core/l0/cell"
 )
 
 type Storage struct {

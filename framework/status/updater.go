@@ -2,9 +2,9 @@ package status
 
 import (
 	"context"
-	"kantoku/l0/event"
-	"kantoku/l1"
-	"kantoku/l2"
+	"kantoku/core/l0/event"
+	"kantoku/core/l1"
+	"kantoku/core/l2"
 	"log"
 )
 

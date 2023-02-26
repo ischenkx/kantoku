@@ -2,7 +2,7 @@ package l1
 
 import (
 	"context"
-	"kantoku/l0/event"
+	event2 "kantoku/core/l0/event"
 	"log"
 )
 
@@ -10,10 +10,10 @@ type Runner struct {
 	inputs   PoolReader[Task]
 	outputs  PoolWriter[Result]
 	executor Executor
-	events   event.Publisher
+	events   event2.Publisher
 }
 
-func NewRunner(inputs PoolReader[Task], outputs PoolWriter[Result], executor Executor, events event.Publisher) *Runner {
+func NewRunner(inputs PoolReader[Task], outputs PoolWriter[Result], executor Executor, events event2.Publisher) *Runner {
 	return &Runner{
 		inputs:   inputs,
 		outputs:  outputs,
@@ -60,7 +60,7 @@ func (runner *Runner) Run(ctx context.Context) {
 }
 
 func (runner *Runner) sendEvent(ctx context.Context, name string, topic string, data []byte) {
-	err := runner.events.Publish(ctx, event.Event{
+	err := runner.events.Publish(ctx, event2.Event{
 		Name:  name,
 		Topic: topic,
 		Data:  data,

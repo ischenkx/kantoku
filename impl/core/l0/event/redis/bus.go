@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/redis/go-redis/v9"
 	"kantoku/common/codec"
-	"kantoku/l0/event"
+	"kantoku/core/l0/event"
 	"log"
 	"strings"
 )
