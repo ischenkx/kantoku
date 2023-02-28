@@ -7,6 +7,10 @@ import (
 
 type Codec[T any] struct{}
 
+func New[T any]() Codec[T] {
+	return Codec[T]{}
+}
+
 func (c Codec[T]) Encode(value T) ([]byte, error) {
 	return json.Marshal(value)
 }

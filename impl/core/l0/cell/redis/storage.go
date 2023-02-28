@@ -41,7 +41,7 @@ func (s *Storage) Set(ctx context.Context, cell cell.Cell) error {
 	return s.client.Set(ctx, cell.ID, cell.Data, 0).Err()
 }
 
-func (s *Storage) Delete(ctx context.Context, id string) error {
+func (s *Storage) Del(ctx context.Context, id string) error {
 	return s.client.Del(ctx, id).Err()
 }
 

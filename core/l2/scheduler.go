@@ -1,10 +1,5 @@
 package l2
 
-import (
-	"context"
-)
+import "kantoku/common/pool"
 
-type Scheduler interface {
-	Schedule(ctx context.Context, id string) error
-	Pending(ctx context.Context) <-chan string
-}
+type Scheduler pool.Pool[string]

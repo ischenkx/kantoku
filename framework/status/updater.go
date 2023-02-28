@@ -13,6 +13,13 @@ type Updater struct {
 	db  DB
 }
 
+func NewUpdater(bus event.Bus, db DB) *Updater {
+	return &Updater{
+		bus: bus,
+		db:  db,
+	}
+}
+
 func (updater *Updater) Run(ctx context.Context) {
 	events, err := updater.bus.Listen(ctx, l1.EventTopic, l2.EventTopic)
 	if err != nil {

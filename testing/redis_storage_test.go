@@ -75,7 +75,7 @@ func TestRedisStorage(t *testing.T) {
 
 	t.Run("delete", func(t *testing.T) {
 		id, _ := storage.Create(context.Background(), []byte("test data"))
-		if err := storage.Delete(context.Background(), id); err != nil {
+		if err := storage.Del(context.Background(), id); err != nil {
 			t.Fatalf("delete failed: %v", err)
 		}
 		_, err := storage.Get(context.Background(), id)

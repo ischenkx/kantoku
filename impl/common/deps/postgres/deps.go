@@ -6,14 +6,21 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/samber/lo"
 	"kantoku/common/deps"
-	"kantoku/common/queue"
+	"kantoku/common/pool"
 	"log"
 	"time"
 )
 
 type Deps struct {
-	q      queue.Queue[string]
+	q      pool.Pool[string]
 	client *pgxpool.Conn
+}
+
+func New(client *pgxpool.Conn, queue pool.Pool[string]) *Deps {
+	return &Deps{
+		q:      queue,
+		client: client,
+	}
 }
 
 func (d *Deps) InitTables(ctx context.Context) error {
@@ -205,7 +212,7 @@ func (d *Deps) scheduleGroups(ctx context.Context, batchSize int) error {
 	var failed, succeeded []string
 
 	for _, group := range groups {
-		if err := d.q.Put(ctx, group); err != nil {
+		if err := d.q.Write(ctx, group); err != nil {
 			failed = append(failed, group)
 		} else {
 			succeeded = append(succeeded, group)

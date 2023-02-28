@@ -1,4 +1,4 @@
-package deps
+package depot
 
 type Task struct {
 	ID           string
