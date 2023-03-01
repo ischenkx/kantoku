@@ -3,19 +3,15 @@ package testing
 import (
 	"context"
 	"fmt"
-	"github.com/redis/go-redis/v9"
 	"github.com/satori/go.uuid"
 	"kantoku/core/l0/cell"
 	redisStorage "kantoku/impl/core/l0/cell/redis"
+	"kantoku/testing/common"
 	"testing"
 )
 
 func TestRedisStorage(t *testing.T) {
-	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
-	})
+	client := common.DefaultClient()
 	defer client.Close()
 
 	t.Run("ping", func(t *testing.T) {

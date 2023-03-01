@@ -2,42 +2,18 @@ package testing
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"github.com/redis/go-redis/v9"
-	redisEB "hayaku/impl/l0/event/poller"
-	"hayaku/l0/event"
-	"io"
+	"kantoku/core/l0/event"
+	jsonCodec "kantoku/impl/common/codec/json"
+	redisEB "kantoku/impl/core/l0/event/redis"
+	"kantoku/testing/common"
 	"strconv"
 	"testing"
 	"time"
 )
 
-type TestCodec struct{}
-
-func (t TestCodec) Encode(e event.Event) ([]byte, error) {
-	data, err := json.Marshal(e)
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-
-func (t TestCodec) Decode(reader io.Reader) (event.Event, error) {
-	var e event.Event
-	err := json.NewDecoder(reader).Decode(&e)
-	if err != nil {
-		return event.Event{}, err
-	}
-	return e, nil
-}
-
 func TestRedisEventBus(t *testing.T) {
-	client := redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
-		Password: "",
-		DB:       0,
-	})
+	client := common.DefaultClient()
 	defer client.Close()
 
 	t.Run("ping", func(t *testing.T) {
@@ -51,7 +27,7 @@ func TestRedisEventBus(t *testing.T) {
 		fmt.Printf("status: %v\n", name)
 	})
 
-	bus := redisEB.NewBus(client, TestCodec{})
+	bus := redisEB.NewBus(client, jsonCodec.Codec[event.Event]{})
 
 	t.Run("publish", func(t *testing.T) {
 		err := bus.Publish(context.Background(), event.Event{
