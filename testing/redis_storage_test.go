@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/redis/go-redis/v9"
 	"github.com/satori/go.uuid"
-	"kantoku/core/l0/cell"
-	redisStorage "kantoku/impl/core/l0/cell/redis"
+	"kantoku/framework/cell"
+	redisStorage "kantoku/impl/framework/cell/redis"
 	"testing"
 )
 

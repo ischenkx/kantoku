@@ -1,40 +1,58 @@
 package kantoku
 
 import (
-	"kantoku/common/db/kv"
-	"kantoku/common/deps"
-	"kantoku/core/l0/cell"
+	"context"
+	"github.com/google/uuid"
+	"kantoku/common/data/kv"
 	"kantoku/core/l0/event"
+	"kantoku/framework/cell"
+	"kantoku/framework/depot"
 )
 
 type Kantoku struct {
 	events event.Bus
-	deps   deps.DB
+	depot  *depot.Depot
 	tasks  kv.Database[Task]
-	cells  cell.Storage
+	cells  cell.Storage[[]byte]
 }
 
-func New(events event.Bus, deps deps.DB, tasks kv.Database[Task], cells cell.Storage) *Kantoku {
+func New(config Config) *Kantoku {
 	return &Kantoku{
-		events: events,
-		deps:   deps,
-		tasks:  tasks,
-		cells:  cells,
+		events: config.Events,
+		depot:  config.Depot,
+		tasks:  config.Tasks,
+		cells:  config.Cells,
 	}
+}
+
+func (kantoku *Kantoku) New(ctx context.Context, task Task) (id string, err error) {
+	task.Spec.ID = uuid.New().String()
+
+	_, err = kantoku.tasks.Set(ctx, task.Spec.ID, task)
+	if err != nil {
+		return "", err
+	}
+
+	err = kantoku.depot.Schedule(ctx, task.Spec.ID, task.Dependencies)
+	if err != nil {
+		return "", err
+	}
+
+	return task.Spec.ID, nil
 }
 
 func (kantoku *Kantoku) Events() event.Bus {
 	return kantoku.events
 }
 
-func (kantoku *Kantoku) Deps() deps.DB {
-	return kantoku.deps
+func (kantoku *Kantoku) Depot() *depot.Depot {
+	return kantoku.depot
 }
 
-func (kantoku *Kantoku) Tasks() kv.Database[Task] {
+func (kantoku *Kantoku) Tasks() kv.Reader[Task] {
 	return kantoku.tasks
 }
 
-func (kantoku *Kantoku) Cells() cell.Storage {
+func (kantoku *Kantoku) Cells() cell.Storage[[]byte] {
 	return kantoku.cells
 }

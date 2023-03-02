@@ -1,4 +1,4 @@
-package postgres
+package postgredeps
 
 import "kantoku/common/deps"
 

@@ -1,4 +1,4 @@
-package redis
+package redivent
 
 import (
 	"context"

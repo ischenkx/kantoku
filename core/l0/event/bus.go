@@ -2,7 +2,6 @@ package event
 
 import (
 	"context"
-	"io"
 )
 
 type Listener interface {
@@ -10,11 +9,12 @@ type Listener interface {
 }
 
 type Publisher interface {
-	Publish(ctx context.Context, events ...Event) error
+	Publish(ctx context.Context, event Event) error
 }
 
+// Bus is supposed to be a fan-out queue that is used
+// for event processing
 type Bus interface {
 	Listener
 	Publisher
-	io.Closer
 }

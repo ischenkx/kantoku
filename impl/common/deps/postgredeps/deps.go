@@ -1,13 +1,15 @@
-package postgres
+package postgredeps
 
 import (
 	"context"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/samber/lo"
 	"kantoku/common/deps"
 	"kantoku/common/pool"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -15,6 +17,8 @@ type Deps struct {
 	q      pool.Pool[string]
 	client *pgxpool.Conn
 }
+
+// MAKE DEPENDENCIES MONOTONOUS AND UNIQUE
 
 func New(client *pgxpool.Conn, queue pool.Pool[string]) *Deps {
 	return &Deps{
@@ -156,7 +160,7 @@ func (d *Deps) Ready(ctx context.Context) (<-chan string, error) {
 }
 
 func (d *Deps) Run(ctx context.Context) {
-	d.runGroupsScheduler(ctx, time.Minute, 1024)
+	d.runGroupsScheduler(ctx, time.Second, 1024)
 }
 
 func (d *Deps) runGroupsScheduler(ctx context.Context, interval time.Duration, batchSize int) {
@@ -212,7 +216,9 @@ func (d *Deps) scheduleGroups(ctx context.Context, batchSize int) error {
 	var failed, succeeded []string
 
 	for _, group := range groups {
+		log.Println("scheduling:", group)
 		if err := d.q.Write(ctx, group); err != nil {
+			log.Println("failed:", group)
 			failed = append(failed, group)
 		} else {
 			succeeded = append(succeeded, group)
@@ -225,13 +231,26 @@ func (d *Deps) scheduleGroups(ctx context.Context, batchSize int) error {
 		FROM   (values ($2)) as s(id)
 		WHERE  g.id = s.id
 	`
-	if _, err := d.client.Exec(ctx, sql, WaitingStatus, failed); err != nil {
+
+	formattedFailed := fmt.Sprintf("(%s)",
+		strings.Join(
+			lo.Map(failed, func(item string, index int) string {
+				return fmt.Sprintf("'%s'", item)
+			}),
+			", "))
+
+	formattedSucceeded := fmt.Sprintf("(%s)",
+		strings.Join(
+			lo.Map(succeeded, func(item string, index int) string {
+				return fmt.Sprintf("'%s'", item)
+			}),
+			", "))
+	if _, err := d.client.Exec(ctx, sql, WaitingStatus, formattedFailed); err != nil {
 		log.Println("failed to update the groups that failed to be scheduled:", err)
 	}
 
-	if _, err := d.client.Exec(ctx, sql, ScheduledStatus, succeeded); err != nil {
+	if _, err := d.client.Exec(ctx, sql, ScheduledStatus, formattedSucceeded); err != nil {
 		log.Println("failed to update the groups that were scheduled:", err)
 	}
-
 	return nil
 }

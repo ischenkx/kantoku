@@ -6,4 +6,4 @@ const (
 	SentOutputsEvent  = "sent_outputs"
 )
 
-const EventTopic = "l1"
+const EventTopic = "L1"

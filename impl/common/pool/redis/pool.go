@@ -1,4 +1,4 @@
-package redis
+package redipool
 
 import (
 	"context"
@@ -36,7 +36,7 @@ func (pool *Pool[T]) Write(ctx context.Context, item T) error {
 }
 
 func (pool *Pool[T]) Read(ctx context.Context) (<-chan T, error) {
-	pubsub := pool.client.Subscribe(ctx)
+	pubsub := pool.client.Subscribe(ctx, pool.topicName)
 	channel := make(chan T, 1024)
 	go func(ctx context.Context, outputs chan<- T) {
 		<-ctx.Done()

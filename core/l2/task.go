@@ -6,5 +6,5 @@ import (
 )
 
 type Task interface {
-	AsL1(ctx context.Context) (l1.Task, error)
+	L1(ctx context.Context) (l1.Task, error)
 }
