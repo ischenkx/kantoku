@@ -17,8 +17,8 @@ import (
 	"kantoku/impl/common/deps/postgredeps"
 	funcpool "kantoku/impl/common/pool/func"
 	redipool "kantoku/impl/common/pool/redis"
-	"kantoku/impl/core/cell/redis"
 	"kantoku/impl/core/event/redis"
+	"kantoku/impl/framework/cell/redis"
 )
 
 type IdentifiableResult task.Result
@@ -61,7 +61,7 @@ func Generate(ctx context.Context) (*kantoku.Kantoku, error) {
 	depsQueue := redipool.New[string](redisClient, strcodec.Codec{}, "deps_queue")
 	deps := postgredeps.New(postgres, depsQueue)
 	tasks := redikv.New[kantoku.Task](redisClient, jsoncodec.New[kantoku.Task](), "tasks")
-	cells := redicell.NewStorage[[]byte](redisClient, bincodec.Codec{})
+	cells := redicell.New[[]byte](redisClient, bincodec.Codec{})
 
 	dep := depot.New(
 		deps,

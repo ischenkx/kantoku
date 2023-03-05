@@ -5,11 +5,11 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/samber/lo"
 	"kantoku"
+	"kantoku/app/base"
 	"kantoku/core/task"
 	"kantoku/framework/executors/simple"
 	"kantoku/impl/common/codec/jsoncodec"
 	redikv "kantoku/impl/common/data/kv/redis"
-	"kantoku/testing/app/base"
 	"log"
 )
 

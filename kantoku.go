@@ -7,25 +7,29 @@ import (
 	"kantoku/core/event"
 	"kantoku/framework/cell"
 	"kantoku/framework/depot"
+	"kantoku/framework/plugins"
 )
 
 type Kantoku struct {
-	events event.Bus
-	depot  *depot.Depot
-	tasks  kv.Database[Task]
-	cells  cell.Storage[[]byte]
+	events  event.Bus
+	depot   *depot.Depot
+	tasks   kv.Database[Task]
+	cells   cell.Storage[[]byte]
+	plugins map[string]plugins.Plugin
 }
 
 func New(config Config) *Kantoku {
 	return &Kantoku{
-		events: config.Events,
-		depot:  config.Depot,
-		tasks:  config.Tasks,
-		cells:  config.Cells,
+		events:  config.Events,
+		depot:   config.Depot,
+		tasks:   config.Tasks,
+		cells:   config.Cells,
+		plugins: config.Plugins,
 	}
 }
 
 func (kantoku *Kantoku) New(ctx context.Context, task Task) (id string, err error) {
+	// TODO: add plugin logic
 	task.ID_ = uuid.New().String()
 
 	_, err = kantoku.tasks.Set(ctx, task.ID_, task)
@@ -55,4 +59,8 @@ func (kantoku *Kantoku) Tasks() kv.Reader[Task] {
 
 func (kantoku *Kantoku) Cells() cell.Storage[[]byte] {
 	return kantoku.cells
+}
+
+func (kantoku *Kantoku) PluginInstance(id string) plugins.Plugin {
+	return kantoku.plugins[id]
 }

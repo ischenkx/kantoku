@@ -20,3 +20,15 @@ func (t Task) Type(ctx context.Context) string {
 func (t Task) Argument(ctx context.Context) []byte {
 	return t.Argument_
 }
+
+const (
+	ArgumentTypeCell = iota
+	ArgumentTypeConstant
+	ArgumentTypeTaskResult
+)
+
+// Argument probably should be elsewhere
+type Argument struct {
+	Type_ int
+	Value string
+}

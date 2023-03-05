@@ -1,5 +1,6 @@
-package queue
+package redipool
 
+/*
 import (
 	"bytes"
 	"context"
@@ -77,3 +78,4 @@ func (q *RedisQueue[T]) Read(ctx context.Context) (<-chan T, error) {
 	}()
 	return stream, nil
 }
+*/

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"flag"
-	"kantoku/testing/app/base"
+	"kantoku/app/base"
 	"log"
 )
 

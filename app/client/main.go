@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"kantoku"
-	"kantoku/testing/app/base"
+	"kantoku/app/base"
 	"log"
 )
 

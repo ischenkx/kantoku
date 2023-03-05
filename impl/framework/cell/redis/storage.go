@@ -15,7 +15,7 @@ type Storage[T any] struct {
 	codec  codec.Codec[T]
 }
 
-func NewStorage[T any](client redis.UniversalClient, codec codec.Codec[T]) *Storage[T] {
+func New[T any](client redis.UniversalClient, codec codec.Codec[T]) *Storage[T] {
 	return &Storage[T]{
 		client: client,
 		codec:  codec,

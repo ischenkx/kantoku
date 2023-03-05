@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
+	"kantoku/app/base"
 	"kantoku/common/util"
 	"kantoku/impl/common/deps/postgredeps"
-	"kantoku/testing/app/base"
 	"log"
 )
 

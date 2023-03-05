@@ -3,9 +3,9 @@ package testing
 import (
 	"context"
 	"fmt"
-	"kantoku/core/l0/event"
-	jsonCodec "kantoku/impl/common/codec/json"
-	redisEB "kantoku/impl/core/l0/event/redis"
+	"kantoku/core/event"
+	jsonCodec "kantoku/impl/common/codec/jsoncodec"
+	redisEB "kantoku/impl/core/event/redis"
 	"kantoku/testing/common"
 	"strconv"
 	"testing"
