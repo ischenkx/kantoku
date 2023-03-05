@@ -17,8 +17,8 @@ type RedisQueue[T any] struct {
 	codec  codec.Codec[T]
 }
 
-// NewRedisQueue returns a new RedisQueue instance.
-func NewRedisQueue[T any](client redis.UniversalClient, key string, codec codec.Codec[T]) *RedisQueue[T] {
+// New returns a new RedisQueue instance.
+func New[T any](client redis.UniversalClient, key string, codec codec.Codec[T]) *RedisQueue[T] {
 	return &RedisQueue[T]{client: client, key: key, codec: codec}
 }
 
