@@ -1,6 +1,6 @@
 package deps
 
 type Dependency struct {
-	ID             string
-	LastResolution int64
+	ID       string
+	Resolved bool
 }

@@ -15,12 +15,12 @@ import (
 
 type Deps struct {
 	q      pool.Pool[string]
-	client *pgxpool.Conn
+	client *pgxpool.Pool
 }
 
 // MAKE DEPENDENCIES MONOTONOUS AND UNIQUE
 
-func New(client *pgxpool.Conn, queue pool.Pool[string]) *Deps {
+func New(client *pgxpool.Pool, queue pool.Pool[string]) *Deps {
 	return &Deps{
 		q:      queue,
 		client: client,
@@ -31,7 +31,7 @@ func (d *Deps) InitTables(ctx context.Context) error {
 	sql := `
 		CREATE TABLE Dependencies (
 			id varchar(255),
-			last_resolution int,
+			resolved bool,
 			PRIMARY KEY (id)
 		);
 		
@@ -45,7 +45,6 @@ func (d *Deps) InitTables(ctx context.Context) error {
 		CREATE TABLE GroupDependencies (
 			dependency_id varchar(255),
 			group_id varchar(255),
-			resolution int,
 			PRIMARY KEY (dependency_id, group_id),
 			CONSTRAINT fk_group
 			  FOREIGN KEY(group_id) 
@@ -64,11 +63,11 @@ func (d *Deps) DropTables(ctx context.Context) error {
 }
 
 func (d *Deps) Dependency(ctx context.Context, dep string) (deps.Dependency, error) {
-	sql := `SELECT id, last_resolution FROM Dependencies WHERE id = $1`
+	sql := `SELECT id, resolved FROM Dependencies WHERE id = $1`
 	row := d.client.QueryRow(ctx, sql, dep)
 
 	var model deps.Dependency
-	if err := row.Scan(&model.ID, &model.LastResolution); err != nil {
+	if err := row.Scan(&model.ID, &model.Resolved); err != nil {
 		return deps.Dependency{}, err
 	}
 	return model, nil
@@ -77,9 +76,11 @@ func (d *Deps) Dependency(ctx context.Context, dep string) (deps.Dependency, err
 func (d *Deps) Group(ctx context.Context, group string) (deps.Group, error) {
 	var result deps.Group
 	result.ID = group
-	result.Dependencies = map[string]bool{}
 
-	sql := `SELECT dependency_id, resolution FROM GroupDependencies WHERE group_id = $1`
+	sql := `
+			SELECT dependency_id, resolved FROM GroupDependencies gd 
+			WHERE gd.group_id = $1 
+			JOIN Dependencies d ON d.id = gd.dependency_id`
 	records, err := d.client.Query(ctx, sql, group)
 	if err != nil {
 		return result, err
@@ -87,68 +88,54 @@ func (d *Deps) Group(ctx context.Context, group string) (deps.Group, error) {
 	defer records.Close()
 
 	for records.Next() {
-		var dep string
-		var resolution int
-		if err := records.Scan(&dep, &resolution); err != nil {
+		var dep deps.Dependency
+		if err := records.Scan(&dep, &dep.ID, &dep.Resolved); err != nil {
 			return result, err
 		}
-		result.Dependencies[dep] = resolution > 0
+		result.Dependencies = append(result.Dependencies, dep)
 	}
 
 	return result, nil
 }
 
-func (d *Deps) Make(ctx context.Context, ids ...string) (deps.Group, error) {
+func (d *Deps) Make(ctx context.Context, ids ...string) (string, error) {
 	id := uuid.New().String()
-	status := WaitingStatus
+	status := InitializingStatus
 
 	sql := `INSERT INTO Groups (id, pending, status) VALUES ($1, $2, $3)`
-	_, err := d.client.Exec(ctx, sql, id, len(ids), status)
+	_, err := d.client.Exec(ctx, sql, id, -1, status)
 	if err != nil {
-		return deps.Group{}, err
+		return "", err
 	}
 
 	for _, dep := range ids {
-		sql := `INSERT INTO GroupDependencies (dependency_id, group_id, resolution) VALUES ($1, $2, $3)`
-		_, err := d.client.Exec(ctx, sql, dep, dep, id, -1)
+		sql := `INSERT INTO GroupDependencies (dependency_id, group_id) VALUES ($1, $2)`
+		_, err := d.client.Exec(ctx, sql, dep, id)
 		if err != nil {
-			return deps.Group{}, err
+			// TODO: make a transaction
+			return "", err
 		}
 	}
 
-	return deps.Group{
-		ID: id,
-		Dependencies: lo.Associate(ids, func(dep string) (string, bool) {
-			return dep, false
-		}),
-	}, nil
+	return id, nil
 }
 
 func (d *Deps) Resolve(ctx context.Context, dep string) error {
-	// Updating the last_resolution field in "Dependencies"
-	timestamp := time.Now().UnixNano()
 	sql := `
-		INSERT INTO Dependencies (id, last_resolution) 
+		INSERT INTO Dependencies (id, resolved) 
 		VALUES ($1, $2)
 		ON CONFLICT (id) DO UPDATE 
-		SET last_resolution = $2`
-	if _, err := d.client.Exec(ctx, sql, dep, timestamp); err != nil {
+		SET resolved = $2`
+	if _, err := d.client.Exec(ctx, sql, dep, true); err != nil {
 		return err
 	}
 
-	// Updating the group dependencies statuses
-	sql = `UPDATE GroupDependencies SET resolution_ts = $1 WHERE dependency_id = $2`
-	if _, err := d.client.Exec(ctx, sql, dep); err != nil {
-		return err
-	}
-
-	// Updating the counters
 	sql = `
 			UPDATE Groups g
-			SET pending_deps = pending_deps - 1
+			SET pending = pending - 1
 			FROM GroupDependencies gd
-			WHERE gd.dependency_id = $1 AND gd.group_id = g.id AND gd.resolution = $2`
-	if _, err := d.client.Exec(ctx, sql, dep, timestamp); err != nil {
+			WHERE gd.dependency_id = $1 AND gd.group_id = g.id`
+	if _, err := d.client.Exec(ctx, sql, dep); err != nil {
 		return err
 	}
 
@@ -160,7 +147,49 @@ func (d *Deps) Ready(ctx context.Context) (<-chan string, error) {
 }
 
 func (d *Deps) Run(ctx context.Context) {
-	d.runGroupsScheduler(ctx, time.Second, 1024)
+	go d.runGroupsScheduler(ctx, time.Second, 1024)
+	go d.runGroupInitializer(ctx, time.Second)
+}
+
+func (d *Deps) runGroupInitializer(ctx context.Context, interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+loop:
+	for {
+		select {
+		case <-ctx.Done():
+			break loop
+		case <-ticker.C:
+			if err := d.initializeGroups(ctx); err != nil {
+				log.Println("failed to initialize groups:", err)
+			}
+		}
+	}
+}
+
+func (d *Deps) initializeGroups(ctx context.Context) error {
+	sql := `
+		WITH uninitialized_groups AS (
+		   SELECT id
+		   FROM   Groups
+		   WHERE  status = $1
+		   ) 
+		UPDATE Groups g
+		SET status = $2, pending = (
+			SELECT COUNT(*)
+				FROM GroupDependencies gd
+				LEFT OUTER JOIN Dependencies d ON d.id = gd.dependency_id
+				WHERE gd.group_id = g.id
+					AND CASE WHEN d.resolved is NULL THEN true ELSE NOT d.resolved END
+		)
+		FROM   uninitialized_groups
+		WHERE  g.id = uninitialized_groups.id
+		RETURNING g.id
+	`
+
+	_, err := d.client.Exec(ctx, sql, InitializingStatus, WaitingStatus)
+	return err
 }
 
 func (d *Deps) runGroupsScheduler(ctx context.Context, interval time.Duration, batchSize int) {
@@ -199,10 +228,8 @@ func (d *Deps) scheduleGroups(ctx context.Context, batchSize int) error {
 	if err != nil {
 		return err
 	}
-	defer records.Close()
 
 	var groups []string
-
 	for records.Next() {
 		var id string
 		if err := records.Scan(&id); err != nil {
@@ -212,9 +239,9 @@ func (d *Deps) scheduleGroups(ctx context.Context, batchSize int) error {
 
 		groups = append(groups, id)
 	}
+	records.Close()
 
 	var failed, succeeded []string
-
 	for _, group := range groups {
 		log.Println("scheduling:", group)
 		if err := d.q.Write(ctx, group); err != nil {
@@ -232,25 +259,24 @@ func (d *Deps) scheduleGroups(ctx context.Context, batchSize int) error {
 		WHERE  g.id = s.id
 	`
 
-	formattedFailed := fmt.Sprintf("(%s)",
-		strings.Join(
-			lo.Map(failed, func(item string, index int) string {
-				return fmt.Sprintf("'%s'", item)
-			}),
-			", "))
-
-	formattedSucceeded := fmt.Sprintf("(%s)",
-		strings.Join(
-			lo.Map(succeeded, func(item string, index int) string {
-				return fmt.Sprintf("'%s'", item)
-			}),
-			", "))
+	formattedFailed := formatPostgresValues(failed...)
 	if _, err := d.client.Exec(ctx, sql, WaitingStatus, formattedFailed); err != nil {
 		log.Println("failed to update the groups that failed to be scheduled:", err)
 	}
 
+	formattedSucceeded := formatPostgresValues(succeeded...)
 	if _, err := d.client.Exec(ctx, sql, ScheduledStatus, formattedSucceeded); err != nil {
 		log.Println("failed to update the groups that were scheduled:", err)
 	}
 	return nil
+}
+
+func formatPostgresValues(ids ...string) string {
+	values := strings.Join(
+		lo.Map(ids, func(item string, _ int) string {
+			return fmt.Sprintf("'%s'", item)
+		}),
+		", ")
+	values = fmt.Sprintf("(%s)", values)
+	return values
 }

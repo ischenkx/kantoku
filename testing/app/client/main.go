@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"kantoku"
-	"kantoku/core/l1"
 	"kantoku/testing/app/base"
 	"log"
 )
@@ -19,12 +19,12 @@ func main() {
 	}
 	log.Println("Starting...")
 
+	dep := uuid.New().String()
+
 	id, err := kan.New(ctx, kantoku.Task{
-		Spec: l1.Task{
-			Type:     "reverse",
-			Argument: []byte("Hello World!"),
-		},
-		Dependencies: nil,
+		Type_:        "reverse",
+		Argument_:    []byte("Hello World!"),
+		Dependencies: []string{dep},
 	})
 	if err != nil {
 		log.Fatal(err)
@@ -32,6 +32,6 @@ func main() {
 	}
 
 	log.Println("task id:", id)
-
+	log.Println("dep:", dep)
 	log.Println("Done, enjoy!")
 }

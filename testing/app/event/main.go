@@ -2,8 +2,7 @@ package main
 
 import (
 	"context"
-	"kantoku/core/l1"
-	"kantoku/core/l2"
+	"kantoku/core/task"
 	"kantoku/testing/app/base"
 	"log"
 )
@@ -18,7 +17,7 @@ func main() {
 		return
 	}
 
-	events, err := kan.Events().Listen(ctx, l1.EventTopic, l2.EventTopic, "outputs")
+	events, err := kan.Events().Listen(ctx, task.EventTopic)
 	if err != nil {
 		log.Fatal(err)
 		return

@@ -9,11 +9,11 @@ import (
 )
 
 type Depot struct {
-	deps       deps.DB
+	deps       deps.Deps
 	group2task kv.Database[string]
 }
 
-func New(deps deps.DB, group2task kv.Database[string]) *Depot {
+func New(deps deps.Deps, group2task kv.Database[string]) *Depot {
 	return &Depot{
 		deps:       deps,
 		group2task: group2task,
@@ -27,14 +27,14 @@ func (depot *Depot) Schedule(ctx context.Context, id string, dependencies []stri
 	}
 
 	// TODO: possible inconsistency
-	if _, err := depot.group2task.Set(ctx, group.ID, id); err != nil {
+	if _, err := depot.group2task.Set(ctx, group, id); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (depot *Depot) Deps() deps.DB {
+func (depot *Depot) Deps() deps.Deps {
 	return depot.deps
 }
 

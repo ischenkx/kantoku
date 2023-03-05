@@ -5,41 +5,42 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"kantoku"
+	"kantoku/common/data/kv"
 	"kantoku/common/pool"
-	"kantoku/core/l0/event"
-	"kantoku/core/l1"
-	"kantoku/framework/cell"
+	"kantoku/core/event"
+	"kantoku/core/task"
 	"kantoku/framework/depot"
 	"kantoku/impl/common/codec/bincodec"
 	"kantoku/impl/common/codec/jsoncodec"
 	"kantoku/impl/common/codec/strcodec"
-	redikv "kantoku/impl/common/db/kv/redis"
+	redikv "kantoku/impl/common/data/kv/redis"
 	"kantoku/impl/common/deps/postgredeps"
 	funcpool "kantoku/impl/common/pool/func"
 	redipool "kantoku/impl/common/pool/redis"
-	redivent "kantoku/impl/core/l0/event/redis"
-	redicell "kantoku/impl/framework/cell/redis"
+	"kantoku/impl/core/cell/redis"
+	"kantoku/impl/core/event/redis"
 )
 
-type IdentifiableResult l1.Result
+type IdentifiableResult task.Result
 
 func (i IdentifiableResult) ID() string {
 	return i.TaskID
 }
 
-func L1Inputs() pool.Pool[l1.Task] {
+func Inputs() pool.Pool[kantoku.Task] {
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     "localhost:6379",
 		Password: "",
 		DB:       0,
 	})
-	return redipool.New[l1.Task](redisClient, jsoncodec.New[l1.Task](), "inputs")
+	return redipool.New[kantoku.Task](redisClient, jsoncodec.New[kantoku.Task](), "inputs")
 }
 
-func L1Outputs(cells cell.Storage[[]byte]) pool.Writer[l1.Result] {
-	return funcpool.NewWriter[l1.Result](
-		func(ctx context.Context, item l1.Result) error {
-			return cells.Set(ctx, item.TaskID, item.Data)
+func Outputs(outputs kv.Writer[task.Result]) pool.Writer[task.Result] {
+	return funcpool.NewWriter[task.Result](
+		func(ctx context.Context, item task.Result) error {
+			_, err := outputs.Set(ctx, item.TaskID, item)
+			return err
 		},
 	)
 }
@@ -56,14 +57,9 @@ func Generate(ctx context.Context) (*kantoku.Kantoku, error) {
 		return nil, err
 	}
 
-	postgresConn, err := postgres.Acquire(ctx)
-	if err != nil {
-		return nil, err
-	}
-
 	bus := redivent.NewBus(redisClient, jsoncodec.New[event.Event]())
 	depsQueue := redipool.New[string](redisClient, strcodec.Codec{}, "deps_queue")
-	deps := postgredeps.New(postgresConn, depsQueue)
+	deps := postgredeps.New(postgres, depsQueue)
 	tasks := redikv.New[kantoku.Task](redisClient, jsoncodec.New[kantoku.Task](), "tasks")
 	cells := redicell.NewStorage[[]byte](redisClient, bincodec.Codec{})
 

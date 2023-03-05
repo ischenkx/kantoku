@@ -3,6 +3,7 @@ package redicell
 import (
 	"bytes"
 	"context"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"kantoku/common/codec"
 	"kantoku/common/util"
@@ -21,17 +22,19 @@ func NewStorage[T any](client redis.UniversalClient, codec codec.Codec[T]) *Stor
 	}
 }
 
-func (s *Storage[T]) Set(ctx context.Context, id string, data T) error {
+func (s *Storage[T]) Make(ctx context.Context, data T) (string, error) {
+	id := uuid.New().String()
+
 	encoded, err := s.codec.Encode(data)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	err = s.client.Set(ctx, id, encoded, 0).Err()
 	if err != nil {
-		return err
+		return id, err
 	}
-	return nil
+	return id, nil
 }
 
 func (s *Storage[T]) Get(ctx context.Context, id string) (cell.Cell[T], error) {

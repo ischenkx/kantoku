@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"kantoku/common/util"
 	"kantoku/impl/common/deps/postgredeps"
 	"kantoku/testing/app/base"
 	"log"
@@ -19,4 +20,6 @@ func main() {
 
 	deps := kan.Depot().Deps().(*postgredeps.Deps)
 	deps.Run(ctx)
+
+	util.Wait(ctx)
 }

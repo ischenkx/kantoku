@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"kantoku"
-	"kantoku/core/l2"
+	"kantoku/core/task"
 	"kantoku/impl/common/pool/func"
 	"kantoku/testing/app/base"
 	"log"
@@ -19,17 +19,20 @@ func main() {
 		return
 	}
 
-	inputs := base.L1Inputs()
+	inputs := base.Inputs()
 
-	runner := l2.New[kantoku.Task](
-		kan.Tasks(),
-		kan.Events(),
-		inputs,
-	)
-
+	scheduler := task.NewScheduler[kantoku.Task](inputs, kan.Events())
 	err = kan.Depot().Process(
 		ctx,
-		funcpool.NewWriter[string](runner.Run),
+		funcpool.NewWriter[string](
+			func(ctx context.Context, taskID string) error {
+				task, err := kan.Tasks().Get(ctx, taskID)
+				if err != nil {
+					return err
+				}
+				return scheduler.Schedule(ctx, task)
+			},
+		),
 	)
 	if err != nil {
 		log.Println("failed to run the depot processor:", err)

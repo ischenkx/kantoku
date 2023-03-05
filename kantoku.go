@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"kantoku/common/data/kv"
-	"kantoku/core/l0/event"
+	"kantoku/core/event"
 	"kantoku/framework/cell"
 	"kantoku/framework/depot"
 )
@@ -26,19 +26,19 @@ func New(config Config) *Kantoku {
 }
 
 func (kantoku *Kantoku) New(ctx context.Context, task Task) (id string, err error) {
-	task.Spec.ID = uuid.New().String()
+	task.ID_ = uuid.New().String()
 
-	_, err = kantoku.tasks.Set(ctx, task.Spec.ID, task)
+	_, err = kantoku.tasks.Set(ctx, task.ID_, task)
 	if err != nil {
 		return "", err
 	}
 
-	err = kantoku.depot.Schedule(ctx, task.Spec.ID, task.Dependencies)
+	err = kantoku.depot.Schedule(ctx, task.ID_, task.Dependencies)
 	if err != nil {
 		return "", err
 	}
 
-	return task.Spec.ID, nil
+	return task.ID_, nil
 }
 
 func (kantoku *Kantoku) Events() event.Bus {

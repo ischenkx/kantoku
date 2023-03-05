@@ -1,15 +1,22 @@
 package kantoku
 
-import (
-	"context"
-	"kantoku/core/l1"
-)
+import "context"
 
 type Task struct {
-	Spec         l1.Task
+	ID_          string
+	Type_        string
+	Argument_    []byte
 	Dependencies []string
 }
 
-func (t Task) L1(ctx context.Context) (l1.Task, error) {
-	return t.Spec, nil
+func (t Task) ID(ctx context.Context) string {
+	return t.ID_
+}
+
+func (t Task) Type(ctx context.Context) string {
+	return t.Type_
+}
+
+func (t Task) Argument(ctx context.Context) []byte {
+	return t.Argument_
 }

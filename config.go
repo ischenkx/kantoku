@@ -2,7 +2,7 @@ package kantoku
 
 import (
 	"kantoku/common/data/kv"
-	"kantoku/core/l0/event"
+	"kantoku/core/event"
 	"kantoku/framework/cell"
 	"kantoku/framework/depot"
 )
