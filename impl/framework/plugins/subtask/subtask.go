@@ -4,7 +4,6 @@ import (
 	"context"
 	"kantoku"
 	"kantoku/common/deps"
-	"kantoku/framework/plugins"
 	plugins2 "kantoku/impl/framework/plugins"
 )
 
@@ -20,7 +19,7 @@ func (s Subtask) Id() string {
 	return plugins2.Id()
 }
 
-func Output(task kantoku.Task) plugins.ArgumentCallback {
+func Output(task kantoku.Task) Callback {
 	return Callback{subtask: task}
 }
 

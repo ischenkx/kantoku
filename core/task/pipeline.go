@@ -2,7 +2,7 @@ package task
 
 import (
 	"context"
-	"kantoku/common/pool"
+	"kantoku/common/data/pool"
 	"kantoku/core/event"
 	"log"
 )
@@ -48,7 +48,7 @@ loop:
 			// todo: remove implicit topic assignment
 			// todo: I should leave the logic of determining of what topic
 			// todo: to use to the Publisher provided by a user
-			id := task.ID(ctx)
+			id := task.ID()
 			pipeline.sendEvent(ctx, ReceivedEvent, EventTopic, []byte(id))
 
 			result, err := pipeline.executor.Execute(ctx, task)

@@ -2,7 +2,7 @@ package task
 
 import (
 	"context"
-	"kantoku/common/pool"
+	"kantoku/common/data/pool"
 	"kantoku/core/event"
 	"log"
 )
@@ -27,7 +27,7 @@ func (scheduler *Scheduler[InputType]) Schedule(ctx context.Context, input Input
 	if err := scheduler.inputs.Write(ctx, input); err != nil {
 		return err
 	}
-	scheduler.publish(ctx, ScheduledEvent, []byte(input.ID(ctx)))
+	scheduler.publish(ctx, ScheduledEvent, []byte(input.ID()))
 
 	return nil
 }

@@ -3,6 +3,7 @@ package redipool
 import (
 	"context"
 	"github.com/redis/go-redis/v9"
+	"kantoku/common/chutil"
 	"kantoku/common/codec"
 	"log"
 	"strings"
@@ -38,10 +39,7 @@ func (pool *Pool[T]) Write(ctx context.Context, item T) error {
 func (pool *Pool[T]) Read(ctx context.Context) (<-chan T, error) {
 	pubsub := pool.client.Subscribe(ctx, pool.topicName)
 	channel := make(chan T, 1024)
-	go func(ctx context.Context, outputs chan<- T) {
-		<-ctx.Done()
-		close(outputs)
-	}(ctx, channel)
+	chutil.SyncWithContext(ctx, channel)
 
 	go func(ctx context.Context, ps *redis.PubSub, outputs chan<- T) {
 		pubsubChannel := ps.Channel()

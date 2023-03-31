@@ -3,16 +3,16 @@ package proxypool
 import (
 	"context"
 	"kantoku/common/chutil"
-	"kantoku/common/pool"
-	transformator2 "kantoku/common/transformator"
+	"kantoku/common/data/pool"
+	transformator2 "kantoku/common/transformer"
 )
 
 type Reader[In, Out any] struct {
 	inputs        pool.Reader[In]
-	transformator transformator2.Transformator[In, Out]
+	transformator transformator2.Transformer[In, Out]
 }
 
-func NewReader[In, Out any](inputs pool.Reader[In], transformator transformator2.Transformator[In, Out]) *Reader[In, Out] {
+func NewReader[In, Out any](inputs pool.Reader[In], transformator transformator2.Transformer[In, Out]) *Reader[In, Out] {
 	return &Reader[In, Out]{
 		inputs:        inputs,
 		transformator: transformator,

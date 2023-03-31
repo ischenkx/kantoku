@@ -3,15 +3,19 @@ package testing
 import (
 	"context"
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"github.com/satori/go.uuid"
-	"kantoku/impl/common/codec/jsoncodec"
-	redisStorage "kantoku/impl/framework/cell/redis"
-	"kantoku/testing/common"
+	"kantoku/core/cell"
+	redisStorage "kantoku/impl/core/cell/redis"
 	"testing"
 )
 
 func TestRedisStorage(t *testing.T) {
-	client := common.DefaultClient()
+	client := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "",
+		DB:       0,
+	})
 	defer client.Close()
 
 	t.Run("ping", func(t *testing.T) {
@@ -25,10 +29,10 @@ func TestRedisStorage(t *testing.T) {
 		fmt.Printf("status: %v\n", name)
 	})
 
-	storage := redisStorage.New[string](client, jsoncodec.Codec[string]{})
+	storage := redisStorage.NewStorage(client)
 
 	t.Run("create", func(t *testing.T) {
-		id, err := storage.Make(context.Background(), "test data")
+		id, err := storage.Create(context.Background(), []byte("test data"))
 		if err != nil {
 			t.Fatalf("create failed: %v", err)
 		}
@@ -38,7 +42,7 @@ func TestRedisStorage(t *testing.T) {
 	})
 
 	t.Run("get", func(t *testing.T) {
-		id, _ := storage.Make(context.Background(), "test data")
+		id, _ := storage.Create(context.Background(), []byte("test data"))
 		c, err := storage.Get(context.Background(), id)
 		if err != nil {
 			t.Fatalf("get failed: %v", err)
@@ -51,14 +55,32 @@ func TestRedisStorage(t *testing.T) {
 		}
 	})
 
-	//t.Run("delete", func(t *testing.T) {
-	//	id, _ := storage.Make(context.Background(), "test data")
-	//	if err := storage.Delete(context.Background(), id); err != nil {
-	//		t.Fatalf("delete failed: %v", err)
-	//	}
-	//	_, err := storage.Get(context.Background(), id)
-	//	if err == nil {
-	//		t.Fatalf("c should be deleted")
-	//	}
-	//})
+	t.Run("set", func(t *testing.T) {
+		id, _ := storage.Create(context.Background(), []byte("test data"))
+		c := cell.Cell{
+			ID:   id,
+			Data: []byte("new data"),
+		}
+		if err := storage.Set(context.Background(), c); err != nil {
+			t.Fatalf("set failed: %v", err)
+		}
+		c, err := storage.Get(context.Background(), id)
+		if err != nil {
+			t.Fatalf("get failed: %v", err)
+		}
+		if string(c.Data) != "new data" {
+			t.Fatalf("incorrect data, expected %q but got %q", "new data", string(c.Data))
+		}
+	})
+
+	t.Run("delete", func(t *testing.T) {
+		id, _ := storage.Create(context.Background(), []byte("test data"))
+		if err := storage.Del(context.Background(), id); err != nil {
+			t.Fatalf("delete failed: %v", err)
+		}
+		_, err := storage.Get(context.Background(), id)
+		if err == nil {
+			t.Fatalf("c should be deleted")
+		}
+	})
 }

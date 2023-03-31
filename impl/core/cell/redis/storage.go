@@ -7,7 +7,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"kantoku/common/codec"
 	"kantoku/common/util"
-	"kantoku/framework/cell"
+	"kantoku/core/cell"
 )
 
 type Storage[T any] struct {

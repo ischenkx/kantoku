@@ -2,6 +2,6 @@ package util
 
 import "context"
 
-func Wait(ctx context.Context) {
+func BlockOn(ctx context.Context) {
 	<-ctx.Done()
 }

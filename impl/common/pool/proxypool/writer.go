@@ -2,16 +2,16 @@ package proxypool
 
 import (
 	"context"
-	"kantoku/common/pool"
-	transformator2 "kantoku/common/transformator"
+	"kantoku/common/data/pool"
+	transformer "kantoku/common/transformer"
 )
 
 type Writer[In, Out any] struct {
 	outputs       pool.Writer[Out]
-	transformator transformator2.Transformator[In, Out]
+	transformator transformer.Transformer[In, Out]
 }
 
-func NewWriter[In, Out any](outputs pool.Writer[Out], transformator transformator2.Transformator[In, Out]) *Writer[In, Out] {
+func NewWriter[In, Out any](outputs pool.Writer[Out], transformator transformer.Transformer[In, Out]) *Writer[In, Out] {
 	return &Writer[In, Out]{
 		outputs:       outputs,
 		transformator: transformator,
