@@ -5,34 +5,33 @@ import (
 	"github.com/google/uuid"
 	"kantoku/common/data/kv"
 	"kantoku/core/event"
-	"kantoku/core/task"
-	"kantoku/framework/argument"
 )
 
-type Kantoku struct {
-	plugins         []Plugin
-	argumentManager *argument.Manager
-	tasks           kv.Database[StoredTask]
-	scheduler       *task.Scheduler[ScheduledTask]
-	properties      *Properties
-	cells           Cells
-	events          event.Bus
+type Builder struct {
+	Tasks     kv.Database[StoredTask]
+	Scheduler Scheduler
+	Cells     Cells
+	Events    event.Bus
 }
 
-func New(
-	argumentManager *argument.Manager,
-	taskDB kv.Database[StoredTask],
-	taskQueue task.SchedulerInputs[ScheduledTask],
-	events event.Bus,
-	cells Cells,
-) *Kantoku {
+func (builder Builder) Build() *Kantoku {
 	return &Kantoku{
-		argumentManager: argumentManager,
-		tasks:           taskDB,
-		events:          events,
-		scheduler:       task.NewScheduler(taskQueue, events),
-		cells:           cells,
+		tasks:      builder.Tasks,
+		scheduler:  builder.Scheduler,
+		cells:      builder.Cells,
+		events:     builder.Events,
+		properties: NewProperties(),
+		plugins:    nil,
 	}
+}
+
+type Kantoku struct {
+	tasks      kv.Database[StoredTask]
+	scheduler  Scheduler
+	cells      Cells
+	events     event.Bus
+	properties *Properties
+	plugins    []Plugin
 }
 
 func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, err error) {
@@ -41,20 +40,17 @@ func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, e
 	defer ctx.finalize()
 
 	ctx.Task = &TaskInstance{
-		id:        "",
-		typ:       spec.Type,
-		arguments: append([]any(nil), spec.Arguments...),
+		id:   "",
+		typ:  spec.Type,
+		data: spec.Data,
 	}
 
-	for index := 0; index < ctx.Task.CountArgs(); index++ {
-		arg, _ := ctx.Task.Arg(index)
-		if initializer, ok := arg.(ArgumentInitializer); ok {
-			arg, err := initializer.Initialize(ctx)
-			if err != nil {
-				return result, err
-			}
-			ctx.Task.arguments[index] = arg
+	if initializer, ok := ctx.Task.Data().(Initializeable); ok {
+		data, err := initializer.Initialize(ctx)
+		if err != nil {
+			return result, err
 		}
+		ctx.Task.data = data
 	}
 
 	for _, plugin := range kantoku.plugins {
@@ -64,24 +60,16 @@ func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, e
 	}
 
 	storedTask := StoredTask{
-		ID:   uuid.New().String(),
+		Id:   uuid.New().String(),
 		Type: ctx.Task.Type(),
+		Data: ctx.Task.Data(),
 	}
 
-	for index := 0; index < ctx.Task.CountArgs(); index++ {
-		arg, _ := ctx.Task.Arg(index)
-		formattedArgument, err := kantoku.argumentManager.Encode(ctx, arg)
-		if err != nil {
-			return result, err
-		}
-		storedTask.Arguments = append(storedTask.Arguments, formattedArgument)
-	}
-
-	if _, err := kantoku.tasks.Set(ctx, storedTask.ID, storedTask); err != nil {
+	if _, err := kantoku.tasks.Set(ctx, storedTask.Id, storedTask); err != nil {
 		return result, err
 	}
-	result.Task = storedTask.ID
-	ctx.Task.id = storedTask.ID
+	result.Task = storedTask.Id
+	ctx.Task.id = storedTask.Id
 
 	for _, plugin := range kantoku.plugins {
 		plugin.AfterInitialized(ctx)
@@ -91,7 +79,7 @@ func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, e
 		plugin.BeforeScheduled(ctx)
 	}
 
-	if err := kantoku.scheduler.Schedule(ctx, ScheduledTask{id: ctx.Task.ID()}); err != nil {
+	if err := kantoku.scheduler.Schedule(ctx); err != nil {
 		return result, err
 	}
 
@@ -99,7 +87,7 @@ func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, e
 		plugin.AfterScheduled(ctx)
 	}
 
-	ctx.Log.Spawned = append(result.Log.Spawned, storedTask.ID)
+	ctx.Log.Spawned = append(result.Log.Spawned, storedTask.Id)
 
 	return result, nil
 }
@@ -109,8 +97,8 @@ func (kantoku *Kantoku) Register(plugin Plugin) {
 	kantoku.plugins = append(kantoku.plugins, plugin)
 }
 
-func (kantoku *Kantoku) Task(id string) TaskView {
-	return TaskView{
+func (kantoku *Kantoku) Task(id string) *TaskView {
+	return &TaskView{
 		kantoku: kantoku,
 		id:      id,
 	}

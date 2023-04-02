@@ -1,5 +1,5 @@
 package kantoku
 
-type ArgumentInitializer interface {
+type Initializeable interface {
 	Initialize(ctx *Context) (any, error)
 }

@@ -17,5 +17,6 @@ func (c Codec[T]) Encode(value T) ([]byte, error) {
 
 func (c Codec[T]) Decode(reader io.Reader) (T, error) {
 	var value T
-	return value, json.NewDecoder(reader).Decode(&value)
+	err := json.NewDecoder(reader).Decode(&value)
+	return value, err
 }

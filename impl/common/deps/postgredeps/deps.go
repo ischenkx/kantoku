@@ -98,16 +98,10 @@ func (d *Deps) Group(ctx context.Context, group string) (deps.Group, error) {
 	return result, nil
 }
 
-func (d *Deps) Make(ctx context.Context) (*deps.Dependency, error) {
+func (d *Deps) Make(ctx context.Context) (deps.Dependency, error) {
 	id := uuid.New().String()
 
-	sql := `INSERT INTO Dependencies (id, resolved) VALUES ($1, $2)`
-	_, err := d.client.Exec(ctx, sql, id, false)
-	if err != nil {
-		return nil, err
-	}
-
-	return &deps.Dependency{
+	return deps.Dependency{
 		ID:       id,
 		Resolved: false,
 	}, nil

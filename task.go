@@ -3,21 +3,20 @@ package kantoku
 import (
 	"context"
 	"fmt"
-	"kantoku/framework/argument"
 )
 
 type Option func(ctx *Context)
 
 type Spec struct {
-	Type      string
-	Arguments []any
-	Options   []Option
+	Type    string
+	Data    any
+	Options []Option
 }
 
-func Task(typ string, args ...any) Spec {
+func Task(typ string, data any) Spec {
 	return Spec{
-		Type:      typ,
-		Arguments: args,
+		Type: typ,
+		Data: data,
 	}
 }
 
@@ -27,9 +26,9 @@ func (spec Spec) With(options ...Option) Spec {
 }
 
 type TaskInstance struct {
-	id        string
-	typ       string
-	arguments []any
+	id   string
+	typ  string
+	data any
 }
 
 func (instance *TaskInstance) ID() string {
@@ -40,30 +39,18 @@ func (instance *TaskInstance) Type() string {
 	return instance.typ
 }
 
-func (instance *TaskInstance) Arg(index int) (any, bool) {
-	if index < 0 || len(instance.arguments) <= index {
-		return nil, false
-	}
-
-	return instance.arguments[index], true
-}
-
-func (instance *TaskInstance) CountArgs() int {
-	return len(instance.arguments)
+func (instance *TaskInstance) Data() any {
+	return instance.data
 }
 
 type StoredTask struct {
-	ID        string
-	Type      string
-	Arguments []argument.Argument
+	Id   string
+	Type string
+	Data any
 }
 
-type ScheduledTask struct {
-	id string
-}
-
-func (s ScheduledTask) ID() string {
-	return s.id
+func (task StoredTask) ID() string {
+	return task.Id
 }
 
 type TaskView struct {
@@ -87,11 +74,11 @@ func (view *TaskView) Type(ctx context.Context) (string, error) {
 	return view.stored.Type, nil
 }
 
-func (view *TaskView) Arguments(ctx context.Context) ([]argument.Argument, error) {
+func (view *TaskView) Data(ctx context.Context) (any, error) {
 	if err := view.loadStored(ctx); err != nil {
 		return nil, err
 	}
-	return view.stored.Arguments, nil
+	return view.stored.Data, nil
 }
 
 func (view *TaskView) Prop(ctx context.Context, path ...string) (any, error) {
@@ -101,6 +88,14 @@ func (view *TaskView) Prop(ctx context.Context, path ...string) (any, error) {
 	}
 
 	return evaluator.Evaluate(ctx, view.id)
+}
+
+func (view *TaskView) AsStored(ctx context.Context) (StoredTask, error) {
+	err := view.loadStored(ctx)
+	if err != nil {
+		return StoredTask{}, err
+	}
+	return *view.stored, nil
 }
 
 func (view *TaskView) loadStored(ctx context.Context) error {

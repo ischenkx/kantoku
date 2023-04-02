@@ -41,7 +41,7 @@ func (props *Properties) Del(path ...string) {
 	}
 }
 
-func (props *Properties) Provide(evaluator PropertyEvaluator, path ...string) {
+func (props *Properties) Set(evaluator PropertyEvaluator, path ...string) {
 	if len(path) == 0 {
 		props.evaluator = evaluator
 		return
@@ -53,5 +53,5 @@ func (props *Properties) Provide(evaluator PropertyEvaluator, path ...string) {
 		props.subProperties[path[0]] = subProps
 	}
 
-	subProps.Provide(evaluator, path[1:]...)
+	subProps.Set(evaluator, path[1:]...)
 }

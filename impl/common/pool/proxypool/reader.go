@@ -4,18 +4,17 @@ import (
 	"context"
 	"kantoku/common/chutil"
 	"kantoku/common/data/pool"
-	transformator2 "kantoku/common/transformer"
 )
 
 type Reader[In, Out any] struct {
-	inputs        pool.Reader[In]
-	transformator transformator2.Transformer[In, Out]
+	inputs      pool.Reader[In]
+	transformer func(ctx context.Context, input In) (Out, bool)
 }
 
-func NewReader[In, Out any](inputs pool.Reader[In], transformator transformator2.Transformer[In, Out]) *Reader[In, Out] {
+func NewReader[In, Out any](inputs pool.Reader[In], transformer func(ctx context.Context, input In) (Out, bool)) *Reader[In, Out] {
 	return &Reader[In, Out]{
-		inputs:        inputs,
-		transformator: transformator,
+		inputs:      inputs,
+		transformer: transformer,
 	}
 }
 
@@ -30,7 +29,10 @@ func (r *Reader[In, Out]) Read(ctx context.Context) (<-chan Out, error) {
 	chutil.SyncWithContext(ctx, newInputs)
 	go func(ctx context.Context, inputs <-chan In, outputs chan<- Out) {
 		for item := range inputs {
-			outputs <- r.transformator(item)
+			output, ok := r.transformer(ctx, item)
+			if ok {
+				outputs <- output
+			}
 		}
 	}(ctx, inputs, newInputs)
 
