@@ -2,6 +2,7 @@ package status
 
 import (
 	"context"
+	"kantoku/common/data/kv"
 	"kantoku/core/event"
 	"kantoku/core/task"
 	"log"
@@ -9,10 +10,10 @@ import (
 
 type Updater struct {
 	bus event.Bus
-	db  DB
+	db  kv.Database[string, Status]
 }
 
-func NewUpdater(bus event.Bus, db DB) *Updater {
+func NewUpdater(bus event.Bus, db kv.Database[string, Status]) *Updater {
 	return &Updater{
 		bus: bus,
 		db:  db,
@@ -49,7 +50,7 @@ loop:
 }
 
 func (updater *Updater) update(ctx context.Context, id string, status Status) {
-	if err := updater.db.UpdateStatus(ctx, id, status); err != nil {
+	if err := updater.db.Set(ctx, id, status); err != nil {
 		log.Printf("failed to update the status: id = '%s', status = '%s'\n", id, status)
 	}
 }

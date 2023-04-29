@@ -2,28 +2,29 @@ package kv
 
 import "context"
 
-type Getter[T any] interface {
-	Get(ctx context.Context, id string) (T, error)
+type Getter[K, V any] interface {
+	Get(ctx context.Context, id K) (V, error)
 }
 
-type Setter[T any] interface {
-	Set(ctx context.Context, id string, item T) (T, error)
+type Setter[K, V any] interface {
+	Set(ctx context.Context, id K, item V) error
+	GetOrSet(ctx context.Context, id K, item V) (V, error)
 }
 
-type Deleter interface {
-	Del(ctx context.Context, id string) error
+type Deleter[K any] interface {
+	Del(ctx context.Context, id K) error
 }
 
-type Reader[T any] interface {
-	Getter[T]
+type Reader[K, V any] interface {
+	Getter[K, V]
 }
 
-type Writer[T any] interface {
-	Setter[T]
-	Deleter
+type Writer[K, V any] interface {
+	Setter[K, V]
+	Deleter[K]
 }
 
-type Database[T any] interface {
-	Reader[T]
-	Writer[T]
+type Database[K, V any] interface {
+	Reader[K, V]
+	Writer[K, V]
 }

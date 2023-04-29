@@ -1,21 +1,20 @@
 package redicell
 
 import (
-	"bytes"
 	"context"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"kantoku/common/codec"
+	"kantoku/common/data/cell"
 	"kantoku/common/util"
-	"kantoku/core/cell"
 )
 
 type Storage[T any] struct {
 	client redis.UniversalClient
-	codec  codec.Codec[T]
+	codec  codec.Codec[T, []byte]
 }
 
-func New[T any](client redis.UniversalClient, codec codec.Codec[T]) *Storage[T] {
+func New[T any](client redis.UniversalClient, codec codec.Codec[T, []byte]) *Storage[T] {
 	return &Storage[T]{
 		client: client,
 		codec:  codec,
@@ -43,7 +42,7 @@ func (s *Storage[T]) Get(ctx context.Context, id string) (cell.Cell[T], error) {
 		return util.Default[cell.Cell[T]](), err
 	}
 
-	data, err := s.codec.Decode(bytes.NewReader(encoded))
+	data, err := s.codec.Decode(encoded)
 	if err != nil {
 		return util.Default[cell.Cell[T]](), err
 	}

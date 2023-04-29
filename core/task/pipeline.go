@@ -7,22 +7,22 @@ import (
 	"log"
 )
 
-type PipelineInputs[T AbstractTask] pool.Reader[T]
+type PipelineInputs[Task AbstractTask] pool.Reader[Task]
 type PipelineOutputs pool.Writer[Result]
 
-type Pipeline[InputType AbstractTask] struct {
-	inputs   PipelineInputs[InputType]
+type Pipeline[Task AbstractTask] struct {
+	inputs   PipelineInputs[Task]
 	outputs  PipelineOutputs
-	executor Executor[InputType]
+	executor Executor[Task]
 	events   event.Publisher
 }
 
-func NewPipeline[InputType AbstractTask](
-	inputs PipelineInputs[InputType],
+func NewPipeline[Task AbstractTask](
+	inputs PipelineInputs[Task],
 	outputs PipelineOutputs,
-	executor Executor[InputType],
-	events event.Publisher) *Pipeline[InputType] {
-	return &Pipeline[InputType]{
+	executor Executor[Task],
+	events event.Publisher) *Pipeline[Task] {
+	return &Pipeline[Task]{
 		inputs:   inputs,
 		outputs:  outputs,
 		executor: executor,
@@ -30,7 +30,7 @@ func NewPipeline[InputType AbstractTask](
 	}
 }
 
-func (pipeline *Pipeline[InputType]) Run(ctx context.Context) error {
+func (pipeline *Pipeline[Task]) Run(ctx context.Context) error {
 	// todo: inputs are not closed explicitly in this function
 	// todo: maybe I should create another interface for a
 	// todo: closeable read-only channel (though sounds kinda broken by design)

@@ -5,15 +5,15 @@ import (
 	"fmt"
 )
 
-type Option func(ctx *Context)
+type Option func(ctx *Context) error
 
 type Spec struct {
 	Type    string
-	Data    any
+	Data    []byte
 	Options []Option
 }
 
-func Task(typ string, data any) Spec {
+func Task(typ string, data []byte) Spec {
 	return Spec{
 		Type: typ,
 		Data: data,
@@ -28,7 +28,7 @@ func (spec Spec) With(options ...Option) Spec {
 type TaskInstance struct {
 	id   string
 	typ  string
-	data any
+	data []byte
 }
 
 func (instance *TaskInstance) ID() string {
@@ -39,49 +39,45 @@ func (instance *TaskInstance) Type() string {
 	return instance.typ
 }
 
-func (instance *TaskInstance) Data() any {
+func (instance *TaskInstance) Data() []byte {
 	return instance.data
 }
 
 type StoredTask struct {
 	Id   string
 	Type string
-	Data any
+	Data []byte
 }
 
 func (task StoredTask) ID() string {
 	return task.Id
 }
 
-type TaskView struct {
+type View struct {
 	kantoku *Kantoku
 	id      string
 	stored  *StoredTask
 }
 
-func (view *TaskView) Kantoku() *Kantoku {
+func (view *View) Kantoku() *Kantoku {
 	return view.kantoku
 }
 
-func (view *TaskView) ID() string {
+func (view *View) ID() string {
 	return view.id
 }
 
-func (view *TaskView) Type(ctx context.Context) (string, error) {
-	if err := view.loadStored(ctx); err != nil {
-		return "", err
-	}
-	return view.stored.Type, nil
+func (view *View) Type(ctx context.Context) (string, error) {
+	stored, err := view.Stored(ctx)
+	return stored.Type, err
 }
 
-func (view *TaskView) Data(ctx context.Context) (any, error) {
-	if err := view.loadStored(ctx); err != nil {
-		return nil, err
-	}
-	return view.stored.Data, nil
+func (view *View) Data(ctx context.Context) ([]byte, error) {
+	stored, err := view.Stored(ctx)
+	return stored.Data, err
 }
 
-func (view *TaskView) Prop(ctx context.Context, path ...string) (any, error) {
+func (view *View) Prop(ctx context.Context, path ...string) (any, error) {
 	evaluator, ok := view.Kantoku().Props().Get(path...)
 	if !ok {
 		return nil, fmt.Errorf("no evaluator provided for key: %s", path)
@@ -90,24 +86,16 @@ func (view *TaskView) Prop(ctx context.Context, path ...string) (any, error) {
 	return evaluator.Evaluate(ctx, view.id)
 }
 
-func (view *TaskView) AsStored(ctx context.Context) (StoredTask, error) {
-	err := view.loadStored(ctx)
+func (view *View) Stored(ctx context.Context) (StoredTask, error) {
+	if view.stored != nil {
+		return *view.stored, nil
+	}
+
+	stored, err := view.kantoku.tasks.Get(ctx, view.id)
 	if err != nil {
 		return StoredTask{}, err
 	}
-	return *view.stored, nil
-}
+	view.stored = &stored
 
-func (view *TaskView) loadStored(ctx context.Context) error {
-	if view.stored != nil {
-		return nil
-	}
-
-	task, err := view.Kantoku().tasks.Get(ctx, view.id)
-	if err != nil {
-		return err
-	}
-	view.stored = &task
-
-	return nil
+	return stored, nil
 }

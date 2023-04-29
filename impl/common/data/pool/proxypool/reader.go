@@ -26,7 +26,7 @@ func (r *Reader[In, Out]) Read(ctx context.Context) (<-chan Out, error) {
 
 	newInputs := make(chan Out, 1024)
 
-	chutil.SyncWithContext(ctx, newInputs)
+	chutil.CloseWithContext(ctx, newInputs)
 	go func(ctx context.Context, inputs <-chan In, outputs chan<- Out) {
 		for item := range inputs {
 			output, ok := r.transformer(ctx, item)

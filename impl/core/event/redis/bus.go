@@ -6,15 +6,14 @@ import (
 	"kantoku/common/codec"
 	"kantoku/core/event"
 	"log"
-	"strings"
 )
 
 type Bus struct {
 	client redis.UniversalClient
-	codec  codec.Codec[event.Event]
+	codec  codec.Codec[event.Event, []byte]
 }
 
-func NewBus(client redis.UniversalClient, codec codec.Codec[event.Event]) *Bus {
+func NewBus(client redis.UniversalClient, codec codec.Codec[event.Event, []byte]) *Bus {
 	return &Bus{
 		client: client,
 		codec:  codec,
@@ -34,7 +33,7 @@ func (b *Bus) Listen(ctx context.Context, topics ...string) (<-chan event.Event,
 		for {
 			select {
 			case message := <-messages:
-				ev, err := b.codec.Decode(strings.NewReader(message.Payload))
+				ev, err := b.codec.Decode([]byte(message.Payload))
 				if err != nil {
 					log.Println("failed to decode the event:", err)
 					continue

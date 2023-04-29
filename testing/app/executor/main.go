@@ -2,8 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
-	"io"
 	"kantoku"
 	"kantoku/common/data/kv"
 	"kantoku/common/data/pool"
@@ -12,11 +10,10 @@ import (
 	"kantoku/impl/common/codec/jsoncodec"
 	"kantoku/impl/common/codec/strcodec"
 	redikv "kantoku/impl/common/data/kv/redis"
-	"kantoku/impl/common/pool/proxypool"
-	redipool "kantoku/impl/common/pool/redis"
+	"kantoku/impl/common/data/pool/proxypool"
+	"kantoku/impl/common/data/pool/redis"
 	"kantoku/testing/app/base"
 	"log"
-	"net/http"
 )
 
 func main() {
@@ -28,50 +25,43 @@ func main() {
 		log.Fatal(err)
 	}
 
-	ids := redipool.New[string](b.Redis, strcodec.Codec{}, "tasks")
+	ids := redipool.New[string](b.Redis, strcodec.Codec{}, "_tasks")
 	inputs := newInputs(ids, b.Kantoku)
 	outputs := redikv.New[task.Result](b.Redis, jsoncodec.New[task.Result](), "outputs")
 
-	p := task.NewPipeline[kantoku.StoredTask](inputs, Outputs{storage: outputs}, executor(), b.Kantoku.Events())
+	p := task.NewPipeline[*kantoku.View](inputs, Outputs{storage: outputs}, executor(), b.Kantoku.Events())
 	if err := p.Run(ctx); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func executor() task.Executor[kantoku.StoredTask] {
+func executor() task.Executor[*kantoku.View] {
 	return simple.Executor{
-		"http": func(argument any) ([]byte, error) {
-			url, ok := argument.(string)
-			if !ok {
-				return nil, errors.New("failed to get the url")
-			}
-
-			res, err := http.Get(url)
+		"print": func(ctx context.Context, task *kantoku.View) ([]byte, error) {
+			data, err := task.Data(ctx)
 			if err != nil {
 				return nil, err
 			}
+			log.Println(string(data))
 
-			return io.ReadAll(res.Body)
+			return nil, nil
+		},
+		"id": func(ctx context.Context, task *kantoku.View) ([]byte, error) {
+			return task.Data(ctx)
 		},
 	}
 }
 
-func newInputs(ids pool.Reader[string], kan *kantoku.Kantoku) pool.Reader[kantoku.StoredTask] {
-	return proxypool.NewReader[string, kantoku.StoredTask](ids, func(ctx context.Context, id string) (kantoku.StoredTask, bool) {
-		stored, err := kan.Task(id).AsStored(ctx)
-		if err != nil {
-			log.Println("failed to get the stored task:", err)
-			return kantoku.StoredTask{}, false
-		}
-		return stored, true
+func newInputs(ids pool.Reader[string], kan *kantoku.Kantoku) pool.Reader[*kantoku.View] {
+	return proxypool.NewReader[string, *kantoku.View](ids, func(ctx context.Context, id string) (*kantoku.View, bool) {
+		return kan.Task(id), true
 	})
 }
 
 type Outputs struct {
-	storage kv.Database[task.Result]
+	storage kv.Database[string, task.Result]
 }
 
 func (o Outputs) Write(ctx context.Context, item task.Result) error {
-	_, err := o.storage.Set(ctx, item.TaskID, item)
-	return err
+	return o.storage.Set(ctx, item.TaskID, item)
 }

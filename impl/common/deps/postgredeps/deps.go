@@ -77,10 +77,9 @@ func (d *Deps) Group(ctx context.Context, group string) (deps.Group, error) {
 	var result deps.Group
 	result.ID = group
 
-	sql := `
-			SELECT dependency_id, resolved FROM GroupDependencies gd 
-			WHERE gd.group_id = $1 
-			JOIN Dependencies d ON d.id = gd.dependency_id`
+	sql := `SELECT dependency_id, resolved FROM GroupDependencies gd 
+			JOIN Dependencies d ON d.id = gd.dependency_id
+			WHERE gd.group_id = $1`
 	records, err := d.client.Query(ctx, sql, group)
 	if err != nil {
 		return result, err

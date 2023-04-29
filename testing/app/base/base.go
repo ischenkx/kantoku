@@ -6,13 +6,20 @@ import (
 	"github.com/redis/go-redis/v9"
 	"kantoku"
 	"kantoku/core/event"
+	"kantoku/core/task"
 	"kantoku/framework/depot"
+	delay2 "kantoku/framework/depot/delay"
+	subtask2 "kantoku/framework/depot/taskdep"
+	"kantoku/framework/output"
+	"kantoku/framework/status"
 	"kantoku/impl/common/codec/bincodec"
 	"kantoku/impl/common/codec/jsoncodec"
 	"kantoku/impl/common/codec/strcodec"
+	rebimap "kantoku/impl/common/data/bimap/redis"
+	"kantoku/impl/common/data/cron/simple"
 	redikv "kantoku/impl/common/data/kv/redis"
+	"kantoku/impl/common/data/pool/redis"
 	"kantoku/impl/common/deps/postgredeps"
-	redipool "kantoku/impl/common/pool/redis"
 	redicell "kantoku/impl/core/cell/redis"
 	redivent "kantoku/impl/core/event/redis"
 )
@@ -46,9 +53,15 @@ func New(ctx context.Context) (Base, error) {
 	depsQueue := redipool.New[string](r, strcodec.Codec{}, "deps")
 	deps := postgredeps.New(p, depsQueue)
 
-	group2task := redikv.New[string](r, strcodec.Codec{}, "group2task")
+	groupTaskBimap := rebimap.NewBimap[string, string](
+		"group2task",
+		"task2group",
+		strcodec.Codec{},
+		strcodec.Codec{},
+		r,
+	)
 
-	depotClient := depot.New(deps, group2task)
+	depotClient := depot.New(deps, groupTaskBimap)
 
 	kan := kantoku.Builder{
 		Tasks: redikv.New[kantoku.StoredTask](
@@ -60,6 +73,22 @@ func New(ctx context.Context) (Base, error) {
 		Events:    redivent.NewBus(r, jsoncodec.New[event.Event]()),
 		Scheduler: depotClient,
 	}.Build()
+
+	outputs := redikv.New[task.Result](r, jsoncodec.New[task.Result](), "outputs")
+	statusDB := redikv.New[status.Status](r, jsoncodec.New[status.Status](), "statuses")
+
+	subtaskManager := subtask2.NewManager(deps, redikv.New[string](r, strcodec.Codec{}, "subtasks"))
+
+	cronInputs := redipool.New[simple.Event](r, jsoncodec.New[simple.Event](), "cron_inputs")
+	cronOutputs := redipool.New[string](r, strcodec.Codec{}, "cron_outputs")
+	redisCron := simple.NewClient(cronInputs, cronOutputs)
+	delayManager := delay2.NewManager(redisCron, deps)
+
+	kan.Register(delay2.NewPlugin(delayManager))
+	kan.Register(subtask2.NewPlugin(subtaskManager))
+	kan.Register(output.NewPlugin(outputs))
+	kan.Register(status.NewPlugin(statusDB))
+	kan.Register(depot.NewPlugin(depotClient))
 
 	return Base{
 		Redis:    r,

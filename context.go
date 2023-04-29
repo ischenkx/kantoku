@@ -18,6 +18,14 @@ func (pd PluginData) Get(key string) (any, bool) {
 	return val, ok
 }
 
+func (pd PluginData) GetWithDefault(key string, def any) any {
+	val, ok := pd.Get(key)
+	if !ok {
+		val = def
+	}
+	return val
+}
+
 func (pd PluginData) Set(key string, value any) {
 	pd.data[key] = value
 }

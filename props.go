@@ -19,7 +19,7 @@ func NewProperties() *Properties {
 
 func (props *Properties) Get(path ...string) (PropertyEvaluator, bool) {
 	if len(path) == 0 {
-		return props.evaluator, props.evaluator == nil
+		return props.evaluator, props.evaluator != nil
 	}
 
 	subProps, ok := props.subProperties[path[0]]

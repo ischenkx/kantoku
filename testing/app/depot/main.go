@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"kantoku/impl/common/codec/strcodec"
-	redipool "kantoku/impl/common/pool/redis"
+	"kantoku/impl/common/data/pool/redis"
 	"kantoku/testing/app/base"
 	"log"
 )
@@ -17,7 +17,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	outputs := redipool.New[string](b.Redis, strcodec.Codec{}, "tasks")
+	outputs := redipool.New[string](b.Redis, strcodec.Codec{}, "_tasks")
 
 	if err := b.Depot.Process(ctx, outputs); err != nil {
 		log.Fatal(err)

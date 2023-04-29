@@ -1,16 +1,14 @@
 package codec
 
-import "io"
-
-type Codec[T any] interface {
-	Encoder[T]
-	Decoder[T]
+type Codec[From, To any] interface {
+	Encoder[From, To]
+	Decoder[From, To]
 }
 
-type Encoder[T any] interface {
-	Encode(T) ([]byte, error)
+type Encoder[From, To any] interface {
+	Encode(From) (To, error)
 }
 
-type Decoder[T any] interface {
-	Decode(reader io.Reader) (T, error)
+type Decoder[From, To any] interface {
+	Decode(reader To) (From, error)
 }

@@ -7,10 +7,10 @@ import (
 )
 
 type Writer[T data.Identifiable] struct {
-	storage kv.Writer[T]
+	storage kv.Writer[string, T]
 }
 
-func NewWriter[T data.Identifiable](db kv.Writer[T]) *Writer[T] {
+func NewWriter[T data.Identifiable](db kv.Writer[string, T]) *Writer[T] {
 	return &Writer[T]{
 		storage: db,
 	}

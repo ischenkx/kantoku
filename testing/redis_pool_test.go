@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/stretchr/testify/require"
 	jsonCodec "kantoku/impl/common/codec/jsoncodec"
-	redisQueue "kantoku/impl/common/pool/redis"
+	redisQueue "kantoku/impl/common/data/pool/redis"
 	"kantoku/testing/common"
 	"testing"
 )

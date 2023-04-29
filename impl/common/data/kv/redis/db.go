@@ -1,20 +1,23 @@
 package redikv
 
 import (
-	"bytes"
 	"context"
 	"github.com/redis/go-redis/v9"
 	"kantoku/common/codec"
+	"kantoku/common/data"
+	"kantoku/common/data/kv"
 	"kantoku/common/util"
 )
 
 type DB[T any] struct {
 	client  redis.UniversalClient
-	codec   codec.Codec[T]
+	codec   codec.Codec[T, []byte]
 	setName string
 }
 
-func New[T any](client redis.UniversalClient, codec codec.Codec[T], setName string) *DB[T] {
+var _ kv.Database[string, int] = (*DB[int])(nil)
+
+func New[T any](client redis.UniversalClient, codec codec.Codec[T, []byte], setName string) *DB[T] {
 	return &DB[T]{
 		client:  client,
 		codec:   codec,
@@ -22,31 +25,46 @@ func New[T any](client redis.UniversalClient, codec codec.Codec[T], setName stri
 	}
 }
 
-func (db *DB[T]) Set(ctx context.Context, id string, item T) (T, error) {
+func (db *DB[T]) Set(ctx context.Context, id string, item T) error {
 	data, err := db.codec.Encode(item)
+	if err != nil {
+		return err
+	}
+	if cmd := db.client.HSet(ctx, db.setName, id, data); cmd.Err() != nil {
+		return cmd.Err()
+	}
+	return nil
+}
+
+func (db *DB[T]) GetOrSet(ctx context.Context, id string, item T) (T, error) {
+	val, err := db.codec.Encode(item)
 	if err != nil {
 		return util.Default[T](), err
 	}
-	if cmd := db.client.HSet(ctx, db.setName, id, data); cmd.Err() != nil {
+	if cmd := db.client.HSetNX(ctx, db.setName, id, val); cmd.Err() != nil {
 		return util.Default[T](), cmd.Err()
 	}
-	return item, nil
+	return db.Get(ctx, id)
 }
 
 func (db *DB[T]) Get(ctx context.Context, id string) (T, error) {
 	cmd := db.client.HGet(ctx, db.setName, id)
 	if cmd.Err() != nil {
-		return util.Default[T](), cmd.Err()
+		err := cmd.Err()
+		if err == redis.Nil {
+			err = data.NotFoundErr
+		}
+		return util.Default[T](), err
 	}
 	raw, err := cmd.Bytes()
 	if cmd.Err() != nil {
 		return util.Default[T](), err
 	}
-	data, err := db.codec.Decode(bytes.NewReader(raw))
+	val, err := db.codec.Decode(raw)
 	if err != nil {
 		return util.Default[T](), err
 	}
-	return data, nil
+	return val, nil
 }
 
 func (db *DB[T]) Del(ctx context.Context, id string) error {

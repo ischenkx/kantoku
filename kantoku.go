@@ -8,9 +8,8 @@ import (
 )
 
 type Builder struct {
-	Tasks     kv.Database[StoredTask]
+	Tasks     kv.Database[string, StoredTask]
 	Scheduler Scheduler
-	Cells     Cells
 	Events    event.Bus
 }
 
@@ -18,7 +17,6 @@ func (builder Builder) Build() *Kantoku {
 	return &Kantoku{
 		tasks:      builder.Tasks,
 		scheduler:  builder.Scheduler,
-		cells:      builder.Cells,
 		events:     builder.Events,
 		properties: NewProperties(),
 		plugins:    nil,
@@ -26,9 +24,8 @@ func (builder Builder) Build() *Kantoku {
 }
 
 type Kantoku struct {
-	tasks      kv.Database[StoredTask]
+	tasks      kv.Database[string, StoredTask]
 	scheduler  Scheduler
-	cells      Cells
 	events     event.Bus
 	properties *Properties
 	plugins    []Plugin
@@ -40,17 +37,14 @@ func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, e
 	defer ctx.finalize()
 
 	ctx.Task = &TaskInstance{
-		id:   "",
-		typ:  spec.Type,
-		data: spec.Data,
+		id:  "",
+		typ: spec.Type,
 	}
 
-	if initializer, ok := ctx.Task.Data().(Initializeable); ok {
-		data, err := initializer.Initialize(ctx)
-		if err != nil {
+	for _, option := range spec.Options {
+		if err := option(ctx); err != nil {
 			return result, err
 		}
-		ctx.Task.data = data
 	}
 
 	for _, plugin := range kantoku.plugins {
@@ -65,7 +59,7 @@ func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, e
 		Data: ctx.Task.Data(),
 	}
 
-	if _, err := kantoku.tasks.Set(ctx, storedTask.Id, storedTask); err != nil {
+	if err := kantoku.tasks.Set(ctx, storedTask.Id, storedTask); err != nil {
 		return result, err
 	}
 	result.Task = storedTask.Id
@@ -76,7 +70,9 @@ func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, e
 	}
 
 	for _, plugin := range kantoku.plugins {
-		plugin.BeforeScheduled(ctx)
+		if err := plugin.BeforeScheduled(ctx); err != nil {
+			return result, err
+		}
 	}
 
 	if err := kantoku.scheduler.Schedule(ctx); err != nil {
@@ -97,8 +93,8 @@ func (kantoku *Kantoku) Register(plugin Plugin) {
 	kantoku.plugins = append(kantoku.plugins, plugin)
 }
 
-func (kantoku *Kantoku) Task(id string) *TaskView {
-	return &TaskView{
+func (kantoku *Kantoku) Task(id string) *View {
+	return &View{
 		kantoku: kantoku,
 		id:      id,
 	}
@@ -106,10 +102,6 @@ func (kantoku *Kantoku) Task(id string) *TaskView {
 
 func (kantoku *Kantoku) Events() event.Bus {
 	return kantoku.events
-}
-
-func (kantoku *Kantoku) Cells() Cells {
-	return kantoku.cells
 }
 
 func (kantoku *Kantoku) Props() *Properties {

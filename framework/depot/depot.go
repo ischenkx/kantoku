@@ -3,21 +3,21 @@ package depot
 import (
 	"context"
 	"kantoku"
-	"kantoku/common/data/kv"
+	"kantoku/common/data/bimap"
 	"kantoku/common/data/pool"
 	"kantoku/common/deps"
 	"log"
 )
 
 type Depot struct {
-	deps       deps.Deps
-	group2task kv.Database[string]
+	deps           deps.Deps
+	groupTaskBimap bimap.Bimap[string, string]
 }
 
-func New(deps deps.Deps, group2task kv.Database[string]) *Depot {
+func New(deps deps.Deps, groupTaskBimap bimap.Bimap[string, string]) *Depot {
 	return &Depot{
-		deps:       deps,
-		group2task: group2task,
+		deps:           deps,
+		groupTaskBimap: groupTaskBimap,
 	}
 }
 
@@ -25,25 +25,20 @@ func (depot *Depot) Deps() deps.Deps {
 	return depot.deps
 }
 
-func (depot *Depot) Group2Task() kv.Database[string] {
-	return depot.group2task
+func (depot *Depot) GroupTaskBimap() bimap.Bimap[string, string] {
+	return depot.groupTaskBimap
 }
 
 func (depot *Depot) Schedule(ctx *kantoku.Context) error {
-	rawDependencies, _ := ctx.Data().Get("dependencies")
+	data := ctx.Data().GetOrSet("dependencies", func() any { return &PluginData{} }).(*PluginData)
 
-	dependencies, ok := rawDependencies.([]string)
-	if !ok {
-		dependencies = nil
-	}
-
-	group, err := depot.Deps().MakeGroup(ctx, dependencies...)
+	group, err := depot.Deps().MakeGroup(ctx, data.Dependencies...)
 	if err != nil {
 		return err
 	}
 
 	// TODO: possible inconsistency
-	if _, err := depot.group2task.Set(ctx, group, ctx.Task.ID()); err != nil {
+	if err := depot.groupTaskBimap.Save(ctx, group, ctx.Task.ID()); err != nil {
 		return err
 	}
 
@@ -64,7 +59,7 @@ loop:
 			break loop
 		case id := <-ready:
 			log.Println("ready:", id)
-			taskID, err := depot.group2task.Get(ctx, id)
+			taskID, err := depot.groupTaskBimap.ByKey(ctx, id)
 			if err != nil {
 				log.Println("failed to get a task assigned to the group:", err)
 				continue
