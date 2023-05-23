@@ -9,6 +9,14 @@ type PluginData struct {
 	data map[string]any
 }
 
+func GetPluginData(ctx context.Context) PluginData {
+	if _ctx, ok := ctx.(*Context); ok {
+		return _ctx.Data()
+	}
+
+	return PluginData{}
+}
+
 func NewPluginData() PluginData {
 	return PluginData{data: map[string]any{}}
 }
@@ -45,13 +53,16 @@ func (pd PluginData) GetOrSet(key string, value func() any) any {
 
 type Context struct {
 	Kantoku *Kantoku
-	Task    *TaskInstance
 	Log     *Log
+	Task    TaskInstance
 	data    PluginData
 	parent  context.Context
 }
 
 func NewContext(ctx context.Context) *Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	return &Context{
 		parent: ctx,
 		Log:    &Log{},
@@ -81,7 +92,7 @@ func (c *Context) Value(key any) any {
 
 func (c *Context) finalize() {
 	c.tryPropagate()
-	c.Task = nil
+	c.Task = TaskInstance{}
 	c.Kantoku = nil
 
 	// might be harmful

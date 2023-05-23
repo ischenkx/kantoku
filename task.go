@@ -6,6 +6,8 @@ import (
 	"kantoku/platform"
 )
 
+// Spec is an abstract representation of a task
+
 type Option func(ctx *Context) error
 
 type Spec struct {
@@ -26,38 +28,20 @@ func (spec Spec) With(options ...Option) Spec {
 	return spec
 }
 
+// TaskInstance is a compiled spec.
 type TaskInstance struct {
-	id   string
-	typ  string
-	data []byte
-}
-
-func (instance *TaskInstance) ID() string {
-	return instance.id
-}
-
-func (instance *TaskInstance) Type() string {
-	return instance.typ
-}
-
-func (instance *TaskInstance) Data() []byte {
-	return instance.data
-}
-
-type StoredTask struct {
-	Id   string
+	ID   string
 	Type string
 	Data []byte
 }
 
-func (task StoredTask) ID() string {
-	return task.Id
-}
+// View is a helper structure that provides convenient methods to work
+// with a task
 
 type View struct {
-	kantoku *Kantoku
-	id      string
-	stored  *StoredTask
+	kantoku  *Kantoku
+	id       string
+	instance *TaskInstance
 }
 
 func (view *View) Kantoku() *Kantoku {

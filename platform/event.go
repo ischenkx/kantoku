@@ -11,6 +11,13 @@ type Event struct {
 // Broker is supposed to be a fan-out queue that is used
 // for event processing
 type Broker interface {
-	Listen(ctx context.Context, topics ...string) (<-chan Event, error)
+	Listen() Listener
 	Publish(ctx context.Context, event Event) error
+}
+
+type Listener interface {
+	Subscribe(ctx context.Context, topics ...string) error
+	Unsubscribe(ctx context.Context, topics ...string) error
+	Incoming(ctx context.Context) (<-chan Event, error)
+	Clear(ctx context.Context) error
 }

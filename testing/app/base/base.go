@@ -69,9 +69,9 @@ func New(ctx context.Context) (Base, error) {
 			jsoncodec.New[kantoku.TaskInstance](),
 			"tasks",
 		),
-		Cells:     redicell.New[[]byte](r, bincodec.Codec{}),
-		Events:    redivent.NewBus(r, jsoncodec.New[event.Event]()),
-		Scheduler: depotClient,
+		Cells:  redicell.New[[]byte](r, bincodec.Codec{}),
+		Events: redivent.NewBus(r, jsoncodec.New[event.Event]()),
+		Inputs: depotClient,
 	}.Build()
 
 	outputs := redikv.New[platform.Result](r, jsoncodec.New[platform.Result](), "outputs")

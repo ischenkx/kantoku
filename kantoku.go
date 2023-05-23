@@ -39,9 +39,9 @@ func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, e
 	result.Log = ctx.Log
 	defer ctx.finalize()
 
-	ctx.Task = &TaskInstance{
-		id:  "",
-		typ: spec.Type,
+	ctx.Task = TaskInstance{
+		ID:   uuid.New().String(),
+		Type: spec.Type,
 	}
 
 	for _, option := range spec.Options {
@@ -106,12 +106,16 @@ func (kantoku *Kantoku) Task(id string) *View {
 	}
 }
 
-func (kantoku *Kantoku) Events() event.Bus {
+func (kantoku *Kantoku) Events() platform.Broker {
 	return kantoku.events
 }
 
 func (kantoku *Kantoku) Props() *Properties {
 	return kantoku.properties
+}
+
+func (kantoku *Kantoku) Outputs() platform.Outputs {
+	return kantoku.outputs
 }
 
 func (kantoku *Kantoku) makeContext(ctx_ context.Context) *Context {
