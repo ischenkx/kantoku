@@ -2,7 +2,7 @@ package taskdep
 
 import (
 	"kantoku"
-	"kantoku/framework/depot"
+	"kantoku/backend/framework/depot"
 )
 
 type Plugin struct {

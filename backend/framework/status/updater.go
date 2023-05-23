@@ -2,18 +2,18 @@ package status
 
 import (
 	"context"
+	"kantoku/backend/framework"
 	"kantoku/common/data/kv"
-	"kantoku/core/event"
-	"kantoku/core/task"
+	"kantoku/platform"
 	"log"
 )
 
 type Updater struct {
-	bus event.Bus
+	bus platform.Broker
 	db  kv.Database[string, Status]
 }
 
-func NewUpdater(bus event.Bus, db kv.Database[string, Status]) *Updater {
+func NewUpdater(bus platform.Broker, db kv.Database[string, Status]) *Updater {
 	return &Updater{
 		bus: bus,
 		db:  db,
@@ -21,7 +21,7 @@ func NewUpdater(bus event.Bus, db kv.Database[string, Status]) *Updater {
 }
 
 func (updater *Updater) Run(ctx context.Context) {
-	events, err := updater.bus.Listen(ctx, task.EventTopic, task.EventTopic)
+	events, err := updater.bus.Listen(ctx, framework.EventTopic)
 	if err != nil {
 		log.Println("failed to subscribe to task and task events:", err)
 		return
@@ -36,13 +36,13 @@ loop:
 		case ev := <-events:
 			id := string(ev.Data)
 			switch ev.Name {
-			case task.ScheduledEvent:
+			case framework.ScheduledEvent:
 				updater.update(ctx, id, Pending)
-			case task.ReceivedEvent:
+			case framework.ReceivedEvent:
 				updater.update(ctx, id, Executing)
-			case task.ExecutedEvent:
+			case framework.ExecutedEvent:
 				updater.update(ctx, id, Executed)
-			case task.SentOutputsEvent:
+			case framework.SentOutputsEvent:
 				updater.update(ctx, id, Complete)
 			}
 		}

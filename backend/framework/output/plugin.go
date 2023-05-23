@@ -1,17 +1,19 @@
 package output
 
+// deprecated (we moved it into kantoku)
+
 import (
 	"context"
 	"kantoku"
 	"kantoku/common/data/kv"
-	"kantoku/core/task"
+	"kantoku/platform"
 )
 
 type Plugin struct {
-	db kv.Database[string, task.Result]
+	db kv.Database[string, platform.Result]
 }
 
-func NewPlugin(db kv.Database[string, task.Result]) Plugin {
+func NewPlugin(db kv.Database[string, platform.Result]) Plugin {
 	return Plugin{db: db}
 }
 
@@ -31,7 +33,7 @@ func (p Plugin) BeforeScheduled(ctx *kantoku.Context) error {
 func (p Plugin) AfterScheduled(ctx *kantoku.Context) {}
 
 type ResultEvaluator struct {
-	db kv.Database[string, task.Result]
+	db kv.Database[string, platform.Result]
 }
 
 func (e ResultEvaluator) Evaluate(ctx context.Context, task string) (any, error) {
@@ -39,7 +41,7 @@ func (e ResultEvaluator) Evaluate(ctx context.Context, task string) (any, error)
 }
 
 type OutputEvaluator struct {
-	db kv.Database[string, task.Result]
+	db kv.Database[string, platform.Result]
 }
 
 func (e OutputEvaluator) Evaluate(ctx context.Context, task string) (any, error) {

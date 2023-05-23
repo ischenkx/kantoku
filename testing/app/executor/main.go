@@ -5,13 +5,14 @@ import (
 	"kantoku"
 	"kantoku/common/data/kv"
 	"kantoku/common/data/pool"
-	"kantoku/core/task"
 	"kantoku/framework/executors/simple"
 	"kantoku/impl/common/codec/jsoncodec"
 	"kantoku/impl/common/codec/strcodec"
 	redikv "kantoku/impl/common/data/kv/redis"
 	"kantoku/impl/common/data/pool/proxypool"
 	"kantoku/impl/common/data/pool/redis"
+	"kantoku/platform"
+	"kantoku/platform/task"
 	"kantoku/testing/app/base"
 	"log"
 )
@@ -27,7 +28,7 @@ func main() {
 
 	ids := redipool.New[string](b.Redis, strcodec.Codec{}, "_tasks")
 	inputs := newInputs(ids, b.Kantoku)
-	outputs := redikv.New[task.Result](b.Redis, jsoncodec.New[task.Result](), "outputs")
+	outputs := redikv.New[platform.Result](b.Redis, jsoncodec.New[platform.Result](), "outputs")
 
 	p := task.NewPipeline[*kantoku.View](inputs, Outputs{storage: outputs}, executor(), b.Kantoku.Events())
 	if err := p.Run(ctx); err != nil {
@@ -59,9 +60,9 @@ func newInputs(ids pool.Reader[string], kan *kantoku.Kantoku) pool.Reader[*kanto
 }
 
 type Outputs struct {
-	storage kv.Database[string, task.Result]
+	storage kv.Database[string, platform.Result]
 }
 
-func (o Outputs) Write(ctx context.Context, item task.Result) error {
+func (o Outputs) Write(ctx context.Context, item platform.Result) error {
 	return o.storage.Set(ctx, item.TaskID, item)
 }

@@ -4,19 +4,21 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"kantoku/common/data/kv"
-	"kantoku/core/event"
+	"kantoku/platform"
 )
 
 type Builder struct {
-	Tasks     kv.Database[string, StoredTask]
-	Scheduler Scheduler
-	Events    event.Bus
+	Tasks   kv.Database[string, TaskInstance]
+	Inputs  platform.Inputs[TaskInstance]
+	Outputs platform.Outputs
+	Events  platform.Broker
 }
 
 func (builder Builder) Build() *Kantoku {
 	return &Kantoku{
 		tasks:      builder.Tasks,
-		scheduler:  builder.Scheduler,
+		outputs:    builder.Outputs,
+		inputs:     builder.Inputs,
 		events:     builder.Events,
 		properties: NewProperties(),
 		plugins:    nil,
@@ -24,9 +26,10 @@ func (builder Builder) Build() *Kantoku {
 }
 
 type Kantoku struct {
-	tasks      kv.Database[string, StoredTask]
-	scheduler  Scheduler
-	events     event.Bus
+	tasks      kv.Database[string, TaskInstance]
+	outputs    platform.Outputs
+	inputs     platform.Inputs[TaskInstance]
+	events     platform.Broker
 	properties *Properties
 	plugins    []Plugin
 }
@@ -48,48 +51,51 @@ func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, e
 	}
 
 	for _, plugin := range kantoku.plugins {
-		if err := plugin.BeforeInitialized(ctx); err != nil {
-			return result, err
+		if p, ok := plugin.(BeforeInitializedPlugin); ok {
+			if err := p.BeforeInitialized(ctx); err != nil {
+				return result, err
+			}
 		}
 	}
 
-	storedTask := StoredTask{
-		Id:   uuid.New().String(),
-		Type: ctx.Task.Type(),
-		Data: ctx.Task.Data(),
-	}
-
-	if err := kantoku.tasks.Set(ctx, storedTask.Id, storedTask); err != nil {
+	if err := kantoku.tasks.Set(ctx, ctx.Task.ID, ctx.Task); err != nil {
 		return result, err
 	}
-	result.Task = storedTask.Id
-	ctx.Task.id = storedTask.Id
+	result.Task = ctx.Task.ID
 
 	for _, plugin := range kantoku.plugins {
-		plugin.AfterInitialized(ctx)
-	}
-
-	for _, plugin := range kantoku.plugins {
-		if err := plugin.BeforeScheduled(ctx); err != nil {
-			return result, err
+		if p, ok := plugin.(AfterInitializedPlugin); ok {
+			p.AfterInitialized(ctx)
 		}
 	}
 
-	if err := kantoku.scheduler.Schedule(ctx); err != nil {
+	for _, plugin := range kantoku.plugins {
+		if p, ok := plugin.(BeforeScheduledPlugin); ok {
+			if err := p.BeforeScheduled(ctx); err != nil {
+				return result, err
+			}
+		}
+	}
+
+	if err := kantoku.inputs.Write(ctx, ctx.Task); err != nil {
 		return result, err
 	}
 
 	for _, plugin := range kantoku.plugins {
-		plugin.AfterScheduled(ctx)
+		if p, ok := plugin.(AfterScheduledPlugin); ok {
+			p.AfterScheduled(ctx)
+		}
 	}
 
-	ctx.Log.Spawned = append(result.Log.Spawned, storedTask.Id)
+	ctx.Log.Spawned = append(result.Log.Spawned, ctx.Task.ID)
 
 	return result, nil
 }
 
 func (kantoku *Kantoku) Register(plugin Plugin) {
-	plugin.Initialize(kantoku)
+	if p, ok := plugin.(InitializePlugin); ok {
+		p.Initialize(*kantoku)
+	}
 	kantoku.plugins = append(kantoku.plugins, plugin)
 }
 

@@ -3,6 +3,7 @@ package kantoku
 import (
 	"context"
 	"fmt"
+	"kantoku/platform"
 )
 
 type Option func(ctx *Context) error
@@ -86,16 +87,20 @@ func (view *View) Prop(ctx context.Context, path ...string) (any, error) {
 	return evaluator.Evaluate(ctx, view.id)
 }
 
-func (view *View) Stored(ctx context.Context) (StoredTask, error) {
+func (view *View) Stored(ctx context.Context) (TaskInstance, error) {
 	if view.stored != nil {
 		return *view.stored, nil
 	}
 
 	stored, err := view.kantoku.tasks.Get(ctx, view.id)
 	if err != nil {
-		return StoredTask{}, err
+		return TaskInstance{}, err
 	}
 	view.stored = &stored
 
 	return stored, nil
+}
+
+func (view *View) Result(ctx context.Context) (platform.Result, error) {
+	return view.Kantoku().Outputs().Get(ctx, view.ID())
 }
