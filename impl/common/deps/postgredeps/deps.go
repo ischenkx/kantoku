@@ -18,8 +18,11 @@ type Deps struct {
 	client *pgxpool.Pool
 }
 
-// MAKE DEPENDENCIES MONOTONOUS AND UNIQUE
-
+// New creates an instance of the dependency manager.
+//
+// client - a connection to a postgres database (all dependencies and groups are stored there)
+//
+// queue - a queue for "ready" groups
 func New(client *pgxpool.Pool, queue pool.Pool[string]) *Deps {
 	return &Deps{
 		q:      queue,
@@ -62,9 +65,9 @@ func (d *Deps) DropTables(ctx context.Context) error {
 	return err
 }
 
-func (d *Deps) Dependency(ctx context.Context, dep string) (deps.Dependency, error) {
+func (d *Deps) Dependency(ctx context.Context, id string) (deps.Dependency, error) {
 	sql := `SELECT id, resolved FROM Dependencies WHERE id = $1`
-	row := d.client.QueryRow(ctx, sql, dep)
+	row := d.client.QueryRow(ctx, sql, id)
 
 	var model deps.Dependency
 	if err := row.Scan(&model.ID, &model.Resolved); err != nil {
@@ -77,9 +80,9 @@ func (d *Deps) Group(ctx context.Context, group string) (deps.Group, error) {
 	var result deps.Group
 	result.ID = group
 
-	sql := `SELECT dependency_id, resolved FROM GroupDependencies gd 
-			JOIN Dependencies d ON d.id = gd.dependency_id
-			WHERE gd.group_id = $1`
+	sql := `SELECT dependency_id, COALESCE(resolved, false) FROM GroupDependencies gd 
+				LEFT JOIN Dependencies d ON d.id = gd.dependency_id
+				WHERE gd.group_id = $1`
 	records, err := d.client.Query(ctx, sql, group)
 	if err != nil {
 		return result, err
@@ -88,7 +91,7 @@ func (d *Deps) Group(ctx context.Context, group string) (deps.Group, error) {
 
 	for records.Next() {
 		var dep deps.Dependency
-		if err := records.Scan(&dep, &dep.ID, &dep.Resolved); err != nil {
+		if err := records.Scan(&dep.ID, &dep.Resolved); err != nil {
 			return result, err
 		}
 		result.Dependencies = append(result.Dependencies, dep)
@@ -97,6 +100,9 @@ func (d *Deps) Group(ctx context.Context, group string) (deps.Group, error) {
 	return result, nil
 }
 
+// Make generates a new dependency (but it does not store the information about it in the database
+//
+// Generation algorithm: UUID
 func (d *Deps) Make(ctx context.Context) (deps.Dependency, error) {
 	id := uuid.New().String()
 
@@ -106,23 +112,35 @@ func (d *Deps) Make(ctx context.Context) (deps.Dependency, error) {
 	}, nil
 }
 
+// MakeGroup creates a new dependency group
+//
+// NOTE: the new group's id is generated via a UUID algorithm
 func (d *Deps) MakeGroup(ctx context.Context, ids ...string) (string, error) {
 	id := uuid.New().String()
 	status := InitializingStatus
 
+	tx, err := d.client.Begin(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to begin a postgres transaction: %s", tx)
+	}
+	defer tx.Rollback(ctx)
+
 	sql := `INSERT INTO Groups (id, pending, status) VALUES ($1, $2, $3)`
-	_, err := d.client.Exec(ctx, sql, id, -1, status)
+	_, err = tx.Exec(ctx, sql, id, -1, status)
 	if err != nil {
 		return "", err
 	}
 
 	for _, dep := range ids {
 		sql := `INSERT INTO GroupDependencies (dependency_id, group_id) VALUES ($1, $2)`
-		_, err := d.client.Exec(ctx, sql, dep, id)
+		_, err := tx.Exec(ctx, sql, dep, id)
 		if err != nil {
-			// TODO: make a transaction
 			return "", err
 		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", fmt.Errorf("failed to commit the transaction:", err)
 	}
 
 	return id, nil
@@ -176,6 +194,23 @@ loop:
 	}
 }
 
+func (d *Deps) runGroupsScheduler(ctx context.Context, interval time.Duration, batchSize int) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+loop:
+	for {
+		select {
+		case <-ctx.Done():
+			break loop
+		case <-ticker.C:
+			if err := d.scheduleGroups(ctx, batchSize); err != nil {
+				log.Println("failed to schedule groups:", err)
+			}
+		}
+	}
+}
+
 func (d *Deps) initializeGroups(ctx context.Context) error {
 	sql := `
 		WITH uninitialized_groups AS (
@@ -198,23 +233,6 @@ func (d *Deps) initializeGroups(ctx context.Context) error {
 
 	_, err := d.client.Exec(ctx, sql, InitializingStatus, WaitingStatus)
 	return err
-}
-
-func (d *Deps) runGroupsScheduler(ctx context.Context, interval time.Duration, batchSize int) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-loop:
-	for {
-		select {
-		case <-ctx.Done():
-			break loop
-		case <-ticker.C:
-			if err := d.scheduleGroups(ctx, batchSize); err != nil {
-				log.Println("failed to schedule groups:", err)
-			}
-		}
-	}
 }
 
 func (d *Deps) scheduleGroups(ctx context.Context, batchSize int) error {
@@ -251,9 +269,7 @@ func (d *Deps) scheduleGroups(ctx context.Context, batchSize int) error {
 
 	var failed, succeeded []string
 	for _, group := range groups {
-		log.Println("scheduling:", group)
 		if err := d.q.Write(ctx, group); err != nil {
-			log.Println("failed:", group)
 			failed = append(failed, group)
 		} else {
 			succeeded = append(succeeded, group)

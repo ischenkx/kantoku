@@ -29,8 +29,8 @@ func (depot *Depot) GroupTaskBimap() bimap.Bimap[string, string] {
 	return depot.groupTaskBimap
 }
 
-func (depot *Depot) Schedule(ctx *kantoku.Context) error {
-	data := ctx.Data().GetOrSet("dependencies", func() any { return &PluginData{} }).(*PluginData)
+func (depot *Depot) Write(ctx context.Context, task *kantoku.TaskInstance) error {
+	data := kantoku.GetPluginData(ctx).GetWithDefault("dependencies", &PluginData{}).(*PluginData)
 
 	group, err := depot.Deps().MakeGroup(ctx, data.Dependencies...)
 	if err != nil {
@@ -38,7 +38,7 @@ func (depot *Depot) Schedule(ctx *kantoku.Context) error {
 	}
 
 	// TODO: possible inconsistency
-	if err := depot.groupTaskBimap.Save(ctx, group, ctx.Task.ID()); err != nil {
+	if err := depot.groupTaskBimap.Save(ctx, group, task.ID); err != nil {
 		return err
 	}
 
