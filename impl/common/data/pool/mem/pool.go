@@ -8,7 +8,9 @@ import (
 )
 
 func New[T any]() *Pool[T] {
-	return &Pool[T]{}
+	pool := &Pool[T]{}
+	go pool.runFlusher()
+	return pool
 }
 
 type Pool[T any] struct {
@@ -31,6 +33,7 @@ func (p *Pool[T]) Read(ctx context.Context) (<-chan T, error) {
 		defer p.mu.Unlock()
 		for i, reader := range p.readers {
 			if reader == channel {
+				close(channel)
 				p.readers[i], p.readers[len(p.readers)-1] = p.readers[len(p.readers)-1], p.readers[i]
 				p.readers = p.readers[:len(p.readers)-1]
 				break
@@ -67,7 +70,7 @@ func (p *Pool[T]) Close() {
 }
 
 func (p *Pool[T]) runFlusher() {
-	ticker := time.NewTicker(time.Second * 3)
+	ticker := time.NewTicker(time.Second * 1)
 	defer ticker.Stop()
 
 	for range ticker.C {
@@ -86,11 +89,11 @@ func (p *Pool[T]) flush() bool {
 	}
 
 	for len(p.buffer) != 0 {
-		index := len(p.buffer) - 1
+		index := 0
 		if !p.write(p.buffer[index]) {
 			break
 		}
-		p.buffer = p.buffer[:index]
+		p.buffer = p.buffer[1:]
 	}
 
 	return true

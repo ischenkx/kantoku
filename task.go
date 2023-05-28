@@ -53,12 +53,12 @@ func (view *View) ID() string {
 }
 
 func (view *View) Type(ctx context.Context) (string, error) {
-	stored, err := view.Stored(ctx)
+	stored, err := view.Instance(ctx)
 	return stored.Type, err
 }
 
 func (view *View) Data(ctx context.Context) ([]byte, error) {
-	stored, err := view.Stored(ctx)
+	stored, err := view.Instance(ctx)
 	return stored.Data, err
 }
 
@@ -71,18 +71,18 @@ func (view *View) Prop(ctx context.Context, path ...string) (any, error) {
 	return evaluator.Evaluate(ctx, view.id)
 }
 
-func (view *View) Stored(ctx context.Context) (TaskInstance, error) {
-	if view.stored != nil {
-		return *view.stored, nil
+func (view *View) Instance(ctx context.Context) (TaskInstance, error) {
+	if view.instance != nil {
+		return *view.instance, nil
 	}
 
-	stored, err := view.kantoku.tasks.Get(ctx, view.id)
+	instance, err := view.kantoku.tasks.Get(ctx, view.id)
 	if err != nil {
 		return TaskInstance{}, err
 	}
-	view.stored = &stored
+	view.instance = &instance
 
-	return stored, nil
+	return instance, nil
 }
 
 func (view *View) Result(ctx context.Context) (platform.Result, error) {
