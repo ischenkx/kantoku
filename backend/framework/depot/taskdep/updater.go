@@ -2,17 +2,17 @@ package taskdep
 
 import (
 	"context"
-	"kantoku/core/event"
-	"kantoku/core/task"
+	"kantoku/backend/framework"
+	"kantoku/platform"
 	"log"
 )
 
 type Updater struct {
-	events  event.Bus
+	events  platform.Broker
 	manager *Manager
 }
 
-func NewUpdater(events event.Bus, manager *Manager) *Updater {
+func NewUpdater(events platform.Broker, manager *Manager) *Updater {
 	return &Updater{
 		events:  events,
 		manager: manager,
@@ -20,7 +20,7 @@ func NewUpdater(events event.Bus, manager *Manager) *Updater {
 }
 
 func (updater *Updater) Run(ctx context.Context) error {
-	events, err := updater.events.Listen(ctx, task.EventTopic)
+	events, err := updater.events.Listen(ctx, framework.EventTopic)
 	if err != nil {
 		return err
 	}
@@ -31,7 +31,7 @@ updater:
 		case <-ctx.Done():
 			break updater
 		case ev := <-events:
-			if ev.Name == task.SentOutputsEvent {
+			if ev.Name == framework.SentOutputsEvent {
 				id := string(ev.Data)
 				if err := updater.manager.ResolveTask(ctx, id); err != nil {
 					log.Println("failed to resolve a task:", err)

@@ -3,7 +3,7 @@ package proxypool
 import (
 	"context"
 	"kantoku/common/data/pool"
-	transformer "kantoku/common/transformer"
+	"kantoku/common/transformer"
 )
 
 type Writer[In, Out any] struct {

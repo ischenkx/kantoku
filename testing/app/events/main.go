@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"kantoku/core/task"
+	"kantoku/platform/task"
 	"kantoku/testing/app/base"
 	"log"
 )

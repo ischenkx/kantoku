@@ -1,4 +1,4 @@
-package task
+package framework
 
 const (
 	ScheduledEvent   = "scheduled_task"

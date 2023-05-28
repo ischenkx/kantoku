@@ -5,8 +5,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"kantoku"
-	"kantoku/core/event"
-	"kantoku/core/task"
 	"kantoku/framework/depot"
 	delay2 "kantoku/framework/depot/delay"
 	subtask2 "kantoku/framework/depot/taskdep"
@@ -22,6 +20,8 @@ import (
 	"kantoku/impl/common/deps/postgredeps"
 	redicell "kantoku/impl/core/cell/redis"
 	redivent "kantoku/impl/core/event/redis"
+	"kantoku/platform"
+	"kantoku/platform/event"
 )
 
 type Base struct {
@@ -64,17 +64,17 @@ func New(ctx context.Context) (Base, error) {
 	depotClient := depot.New(deps, groupTaskBimap)
 
 	kan := kantoku.Builder{
-		Tasks: redikv.New[kantoku.StoredTask](
+		Tasks: redikv.New[kantoku.TaskInstance](
 			r,
-			jsoncodec.New[kantoku.StoredTask](),
+			jsoncodec.New[kantoku.TaskInstance](),
 			"tasks",
 		),
-		Cells:     redicell.New[[]byte](r, bincodec.Codec{}),
-		Events:    redivent.NewBus(r, jsoncodec.New[event.Event]()),
-		Scheduler: depotClient,
+		Cells:  redicell.New[[]byte](r, bincodec.Codec{}),
+		Events: redivent.NewBus(r, jsoncodec.New[event.Event]()),
+		Inputs: depotClient,
 	}.Build()
 
-	outputs := redikv.New[task.Result](r, jsoncodec.New[task.Result](), "outputs")
+	outputs := redikv.New[platform.Result](r, jsoncodec.New[platform.Result](), "outputs")
 	statusDB := redikv.New[status.Status](r, jsoncodec.New[status.Status](), "statuses")
 
 	subtaskManager := subtask2.NewManager(deps, redikv.New[string](r, strcodec.Codec{}, "subtasks"))

@@ -3,7 +3,10 @@ package kantoku
 import (
 	"context"
 	"fmt"
+	"kantoku/platform"
 )
+
+// Spec is an abstract representation of a task
 
 type Option func(ctx *Context) error
 
@@ -25,38 +28,20 @@ func (spec Spec) With(options ...Option) Spec {
 	return spec
 }
 
+// TaskInstance is a compiled spec.
 type TaskInstance struct {
-	id   string
-	typ  string
-	data []byte
-}
-
-func (instance *TaskInstance) ID() string {
-	return instance.id
-}
-
-func (instance *TaskInstance) Type() string {
-	return instance.typ
-}
-
-func (instance *TaskInstance) Data() []byte {
-	return instance.data
-}
-
-type StoredTask struct {
-	Id   string
+	ID   string
 	Type string
 	Data []byte
 }
 
-func (task StoredTask) ID() string {
-	return task.Id
-}
+// View is a helper structure that provides convenient methods to work
+// with a task
 
 type View struct {
-	kantoku *Kantoku
-	id      string
-	stored  *StoredTask
+	kantoku  *Kantoku
+	id       string
+	instance *TaskInstance
 }
 
 func (view *View) Kantoku() *Kantoku {
@@ -86,16 +71,20 @@ func (view *View) Prop(ctx context.Context, path ...string) (any, error) {
 	return evaluator.Evaluate(ctx, view.id)
 }
 
-func (view *View) Stored(ctx context.Context) (StoredTask, error) {
+func (view *View) Stored(ctx context.Context) (TaskInstance, error) {
 	if view.stored != nil {
 		return *view.stored, nil
 	}
 
 	stored, err := view.kantoku.tasks.Get(ctx, view.id)
 	if err != nil {
-		return StoredTask{}, err
+		return TaskInstance{}, err
 	}
 	view.stored = &stored
 
 	return stored, nil
+}
+
+func (view *View) Result(ctx context.Context) (platform.Result, error) {
+	return view.Kantoku().Outputs().Get(ctx, view.ID())
 }
