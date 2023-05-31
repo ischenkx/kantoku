@@ -18,6 +18,7 @@ type Broker interface {
 type Listener interface {
 	Subscribe(ctx context.Context, topics ...string) error
 	Unsubscribe(ctx context.Context, topics ...string) error
+	UnsubscribeAll(ctx context.Context) error
 	Incoming(ctx context.Context) (<-chan Event, error)
-	Clear(ctx context.Context) error
+	Close(ctx context.Context) error
 }
