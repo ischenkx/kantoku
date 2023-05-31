@@ -140,20 +140,38 @@ func (d *Deps) MakeGroup(ctx context.Context, ids ...string) (string, error) {
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return "", fmt.Errorf("failed to commit the transaction:", err)
+		return "", fmt.Errorf("failed to commit the transaction: %s", err)
 	}
 
 	return id, nil
 }
 
 func (d *Deps) Resolve(ctx context.Context, dep string) error {
+	tx, err := d.client.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin a postgres transaction: %s", tx)
+	}
+	defer tx.Rollback(ctx)
+
 	sql := `
+		WITH previous AS (
+			SELECT resolved
+			FROM Dependencies
+			WHERE id = $1
+			LIMIT 1
+		)
 		INSERT INTO Dependencies (id, resolved) 
 		VALUES ($1, $2)
 		ON CONFLICT (id) DO UPDATE 
-		SET resolved = $2`
-	if _, err := d.client.Exec(ctx, sql, dep, true); err != nil {
+		SET resolved = $2
+		RETURNING COALESCE((SELECT resolved FROM previous), false) AS previous_resolved;`
+	before := tx.QueryRow(ctx, sql, dep, true)
+	var alreadyResolved bool
+	if err := before.Scan(&alreadyResolved); err != nil {
 		return err
+	}
+	if alreadyResolved {
+		return nil
 	}
 
 	sql = `
@@ -161,10 +179,13 @@ func (d *Deps) Resolve(ctx context.Context, dep string) error {
 			SET pending = pending - 1
 			FROM GroupDependencies gd
 			WHERE gd.dependency_id = $1 AND gd.group_id = g.id`
-	if _, err := d.client.Exec(ctx, sql, dep); err != nil {
+	if _, err := tx.Exec(ctx, sql, dep); err != nil {
 		return err
 	}
 
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit the transaction: %s", err)
+	}
 	return nil
 }
 

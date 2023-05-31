@@ -8,13 +8,12 @@ import (
 	mempool "kantoku/impl/common/data/pool/mem"
 	"kantoku/impl/deps/postgredeps"
 	"kantoku/unused/backend/framework/depot/deps"
-	"math/rand"
 	"testing"
 	"time"
 )
 
 func newPostgresDeps(ctx context.Context) *postgredeps.Deps {
-	client, err := pgxpool.New(ctx, "postgres://postgres:root@localhost:5432/")
+	client, err := pgxpool.New(ctx, "postgres://postgres:51413@localhost:5432/")
 
 	if err != nil {
 		panic("failed to create postgres deps: " + err.Error())
@@ -25,7 +24,14 @@ func newPostgresDeps(ctx context.Context) *postgredeps.Deps {
 	}
 
 	app := postgredeps.New(client, mempool.New[string]())
-
+	err = app.DropTables(ctx)
+	if err != nil {
+		panic("failed to init postgres tables: " + err.Error())
+	}
+	err = app.InitTables(ctx)
+	if err != nil {
+		panic("failed to init postgres tables: " + err.Error())
+	}
 	app.Run(ctx)
 	return app
 }
@@ -37,20 +43,8 @@ func TestDeps(t *testing.T) {
 	}
 
 	for label, impl := range implementations {
-		t.Run(label, func(t *testing.T) {
-			dependencies := make([]string, rand.Intn(10))
-			for i := 0; i < len(dependencies); i++ {
-				dep, err := impl.Make(ctx)
-				if err != nil {
-					t.Fatal("failed to make a dependency:", err)
-				}
-				dependencies[i] = dep.ID
-			}
-
-			groupID, err := impl.MakeGroup(ctx, dependencies...)
-			if err != nil {
-				t.Fatal("failed to make a group:", err)
-			}
+		t.Run(label+"basic", func(t *testing.T) {
+			dependencies, groupID := makeSimpleGroup(ctx, t, impl, 10)
 
 			dep2resolution := lo.SliceToMap(dependencies, func(item string) (string, bool) { return item, false })
 
@@ -76,17 +70,83 @@ func TestDeps(t *testing.T) {
 			defer cancel()
 
 			ch, err := impl.Ready(cancelableContext)
+			if err != nil {
+				t.Fatalf("failed to get a ready channel: %s", err)
+			}
 
-			time.Sleep(time.Second * 3)
-
-			select {
-			case id := <-ch:
+			checkReady(ch, func(id string) {
 				if id != groupID {
 					t.Fatalf("received a wrong group id: '%s' (expected '%s')", id, groupID)
 				}
-			default:
+			}, func() {
 				t.Fatal("didn't receive a group from ready...")
+			})
+		})
+
+		t.Run(label+" double group counter decrement", func(t *testing.T) {
+			dependencies, groupID := makeSimpleGroup(ctx, t, impl, 10)
+
+			cancelableContext, cancel := context.WithCancel(ctx)
+			defer cancel()
+			ch, err := impl.Ready(cancelableContext)
+			if err != nil {
+				t.Fatalf("failed to get a ready channel: %s", err)
+			}
+
+			// resolve same dependency 10 times
+			for i := 0; i < 10; i++ {
+				err = impl.Resolve(ctx, dependencies[0])
+				if err != nil {
+					t.Fatalf("failed to resolve: %s", err)
+				}
+			}
+
+			checkReady(ch, func(id string) {
+				if id == groupID {
+					t.Fatalf("group(%s) got to ready channel after resolving only one dependency(%s)",
+						groupID, dependencies[0])
+				} else {
+					t.Fatalf("were expecting no ids, or %s in case of wrong behaviour, but received %s",
+						groupID, id)
+				}
+			}, func() {})
+
+			// resolve all dependencies	except last one
+			for _, dep := range dependencies[0 : len(dependencies)-1] {
+				for i := 0; i < 10; i++ {
+					err = impl.Resolve(ctx, dep)
+					if err != nil {
+						t.Fatalf("failed to resolve: %s", err)
+					}
+				}
 			}
 		})
 	}
+}
+
+// create channel here?
+func checkReady(ch <-chan string, receive func(id string), nothing func()) {
+	time.Sleep(time.Second * 3)
+	select {
+	case id := <-ch:
+		receive(id)
+	default:
+		nothing()
+	}
+}
+
+func makeSimpleGroup(ctx context.Context, t *testing.T, impl deps.Deps, size int) ([]string, string) {
+	dependencies := make([]string, size)
+	for i := 0; i < len(dependencies); i++ {
+		dep, err := impl.Make(ctx)
+		if err != nil {
+			t.Fatal("failed to make a dependency:", err)
+		}
+		dependencies[i] = dep.ID
+	}
+	groupID, err := impl.MakeGroup(ctx, dependencies...)
+	if err != nil {
+		t.Fatal("failed to make a group:", err)
+	}
+	return dependencies, groupID
 }
