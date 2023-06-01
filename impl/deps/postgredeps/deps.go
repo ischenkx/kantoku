@@ -183,7 +183,7 @@ func (d *Deps) Resolve(ctx context.Context, dep string) error {
 		return err
 	}
 
-	if err = tx.Commit(ctx); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("failed to commit the transaction: %s", err)
 	}
 	return nil
