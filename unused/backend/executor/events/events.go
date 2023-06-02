@@ -1,10 +1,8 @@
-package framework
+package evexec
 
 const (
-	ScheduledEvent   = "scheduled_task"
 	ReceivedEvent    = "received_task"
 	ExecutedEvent    = "executed_task"
 	SentOutputsEvent = "sent_outputs"
+	ErrorEvent       = "error"
 )
-
-const EventTopic = "task_pipeline"
