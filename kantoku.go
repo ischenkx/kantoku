@@ -3,35 +3,20 @@ package kantoku
 import (
 	"context"
 	"github.com/google/uuid"
-	"kantoku/common/data/kv"
 	"kantoku/platform"
 )
 
-type Builder struct {
-	Tasks   kv.Database[string, TaskInstance]
-	Inputs  platform.Inputs[TaskInstance]
-	Outputs platform.Outputs
-	Events  platform.Broker
-}
-
-func (builder Builder) Build() *Kantoku {
-	return &Kantoku{
-		tasks:      builder.Tasks,
-		outputs:    builder.Outputs,
-		inputs:     builder.Inputs,
-		events:     builder.Events,
-		properties: NewProperties(),
-		plugins:    nil,
-	}
-}
-
 type Kantoku struct {
-	tasks      kv.Database[string, TaskInstance]
-	outputs    platform.Outputs
-	inputs     platform.Inputs[TaskInstance]
-	events     platform.Broker
+	platform   platform.Platform[TaskInstance]
 	properties *Properties
 	plugins    []Plugin
+}
+
+func New(platform platform.Platform[TaskInstance]) *Kantoku {
+	return &Kantoku{
+		platform:   platform,
+		properties: NewProperties(),
+	}
 }
 
 func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, err error) {
@@ -40,8 +25,9 @@ func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, e
 	defer ctx.finalize()
 
 	ctx.Task = TaskInstance{
-		ID:   uuid.New().String(),
+		Id:   uuid.New().String(),
 		Type: spec.Type,
+		Data: spec.Data,
 	}
 
 	for _, option := range spec.Options {
@@ -58,10 +44,10 @@ func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, e
 		}
 	}
 
-	if err := kantoku.tasks.Set(ctx, ctx.Task.ID, ctx.Task); err != nil {
+	if err := kantoku.platform.DB().Set(ctx, ctx.Task.ID(), ctx.Task); err != nil {
 		return result, err
 	}
-	result.Task = ctx.Task.ID
+	result.Task = ctx.Task.ID()
 
 	for _, plugin := range kantoku.plugins {
 		if p, ok := plugin.(AfterInitializedPlugin); ok {
@@ -77,7 +63,7 @@ func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, e
 		}
 	}
 
-	if err := kantoku.inputs.Write(ctx, ctx.Task); err != nil {
+	if err := kantoku.platform.Inputs().Write(ctx, ctx.Task.ID()); err != nil {
 		return result, err
 	}
 
@@ -87,7 +73,7 @@ func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, e
 		}
 	}
 
-	ctx.Log.Spawned = append(result.Log.Spawned, ctx.Task.ID)
+	ctx.Log.Spawned = append(result.Log.Spawned, ctx.Task.ID())
 
 	return result, nil
 }
@@ -106,8 +92,8 @@ func (kantoku *Kantoku) Task(id string) *View {
 	}
 }
 
-func (kantoku *Kantoku) Events() platform.Broker {
-	return kantoku.events
+func (kantoku *Kantoku) Broker() platform.Broker {
+	return kantoku.platform.Broker()
 }
 
 func (kantoku *Kantoku) Props() *Properties {
@@ -115,7 +101,7 @@ func (kantoku *Kantoku) Props() *Properties {
 }
 
 func (kantoku *Kantoku) Outputs() platform.Outputs {
-	return kantoku.outputs
+	return kantoku.platform.Outputs()
 }
 
 func (kantoku *Kantoku) makeContext(ctx_ context.Context) *Context {

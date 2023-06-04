@@ -30,9 +30,13 @@ func (spec Spec) With(options ...Option) Spec {
 
 // TaskInstance is a compiled spec.
 type TaskInstance struct {
-	ID   string
+	Id   string
 	Type string
 	Data []byte
+}
+
+func (instance TaskInstance) ID() string {
+	return instance.Id
 }
 
 // View is a helper structure that provides convenient methods to work
@@ -76,7 +80,7 @@ func (view *View) Instance(ctx context.Context) (TaskInstance, error) {
 		return *view.instance, nil
 	}
 
-	instance, err := view.kantoku.tasks.Get(ctx, view.id)
+	instance, err := view.kantoku.platform.DB().Get(ctx, view.id)
 	if err != nil {
 		return TaskInstance{}, err
 	}
