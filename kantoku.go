@@ -7,15 +7,13 @@ import (
 )
 
 type Kantoku struct {
-	platform   platform.Platform[TaskInstance]
-	properties *Properties
-	plugins    []Plugin
+	platform platform.Platform[TaskInstance]
+	plugins  []Plugin
 }
 
 func New(platform platform.Platform[TaskInstance]) *Kantoku {
 	return &Kantoku{
-		platform:   platform,
-		properties: NewProperties(),
+		platform: platform,
 	}
 }
 
@@ -95,11 +93,6 @@ func (kantoku *Kantoku) Task(id string) *View {
 func (kantoku *Kantoku) Broker() platform.Broker {
 	return kantoku.platform.Broker()
 }
-
-func (kantoku *Kantoku) Props() *Properties {
-	return kantoku.properties
-}
-
 func (kantoku *Kantoku) Outputs() platform.Outputs {
 	return kantoku.platform.Outputs()
 }
