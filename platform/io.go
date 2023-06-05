@@ -5,5 +5,5 @@ import (
 	"kantoku/common/data/pool"
 )
 
-type Inputs[T Task] pool.Pool[T]
+type Inputs pool.Pool[string]
 type Outputs kv.Database[string, Result]

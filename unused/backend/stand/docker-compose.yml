@@ -1,0 +1,48 @@
+version: '3'
+services:
+  client:
+    build:
+      context: client
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres
+      - redis
+      - executor
+
+  executor:
+    build:
+      context: executor
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres
+      - redis
+      - depot
+
+  depot:
+    build:
+      context: depot
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres
+      - redis
+      - deps
+  deps:
+    build:
+      context: deps
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres
+      - redis
+
+  redis:
+    image: redis:latest
+    ports:
+      - 6379:6379
+
+  postgres:
+    image: postgres:latest
+    ports:
+      - 5432:5432
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 51413
