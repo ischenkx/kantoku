@@ -1,47 +1,63 @@
 ---
-sidebar_position: 2
+sidebar_position: 1
 ---
 
-# Tutorial Intro
+# What's Kantoku?
 
-Let's discover **Docusaurus in less than 5 minutes**!
+Kantoku is a platform for distributed task execution.
 
-## Getting Started
+Our main goals:
+1. The system is fully customizable and acts as an interface - you can replace any of the components with your implementations
+2. Tasks are easily defined in code
+3. There is a default implementation that lets you run tasks out of the box
+4. There are client libraries (which let you create tasks) in multiple languages
 
-Get started by **creating a new site**.
+## How is it going to work?
+As we simplified the components of the system to most primary ones, we reduced the number to only 4:
+1. Inputs - we put tasks and their data (basically arguments) here
+2. Executors - these are user-defined programs that process tasks taken from inputs
+3. Outputs - executors put the results of the processed tasks here
+4. Events - on all of these steps kantoku logs some information to event storage
 
-Or **try Docusaurus immediately** with **[docusaurus.new](https://docusaurus.new)**.
+:::note
+Events are not needed for the system itself. At the moment we think that they are too useful to get rid of, but this point is open to discussion.
+:::
 
-### What you'll need
+Note that all of these components are logical - they are user defined by kantoku design. It means that you can use our default implementation of Inputs, or Kafka Queue, or make requests to your own service doing some complex logic. 
+Our only requirement is that you provide the necessary functions for components communication.
 
-- [Node.js](https://nodejs.org/en/download/) version 16.14 or above:
-  - When installing Node.js, you are recommended to check all checkboxes related to dependencies.
+:::caution
+TODO: add links to component pages
+:::
 
-## Generate a new site
+## Customization
+Here is what you need to implement to build all components from scratch:
+- Inputs, Outputs, and Events services
+- Executor services (depending on your Inputs, there can be different types, multiple instances of executors of the same type, and so on)
+- Custom Plugins
 
-Generate a new Docusaurus site using the **classic template**.
+## Plugins
+Plugins are a way to add functionality to the process of task creation. Similarly to the client library they are defined in a specific programming language. It means that plugin has to be implemented in all languages you want to use it.
 
-The classic template will automatically be added to your project after you run the command:
+Plugins are called before/after important parts of task creation.
 
-```bash
-npm init docusaurus@latest my-website classic
+## How it should work for a user
+Note that we call ‘user’ the person who builds functionality on top of the kantoku. For example, they send tasks for recommendation prediction and then process their results.
+
+We plan to make libraries for some programming languages (probably go, python) with similar interfaces.
+
+To create a task:
+
+```go
+spec := kantoku.Task("test-task", []byte('Hello world'))
+               .With(loggerPlugin.LogEverything())
+
+// kan is an instance of Kantoku
+result, err := kan.Spawn(spec)
 ```
 
-You can type this command into Command Prompt, Powershell, Terminal, or any other integrated terminal of your code editor.
+Here we register a plugin, then create a task, add a plugin option to it, and finally spawn it.
 
-The command also installs all necessary dependencies you need to run Docusaurus.
+The result contains the id of spawned task and some info about task creation.
 
-## Start your site
-
-Run the development server:
-
-```bash
-cd my-website
-npm run start
-```
-
-The `cd` command changes the directory you're working with. In order to work with your newly created Docusaurus site, you'll need to navigate the terminal there.
-
-The `npm run start` command builds your website locally and serves it through a development server, ready for you to view at http://localhost:3000/.
-
-Open `docs/intro.md` (this page) and edit some lines: the site **reloads automatically** and displays your changes.
+ 
