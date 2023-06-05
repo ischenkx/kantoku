@@ -16,22 +16,20 @@ type Builder struct {
 
 func (builder Builder) Build() *Kantoku {
 	return &Kantoku{
-		tasks:      builder.Tasks,
-		outputs:    builder.Outputs,
-		inputs:     builder.Inputs,
-		events:     builder.Events,
-		properties: NewProperties(),
-		plugins:    nil,
+		tasks:   builder.Tasks,
+		outputs: builder.Outputs,
+		inputs:  builder.Inputs,
+		events:  builder.Events,
+		plugins: nil,
 	}
 }
 
 type Kantoku struct {
-	tasks      kv.Database[string, TaskInstance]
-	outputs    platform.Outputs
-	inputs     platform.Inputs[TaskInstance]
-	events     platform.Broker
-	properties *Properties
-	plugins    []Plugin
+	tasks   kv.Database[string, TaskInstance]
+	outputs platform.Outputs
+	inputs  platform.Inputs[TaskInstance]
+	events  platform.Broker
+	plugins []Plugin
 }
 
 func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, err error) {
@@ -108,10 +106,6 @@ func (kantoku *Kantoku) Task(id string) *View {
 
 func (kantoku *Kantoku) Events() platform.Broker {
 	return kantoku.events
-}
-
-func (kantoku *Kantoku) Props() *Properties {
-	return kantoku.properties
 }
 
 func (kantoku *Kantoku) Outputs() platform.Outputs {
