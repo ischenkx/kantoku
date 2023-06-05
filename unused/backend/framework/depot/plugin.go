@@ -19,10 +19,6 @@ func NewPlugin(depot *Depot) *Plugin {
 	return &Plugin{depot: depot}
 }
 
-func (p *Plugin) Initialize(kantoku *kantoku.Kantoku) {
-	kantoku.Props().Set(DependenciesEvaluator{depot: p.depot}, "dependencies")
-}
-
 func (p *Plugin) BeforeInitialized(ctx *kantoku.Context) error {
 	return nil
 }
