@@ -5,6 +5,7 @@ import (
 	"kantoku/unused/backend/executor/common"
 )
 
+// Builder is a cosmetic structure to create executor with named args
 type Builder[Task platform.Task] struct {
 	Runner   common.Runner[Task, []byte]
 	Platform platform.Platform[Task]

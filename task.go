@@ -2,7 +2,6 @@ package kantoku
 
 import (
 	"context"
-	"fmt"
 	"kantoku/platform"
 )
 
@@ -64,15 +63,6 @@ func (view *View) Type(ctx context.Context) (string, error) {
 func (view *View) Data(ctx context.Context) ([]byte, error) {
 	stored, err := view.Instance(ctx)
 	return stored.Data, err
-}
-
-func (view *View) Prop(ctx context.Context, path ...string) (any, error) {
-	evaluator, ok := view.Kantoku().Props().Get(path...)
-	if !ok {
-		return nil, fmt.Errorf("no evaluator provided for key: %s", path)
-	}
-
-	return evaluator.Evaluate(ctx, view.id)
 }
 
 func (view *View) Instance(ctx context.Context) (TaskInstance, error) {
