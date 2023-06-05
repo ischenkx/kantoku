@@ -4,7 +4,7 @@ import (
 	"context"
 	"kantoku"
 	"kantoku/common/data/bimap"
-	"kantoku/common/data/pool"
+	"kantoku/platform"
 	"kantoku/unused/backend/framework/depot/deps"
 	"log"
 )
@@ -12,12 +12,14 @@ import (
 type Depot struct {
 	deps           deps.Deps
 	groupTaskBimap bimap.Bimap[string, string]
+	inputs         platform.Inputs
 }
 
-func New(deps deps.Deps, groupTaskBimap bimap.Bimap[string, string]) *Depot {
+func New(deps deps.Deps, groupTaskBimap bimap.Bimap[string, string], inputs platform.Inputs) *Depot {
 	return &Depot{
 		deps:           deps,
 		groupTaskBimap: groupTaskBimap,
+		inputs:         inputs,
 	}
 }
 
@@ -29,7 +31,7 @@ func (depot *Depot) GroupTaskBimap() bimap.Bimap[string, string] {
 	return depot.groupTaskBimap
 }
 
-func (depot *Depot) Write(ctx context.Context, task *kantoku.TaskInstance) error {
+func (depot *Depot) Write(ctx context.Context, id string) error {
 	data := kantoku.GetPluginData(ctx).GetWithDefault("dependencies", &PluginData{}).(*PluginData)
 
 	group, err := depot.Deps().MakeGroup(ctx, data.Dependencies...)
@@ -38,14 +40,18 @@ func (depot *Depot) Write(ctx context.Context, task *kantoku.TaskInstance) error
 	}
 
 	// TODO: possible inconsistency
-	if err := depot.groupTaskBimap.Save(ctx, group, task.ID); err != nil {
+	if err := depot.groupTaskBimap.Save(ctx, group, id); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (depot *Depot) Process(ctx context.Context, outputs pool.Writer[string]) error {
+func (depot *Depot) Read(ctx context.Context) (<-chan string, error) {
+	return depot.inputs.Read(ctx)
+}
+
+func (depot *Depot) Process(ctx context.Context) error {
 	ready, err := depot.Deps().Ready(ctx)
 	if err != nil {
 		return err
@@ -64,7 +70,7 @@ loop:
 				log.Println("failed to get a task assigned to the group:", err)
 				continue
 			}
-			if err := outputs.Write(ctx, taskID); err != nil {
+			if err := depot.inputs.Write(ctx, taskID); err != nil {
 				log.Println("failed to schedule a task:", err)
 				continue
 			}
