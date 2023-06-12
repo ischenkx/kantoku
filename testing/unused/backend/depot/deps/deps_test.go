@@ -6,13 +6,13 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	mempool "kantoku/impl/common/data/pool/mem"
-	"kantoku/impl/deps/postgredeps"
+	"kantoku/impl/deps/postgres/batched"
 	"kantoku/unused/backend/framework/depot/deps"
 	"testing"
 	"time"
 )
 
-func newPostgresDeps(ctx context.Context) *postgredeps.Deps {
+func newPostgresDeps(ctx context.Context) *batched.Deps {
 	client, err := pgxpool.New(ctx, "postgres://postgres:51413@localhost:5432/")
 
 	if err != nil {
@@ -23,7 +23,7 @@ func newPostgresDeps(ctx context.Context) *postgredeps.Deps {
 		panic("failed to make ping postgres: " + err.Error())
 	}
 
-	app := postgredeps.New(client, mempool.New[string]())
+	app := batched.New(client, mempool.New[string]())
 	err = app.DropTables(ctx)
 	if err != nil {
 		panic("failed to init postgres tables: " + err.Error())

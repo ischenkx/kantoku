@@ -1,4 +1,4 @@
-package postgredeps
+package batched
 
 import (
 	"kantoku/unused/backend/framework/depot/deps"
@@ -26,5 +26,5 @@ const (
 type GroupModel struct {
 	ID      string `bson:"id"`
 	Pending int    `bson:"dependencies"`
-	Status  string
+	Status  string `bson:"status"`
 }

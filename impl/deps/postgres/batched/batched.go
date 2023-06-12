@@ -1,27 +1,27 @@
-package postgredeps
+package batched
 
 import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/samber/lo"
 	"kantoku/common/data/pool"
+	"kantoku/common/data/transaction"
+	"kantoku/impl/deps/postgres"
 	"kantoku/unused/backend/framework/depot/deps"
 	"log"
-	"strings"
 	"time"
 )
+
+var _ postgres.Deps = &Deps{}
 
 type Deps struct {
 	q      pool.Pool[string]
 	client *pgxpool.Pool
 }
 
-// New creates an instance of the dependency manager.
-//
+// New creates an instance of the dependency manager with *batched* resolving.
 // client - a connection to a postgres database (all dependencies and groups are stored there)
-//
 // queue - a queue for "ready" groups
 func New(client *pgxpool.Pool, queue pool.Pool[string]) *Deps {
 	return &Deps{
@@ -59,12 +59,6 @@ func (d *Deps) InitTables(ctx context.Context) error {
 	return err
 }
 
-func (d *Deps) DropTables(ctx context.Context) error {
-	sql := `DROP TABLE Dependencies, Groups, GroupDependencies;`
-	_, err := d.client.Exec(ctx, sql)
-	return err
-}
-
 func (d *Deps) Dependency(ctx context.Context, id string) (deps.Dependency, error) {
 	sql := `SELECT id, resolved FROM Dependencies WHERE id = $1`
 	row := d.client.QueryRow(ctx, sql, id)
@@ -74,6 +68,12 @@ func (d *Deps) Dependency(ctx context.Context, id string) (deps.Dependency, erro
 		return deps.Dependency{}, err
 	}
 	return model, nil
+}
+
+func (d *Deps) DropTables(ctx context.Context) error {
+	sql := `DROP TABLE Dependencies, Groups, GroupDependencies;`
+	_, err := d.client.Exec(ctx, sql)
+	return err
 }
 
 func (d *Deps) Group(ctx context.Context, group string) (deps.Group, error) {
@@ -189,7 +189,7 @@ func (d *Deps) Resolve(ctx context.Context, dep string) error {
 	return nil
 }
 
-func (d *Deps) Ready(ctx context.Context) (<-chan string, error) {
+func (d *Deps) Ready(ctx context.Context) (<-chan transaction.Object[string], error) {
 	return d.q.Read(ctx)
 }
 
@@ -304,24 +304,14 @@ func (d *Deps) scheduleGroups(ctx context.Context, batchSize int) error {
 		WHERE  g.id = s.id
 	`
 
-	formattedFailed := formatPostgresValues(failed...)
+	formattedFailed := postgres.FormatValues(failed...)
 	if _, err := d.client.Exec(ctx, sql, WaitingStatus, formattedFailed); err != nil {
 		log.Println("failed to update the groups that failed to be scheduled:", err)
 	}
 
-	formattedSucceeded := formatPostgresValues(succeeded...)
+	formattedSucceeded := postgres.FormatValues(succeeded...)
 	if _, err := d.client.Exec(ctx, sql, ScheduledStatus, formattedSucceeded); err != nil {
 		log.Println("failed to update the groups that were scheduled:", err)
 	}
 	return nil
-}
-
-func formatPostgresValues(ids ...string) string {
-	values := strings.Join(
-		lo.Map(ids, func(item string, _ int) string {
-			return fmt.Sprintf("'%s'", item)
-		}),
-		", ")
-	values = fmt.Sprintf("(%s)", values)
-	return values
 }
