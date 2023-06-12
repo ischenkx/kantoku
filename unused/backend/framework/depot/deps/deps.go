@@ -1,6 +1,9 @@
 package deps
 
-import "context"
+import (
+	"context"
+	"kantoku/common/data/transaction"
+)
 
 type Deps interface {
 	Dependency(ctx context.Context, id string) (Dependency, error)
@@ -8,5 +11,5 @@ type Deps interface {
 	Group(ctx context.Context, id string) (Group, error)
 	Make(ctx context.Context) (Dependency, error)                 // creates a single dependency
 	MakeGroup(ctx context.Context, ids ...string) (string, error) // creates a group from a set of dependencies
-	Ready(ctx context.Context) (<-chan string, error)
+	Ready(ctx context.Context) (<-chan transaction.Object[string], error)
 }

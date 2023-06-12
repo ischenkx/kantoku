@@ -10,7 +10,7 @@ import (
 	rebimap "kantoku/impl/common/data/bimap/redis"
 	redikv "kantoku/impl/common/data/kv/redis"
 	redipool "kantoku/impl/common/data/pool/redis"
-	"kantoku/impl/deps/postgredeps"
+	"kantoku/impl/deps/postgres/batched"
 	redivent "kantoku/impl/platform/event/redis"
 	"kantoku/platform"
 	"kantoku/unused/backend/framework/depot"
@@ -52,9 +52,9 @@ func makePostgresClient(ctx context.Context) *pgxpool.Pool {
 	return client
 }
 
-func MakeDeps() *postgredeps.Deps {
+func MakeDeps() *batched.Deps {
 	pg := makePostgresClient(context.Background())
-	deps := postgredeps.New(
+	deps := batched.New(
 		pg,
 		redipool.New[string](makeRedisClient(), strcodec.Codec{}, "depot_groups"),
 	)

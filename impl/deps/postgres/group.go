@@ -1,4 +1,4 @@
-package postgredeps
+package postgres
 
 import (
 	"kantoku/unused/backend/framework/depot/deps"
