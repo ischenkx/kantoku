@@ -2,103 +2,68 @@ package kantoku
 
 import (
 	"context"
-	"github.com/google/uuid"
-	"kantoku/platform"
+	"kantoku/common/codec"
+	"kantoku/framework/future"
+	taskContext "kantoku/framework/plugins/context"
+	"kantoku/framework/plugins/depot"
+	"kantoku/framework/plugins/futdep"
+	"kantoku/framework/plugins/meta"
+	"kantoku/framework/plugins/taskdep"
+	"kantoku/kernel"
 )
 
 type Kantoku struct {
-	platform platform.Platform[TaskInstance]
-	plugins  []Plugin
+	depot                *depot.Depot
+	contexts             taskContext.Database
+	parametrizationCodec codec.Codec[Parametrization, []byte]
+	meta                 *meta.Manager
+	futures              *future.Manager
+	futdep               *futdep.Manager
+	taskdep              *taskdep.Manager
+	kernel               *kernel.Kernel
+	settings             Settings
 }
 
-func New(platform platform.Platform[TaskInstance]) *Kantoku {
-	return &Kantoku{
-		platform: platform,
+func (kantoku *Kantoku) Spawn(ctx context.Context, spec Spec) (kernel.Result, error) {
+	payload, err := kantoku.parametrizationCodec.Encode(spec.parametrization)
+	if err != nil {
+		return kernel.Result{}, err
 	}
+	var options []kernel.Option
+
+	options = append(options, withParametrization(spec.parametrization))
+	options = append(options, spec.opts...)
+
+	if kantoku.settings.AutoInputDependencies {
+		options = append(options, AutoInputDeps())
+	}
+
+	return kantoku.kernel.Spawn(ctx, kernel.Describe(spec.typ, payload).With(options...))
 }
 
-func (kantoku *Kantoku) Spawn(ctx_ context.Context, spec Spec) (result Result, err error) {
-	ctx := kantoku.makeContext(ctx_)
-	result.Log = ctx.Log
-	defer ctx.finalize()
-
-	ctx.Task = TaskInstance{
-		Id:   uuid.New().String(),
-		Type: spec.Type,
-		Data: spec.Data,
-	}
-
-	for _, option := range spec.Options {
-		if err := option(ctx); err != nil {
-			return result, err
-		}
-	}
-
-	for _, plugin := range kantoku.plugins {
-		if p, ok := plugin.(BeforeInitializedPlugin); ok {
-			if err := p.BeforeInitialized(ctx); err != nil {
-				return result, err
-			}
-		}
-	}
-
-	if err := kantoku.platform.DB().Set(ctx, ctx.Task.ID(), ctx.Task); err != nil {
-		return result, err
-	}
-	result.Task = ctx.Task.ID()
-
-	for _, plugin := range kantoku.plugins {
-		if p, ok := plugin.(AfterInitializedPlugin); ok {
-			p.AfterInitialized(ctx)
-		}
-	}
-
-	for _, plugin := range kantoku.plugins {
-		if p, ok := plugin.(BeforeScheduledPlugin); ok {
-			if err := p.BeforeScheduled(ctx); err != nil {
-				return result, err
-			}
-		}
-	}
-
-	if err := kantoku.platform.Inputs().Write(ctx, ctx.Task.ID()); err != nil {
-		return result, err
-	}
-
-	for _, plugin := range kantoku.plugins {
-		if p, ok := plugin.(AfterScheduledPlugin); ok {
-			p.AfterScheduled(ctx)
-		}
-	}
-
-	ctx.Log.Spawned = append(result.Log.Spawned, ctx.Task.ID())
-
-	return result, nil
-}
-
-func (kantoku *Kantoku) Register(plugin Plugin) {
-	if p, ok := plugin.(InitializePlugin); ok {
-		p.Initialize(*kantoku)
-	}
-	kantoku.plugins = append(kantoku.plugins, plugin)
-}
-
-func (kantoku *Kantoku) Task(id string) *View {
-	return &View{
-		kantoku: kantoku,
+func (kantoku *Kantoku) Task(id string) Task {
+	return Task{
 		id:      id,
+		kantoku: kantoku,
 	}
 }
 
-func (kantoku *Kantoku) Broker() platform.Broker {
-	return kantoku.platform.Broker()
-}
-func (kantoku *Kantoku) Outputs() platform.Outputs {
-	return kantoku.platform.Outputs()
+func (kantoku *Kantoku) Meta() *meta.Manager {
+	return kantoku.meta
 }
 
-func (kantoku *Kantoku) makeContext(ctx_ context.Context) *Context {
-	ctx := NewContext(ctx_)
-	ctx.parent = ctx_
-	return ctx
+func (kantoku *Kantoku) Depot() *depot.Depot {
+	return kantoku.depot
+}
+
+func (kantoku *Kantoku) Contexts() taskContext.Database {
+	return kantoku.contexts
+}
+
+func (kantoku *Kantoku) Futures() *future.Manager {
+	return kantoku.futures
+}
+
+func (kantoku *Kantoku) Kernel() *kernel.Kernel {
+	return kantoku.kernel
 }

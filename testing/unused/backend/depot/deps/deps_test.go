@@ -5,9 +5,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	deps2 "kantoku/framework/plugins/depot/deps"
 	mempool "kantoku/impl/common/data/pool/mem"
-	"kantoku/impl/deps/postgredeps"
-	"kantoku/unused/backend/framework/depot/deps"
+	"kantoku/impl/plugins/deps/postgres"
 	"testing"
 	"time"
 )
@@ -38,7 +38,7 @@ func newPostgresDeps(ctx context.Context) *postgredeps.Deps {
 
 func TestDeps(t *testing.T) {
 	ctx := context.Background()
-	implementations := map[string]deps.Deps{
+	implementations := map[string]deps2.Deps{
 		"postgres": newPostgresDeps(ctx),
 	}
 
@@ -58,7 +58,7 @@ func TestDeps(t *testing.T) {
 				if err != nil {
 					t.Fatalf("failed to get the group (%s): %s", groupID, err)
 				}
-				groupResolutions := lo.SliceToMap(group.Dependencies, func(item deps.Dependency) (string, bool) {
+				groupResolutions := lo.SliceToMap(group.Dependencies, func(item deps2.Dependency) (string, bool) {
 					return item.ID, item.Resolved
 				})
 
@@ -135,7 +135,7 @@ func checkReady(ch <-chan string, receive func(id string), nothing func()) {
 	}
 }
 
-func makeSimpleGroup(ctx context.Context, t *testing.T, impl deps.Deps, size int) ([]string, string) {
+func makeSimpleGroup(ctx context.Context, t *testing.T, impl deps2.Deps, size int) ([]string, string) {
 	dependencies := make([]string, size)
 	for i := 0; i < len(dependencies); i++ {
 		dep, err := impl.Make(ctx)

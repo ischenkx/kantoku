@@ -36,15 +36,19 @@ func (db *DB[T]) Set(ctx context.Context, id string, item T) error {
 	return nil
 }
 
-func (db *DB[T]) GetOrSet(ctx context.Context, id string, item T) (T, error) {
+func (db *DB[T]) GetOrSet(ctx context.Context, id string, item T) (T, bool, error) {
 	val, err := db.codec.Encode(item)
 	if err != nil {
-		return util.Default[T](), err
+		return util.Default[T](), false, err
 	}
-	if cmd := db.client.HSetNX(ctx, db.setName, id, val); cmd.Err() != nil {
-		return util.Default[T](), cmd.Err()
+
+	cmd := db.client.HSetNX(ctx, db.setName, id, val)
+	if cmd.Err() != nil {
+		return util.Default[T](), false, cmd.Err()
 	}
-	return db.Get(ctx, id)
+
+	result, err := db.Get(ctx, id)
+	return result, cmd.Val(), err
 }
 
 func (db *DB[T]) Get(ctx context.Context, id string) (T, error) {

@@ -8,7 +8,7 @@ type Getter[K, V any] interface {
 
 type Setter[K, V any] interface {
 	Set(ctx context.Context, id K, item V) error
-	GetOrSet(ctx context.Context, id K, item V) (V, error)
+	GetOrSet(ctx context.Context, id K, item V) (value V, set bool, err error)
 }
 
 type Deleter[K any] interface {
