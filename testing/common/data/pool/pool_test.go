@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
-	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"kantoku/common/data/pool"
 	"kantoku/impl/common/codec/jsoncodec"
@@ -33,46 +32,120 @@ func newRedisPool(ctx context.Context) *redipool.Pool[Item] {
 	return redipool.New[Item](client, jsoncodec.New[Item](), "TEST_POOL")
 }
 
-func newMemPool(ctx context.Context) *mempool.Pool[Item] {
-	return mempool.New[Item]()
+func newMemPool[Item any](ctx context.Context) pool.Pool[Item] {
+	return mempool.New[Item](mempool.DefaultConfig)
 }
 
 func TestPool(t *testing.T) {
 	ctx := context.Background()
-	implementations := map[string]pool.Pool[Item]{
-		"redis":  newRedisPool(ctx),
-		"memory": newMemPool(ctx),
+	implementations := map[string]func(context.Context) pool.Pool[string]{
+		"mem": newMemPool[string],
 	}
 
 	for label, impl := range implementations {
-		t.Run(label, func(t *testing.T) {
-			var testSet []Item
+		t.Run(label+": PutNothingAndGetNothing", func(t *testing.T) {
+			p := impl(ctx)
 
-			for i := 0; i < 10; i++ {
-				testSet = append(testSet, Item{
-					Data: uuid.New().String(),
-					Name: uuid.New().String(),
-				})
+			ctx := context.Background()
+			itemsCh, err := p.Read(ctx)
+			assert.NoError(t, err)
+
+			select {
+			case <-itemsCh:
+				t.Error("Expected no items, but received an item")
+			case <-time.After(3 * time.Second):
+				// Passed, no items received within the timeout
+			}
+			t.Log("finished")
+		})
+
+		t.Run(label+": PutOneItemGetItCommit", func(t *testing.T) {
+			p := impl(ctx)
+
+			ctx := context.Background()
+			err := p.Write(ctx, "item1")
+			assert.NoError(t, err)
+
+			itemsCh, err := p.Read(ctx)
+			assert.NoError(t, err)
+
+			select {
+			case tx := <-itemsCh:
+				item, err := tx.Get(ctx)
+				assert.NoError(t, err)
+				assert.Equal(t, "item1", item)
+				err = tx.Commit(ctx)
+				assert.NoError(t, err)
+			case <-time.After(3 * time.Second):
+				t.Error("Expected an item, but none received")
+			}
+			t.Log("finished")
+		})
+
+		t.Run(label+": PutTwoItemsGetOneRollbackGetOneCommit", func(t *testing.T) {
+			p := impl(ctx)
+
+			ctx := context.Background()
+			err := p.Write(ctx, "item1", "item2")
+			assert.NoError(t, err)
+
+			itemsCh, err := p.Read(ctx)
+			assert.NoError(t, err)
+
+			select {
+			case tx := <-itemsCh:
+				item, err := tx.Get(ctx)
+				assert.NoError(t, err)
+				assert.Equal(t, "item1", item)
+				err = tx.Rollback(ctx)
+				assert.NoError(t, err)
+			case <-time.After(3 * time.Second):
+				t.Error("Expected an item, but none received")
 			}
 
-			lo.ForEach(testSet, func(item Item, _ int) {
-				if err := impl.Write(ctx, item); err != nil {
-					t.Fatal("failed to write in pool:", err)
+			itemsCh, err = p.Read(ctx)
+			assert.NoError(t, err)
+
+			select {
+			case tx := <-itemsCh:
+				item, err := tx.Get(ctx)
+				assert.NoError(t, err)
+				assert.Equal(t, "item1", item)
+				err = tx.Commit(ctx)
+				assert.NoError(t, err)
+			case <-time.After(3 * time.Second):
+				t.Error("Expected an item, but none received")
+			}
+			t.Log("finished")
+		})
+
+		t.Run(label+": PutRandomNumbersGetAndCommit", func(t *testing.T) {
+			p := impl(ctx)
+
+			ctx := context.Background()
+
+			for i := 1; i <= 10; i++ {
+				// Generate a random number
+				generated := uuid.New().String()
+
+				err := p.Write(ctx, generated)
+				assert.NoError(t, err)
+
+				itemsCh, err := p.Read(ctx)
+				assert.NoError(t, err)
+
+				select {
+				case tx := <-itemsCh:
+					received, err := tx.Get(ctx)
+					assert.NoError(t, err)
+					assert.Equal(t, generated, received)
+					err = tx.Commit(ctx)
+					assert.NoError(t, err)
+				case <-time.After(3 * time.Second):
+					t.Error("Expected an item, but none received")
 				}
-			})
-
-			cancelableContext, cancel := context.WithCancel(ctx)
-
-			channel, err := impl.Read(cancelableContext)
-			if err != nil {
-				t.Fatal("failed to read from a pool:", err)
 			}
-			time.Sleep(time.Second * 3)
-			cancel()
-
-			receivedItems := lo.ChannelToSlice[Item](channel)
-
-			assert.Equal(t, testSet, receivedItems, "test_set must be equal to a received set from the pool")
+			t.Log("finished")
 		})
 	}
 }

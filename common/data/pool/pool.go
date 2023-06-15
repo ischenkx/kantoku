@@ -3,7 +3,7 @@ package pool
 import (
 	"context"
 	"fmt"
-	"kantoku/common/data/transaction"
+	"kantoku/common/data/transactional"
 )
 
 //type Reader[Item any] interface {
@@ -20,7 +20,7 @@ import (
 //}
 
 type Reader[Item any] interface {
-	Read(ctx context.Context) (<-chan transaction.Object[Item], error)
+	Read(ctx context.Context) (<-chan transactional.Object[Item], error)
 	//pool.Reader[Transaction[Item]]
 }
 
@@ -48,7 +48,7 @@ loop:
 		case <-ctx.Done():
 			break loop
 		case tx := <-ch:
-			err = func(tx transaction.Object[Item]) error {
+			err = func(tx transactional.Object[Item]) error {
 				item, err := tx.Get(ctx)
 				defer tx.Rollback(ctx)
 				if err != nil {

@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"kantoku/common/data/pool"
-	"kantoku/common/data/transaction"
+	"kantoku/common/data/transactional"
 	"kantoku/impl/deps/postgres"
 	"kantoku/unused/backend/framework/depot/deps"
 	"log"
@@ -32,26 +32,26 @@ func New(client *pgxpool.Pool, queue pool.Pool[string]) *Deps {
 
 func (d *Deps) InitTables(ctx context.Context) error {
 	sql := `
-		CREATE TABLE Dependencies (
+		CREATE TABLE BatchedDependencies (
 			id varchar(255),
 			resolved bool,
 			PRIMARY KEY (id)
 		);
 		
-		CREATE TABLE Groups (
+		CREATE TABLE BatchedGroups (
 			id varchar(255),
 			pending int,
 			status varchar(16),
 			PRIMARY KEY (id)
 		);
 		
-		CREATE TABLE GroupDependencies (
+		CREATE TABLE BatchedGroupDependencies (
 			dependency_id varchar(255),
 			group_id varchar(255),
 			PRIMARY KEY (dependency_id, group_id),
 			CONSTRAINT fk_group
 			  FOREIGN KEY(group_id) 
-			  REFERENCES Groups(id)
+			  REFERENCES BatchedGroups(id)
 		      ON DELETE CASCADE
 		);
 	`
@@ -60,7 +60,7 @@ func (d *Deps) InitTables(ctx context.Context) error {
 }
 
 func (d *Deps) Dependency(ctx context.Context, id string) (deps.Dependency, error) {
-	sql := `SELECT id, resolved FROM Dependencies WHERE id = $1`
+	sql := `SELECT id, resolved FROM BatchedDependencies WHERE id = $1`
 	row := d.client.QueryRow(ctx, sql, id)
 
 	var model deps.Dependency
@@ -71,7 +71,7 @@ func (d *Deps) Dependency(ctx context.Context, id string) (deps.Dependency, erro
 }
 
 func (d *Deps) DropTables(ctx context.Context) error {
-	sql := `DROP TABLE Dependencies, Groups, GroupDependencies;`
+	sql := `DROP TABLE BatchedDependencies, BatchedGroups, BatchedGroupDependencies;`
 	_, err := d.client.Exec(ctx, sql)
 	return err
 }
@@ -80,8 +80,8 @@ func (d *Deps) Group(ctx context.Context, group string) (deps.Group, error) {
 	var result deps.Group
 	result.ID = group
 
-	sql := `SELECT dependency_id, COALESCE(resolved, false) FROM GroupDependencies gd 
-				LEFT JOIN Dependencies d ON d.id = gd.dependency_id
+	sql := `SELECT dependency_id, COALESCE(resolved, false) FROM BatchedGroupDependencies gd 
+				LEFT JOIN BatchedDependencies d ON d.id = gd.dependency_id
 				WHERE gd.group_id = $1`
 	records, err := d.client.Query(ctx, sql, group)
 	if err != nil {
@@ -125,14 +125,14 @@ func (d *Deps) MakeGroup(ctx context.Context, ids ...string) (string, error) {
 	}
 	defer tx.Rollback(ctx)
 
-	sql := `INSERT INTO Groups (id, pending, status) VALUES ($1, $2, $3)`
+	sql := `INSERT INTO BatchedGroups (id, pending, status) VALUES ($1, $2, $3)`
 	_, err = tx.Exec(ctx, sql, id, -1, status)
 	if err != nil {
 		return "", err
 	}
 
 	for _, dep := range ids {
-		sql := `INSERT INTO GroupDependencies (dependency_id, group_id) VALUES ($1, $2)`
+		sql := `INSERT INTO BatchedGroupDependencies (dependency_id, group_id) VALUES ($1, $2)`
 		_, err := tx.Exec(ctx, sql, dep, id)
 		if err != nil {
 			return "", err
@@ -156,11 +156,11 @@ func (d *Deps) Resolve(ctx context.Context, dep string) error {
 	sql := `
 		WITH previous AS (
 			SELECT resolved
-			FROM Dependencies
+			FROM BatchedDependencies
 			WHERE id = $1
 			LIMIT 1
 		)
-		INSERT INTO Dependencies (id, resolved) 
+		INSERT INTO BatchedDependencies (id, resolved) 
 		VALUES ($1, $2)
 		ON CONFLICT (id) DO UPDATE 
 		SET resolved = $2
@@ -175,9 +175,9 @@ func (d *Deps) Resolve(ctx context.Context, dep string) error {
 	}
 
 	sql = `
-			UPDATE Groups g
+			UPDATE BatchedGroups g
 			SET pending = pending - 1
-			FROM GroupDependencies gd
+			FROM BatchedGroupDependencies gd
 			WHERE gd.dependency_id = $1 AND gd.group_id = g.id`
 	if _, err := tx.Exec(ctx, sql, dep); err != nil {
 		return err
@@ -189,7 +189,7 @@ func (d *Deps) Resolve(ctx context.Context, dep string) error {
 	return nil
 }
 
-func (d *Deps) Ready(ctx context.Context) (<-chan transaction.Object[string], error) {
+func (d *Deps) Ready(ctx context.Context) (<-chan transactional.Object[string], error) {
 	return d.q.Read(ctx)
 }
 
@@ -236,14 +236,14 @@ func (d *Deps) initializeGroups(ctx context.Context) error {
 	sql := `
 		WITH uninitialized_groups AS (
 		   SELECT id
-		   FROM   Groups
+		   FROM   BatchedGroups
 		   WHERE  status = $1
 		   ) 
-		UPDATE Groups g
+		UPDATE BatchedGroups g
 		SET status = $2, pending = (
 			SELECT COUNT(*)
-				FROM GroupDependencies gd
-				LEFT OUTER JOIN Dependencies d ON d.id = gd.dependency_id
+				FROM BatchedGroupDependencies gd
+				LEFT OUTER JOIN BatchedDependencies d ON d.id = gd.dependency_id
 				WHERE gd.group_id = g.id
 					AND CASE WHEN d.resolved is NULL THEN true ELSE NOT d.resolved END
 		)
@@ -260,11 +260,11 @@ func (d *Deps) scheduleGroups(ctx context.Context, batchSize int) error {
 	sql := `
 		WITH groups_subset AS (
 		   SELECT id
-		   FROM   Groups
+		   FROM   BatchedGroups
 		   WHERE  status = $1 AND pending = 0
 		   LIMIT  $2
 		   )
-		UPDATE Groups g
+		UPDATE BatchedGroups g
 		SET    status = $3 
 		FROM   groups_subset
 		WHERE  g.id = groups_subset.id
@@ -298,7 +298,7 @@ func (d *Deps) scheduleGroups(ctx context.Context, batchSize int) error {
 	}
 
 	sql = `
-		UPDATE Groups g
+		UPDATE BatchedGroups g
 		SET    status = $1
 		FROM   (values ($2)) as s(id)
 		WHERE  g.id = s.id

@@ -2,30 +2,46 @@ package mempool
 
 import (
 	"context"
+	"go/types"
+	"kantoku/common/data/pool"
+	"kantoku/common/data/transactional"
 	"math/rand"
 	"sync"
 	"time"
 )
 
-func New[T any]() *Pool[T] {
-	pool := &Pool[T]{}
+func New[T any](config Config) *Pool[T] {
+	pool := &Pool[T]{config: config}
 	go pool.runFlusher()
 	return pool
 }
 
+var _ pool.Pool[types.Object] = &Pool[types.Object]{}
+
 type Pool[T any] struct {
 	buffer  []T
-	readers []chan T
+	readers []chan transactional.Object[T]
 	perm    []int
 	closed  bool
 	mu      sync.RWMutex
+	config  Config
 }
 
-func (p *Pool[T]) Read(ctx context.Context) (<-chan T, error) {
+type Config struct {
+	BufferSize  int
+	FlushPeriod time.Duration
+}
+
+var DefaultConfig = Config{
+	BufferSize:  0,
+	FlushPeriod: time.Second,
+}
+
+func (p *Pool[T]) Read(ctx context.Context) (<-chan transactional.Object[T], error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	channel := make(chan T, 128)
+	channel := make(chan transactional.Object[T], p.config.BufferSize)
 
 	go func() {
 		<-ctx.Done()
@@ -46,14 +62,12 @@ func (p *Pool[T]) Read(ctx context.Context) (<-chan T, error) {
 	return channel, nil
 }
 
-func (p *Pool[T]) Write(ctx context.Context, item T) error {
+func (p *Pool[T]) Write(ctx context.Context, items ...T) error {
 	p.mu.Lock()
+	p.buffer = append(p.buffer, items...)
 	defer p.mu.Unlock()
 
-	if !p.write(item) {
-		p.buffer = append(p.buffer, item)
-	}
-
+	p.flush(true) // doing that to guarantee no delay if someone is ready to read
 	return nil
 }
 
@@ -70,40 +84,47 @@ func (p *Pool[T]) Close() {
 }
 
 func (p *Pool[T]) runFlusher() {
-	ticker := time.NewTicker(time.Second * 1)
+	ticker := time.NewTicker(p.config.FlushPeriod)
 	defer ticker.Stop()
 
 	for range ticker.C {
-		if !p.flush() {
+		if !p.flush(false) {
 			break
 		}
 	}
 }
 
-func (p *Pool[T]) flush() bool {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (p *Pool[T]) flush(locked bool) bool {
+	if !locked {
+		p.mu.Lock()
+		defer p.mu.Unlock()
+	}
 
 	if p.closed {
 		return false
 	}
 
 	for len(p.buffer) != 0 {
-		index := 0
-		if !p.write(p.buffer[index]) {
+		if !p.write() {
 			break
 		}
-		p.buffer = p.buffer[1:]
 	}
 
 	return true
 }
 
-func (p *Pool[T]) write(item T) bool {
+func (p *Pool[T]) write() bool {
 	for _, index := range p.permute() {
 		reader := p.readers[index]
+		statusChan := make(chan bool)
 		select {
-		case reader <- item:
+		case reader <- &Transaction[T]{data: p.buffer[0], success: statusChan}:
+			// might want to add context with deadline
+			success := <-statusChan
+			if success {
+				p.buffer = p.buffer[1:]
+			}
+
 			return true
 		default:
 		}
