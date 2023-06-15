@@ -1,3 +1,4 @@
 testing/tmp
 .idea
 unused/stand/*/bin/*
+/tmp/

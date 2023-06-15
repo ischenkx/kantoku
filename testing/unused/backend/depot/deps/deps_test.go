@@ -5,14 +5,16 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
+	"kantoku/common/data/transactional"
 	mempool "kantoku/impl/common/data/pool/mem"
 	"kantoku/impl/deps/postgres/batched"
+	"kantoku/impl/deps/postgres/instant"
 	"kantoku/unused/backend/framework/depot/deps"
 	"testing"
 	"time"
 )
 
-func newPostgresDeps(ctx context.Context) *batched.Deps {
+func newBatchedDeps(ctx context.Context) deps.Deps {
 	client, err := pgxpool.New(ctx, "postgres://postgres:51413@localhost:5432/")
 
 	if err != nil {
@@ -23,7 +25,31 @@ func newPostgresDeps(ctx context.Context) *batched.Deps {
 		panic("failed to make ping postgres: " + err.Error())
 	}
 
-	app := batched.New(client, mempool.New[string]())
+	app := batched.New(client, mempool.New[string](mempool.DefaultConfig))
+	err = app.DropTables(ctx)
+	if err != nil {
+		panic("failed to init postgres tables: " + err.Error())
+	}
+	err = app.InitTables(ctx)
+	if err != nil {
+		panic("failed to init postgres tables: " + err.Error())
+	}
+	app.Run(ctx)
+	return app
+}
+
+func newInstantDeps(ctx context.Context) deps.Deps {
+	client, err := pgxpool.New(ctx, "postgres://postgres:51413@localhost:5432/")
+
+	if err != nil {
+		panic("failed to create postgres deps: " + err.Error())
+	}
+
+	if err := client.Ping(ctx); err != nil {
+		panic("failed to make ping postgres: " + err.Error())
+	}
+
+	app := instant.New(client, mempool.New[string](mempool.DefaultConfig), mempool.New[string](mempool.DefaultConfig))
 	err = app.DropTables(ctx)
 	if err != nil {
 		panic("failed to init postgres tables: " + err.Error())
@@ -38,12 +64,14 @@ func newPostgresDeps(ctx context.Context) *batched.Deps {
 
 func TestDeps(t *testing.T) {
 	ctx := context.Background()
-	implementations := map[string]deps.Deps{
-		"postgres": newPostgresDeps(ctx),
+	implementations := map[string]func(context.Context) deps.Deps{
+		"postgres-batched": newBatchedDeps,
+		"postgres-instant": newInstantDeps,
 	}
 
-	for label, impl := range implementations {
-		t.Run(label+"basic", func(t *testing.T) {
+	for label, newImpl := range implementations {
+		t.Run(label+" basic", func(t *testing.T) {
+			impl := newImpl(ctx)
 			dependencies, groupID := makeSimpleGroup(ctx, t, impl, 10)
 
 			dep2resolution := lo.SliceToMap(dependencies, func(item string) (string, bool) { return item, false })
@@ -74,16 +102,17 @@ func TestDeps(t *testing.T) {
 				t.Fatalf("failed to get a ready channel: %s", err)
 			}
 
-			checkReady(ch, func(id string) {
+			checkReady(cancelableContext, t, ch, func(id string) {
 				if id != groupID {
 					t.Fatalf("received a wrong group id: '%s' (expected '%s')", id, groupID)
 				}
 			}, func() {
-				t.Fatal("didn't receive a group from ready...")
+				t.Fatalf("didn't receive a group from ready, expected '%s'", groupID)
 			})
 		})
 
 		t.Run(label+" double group counter decrement", func(t *testing.T) {
+			impl := newImpl(ctx)
 			dependencies, groupID := makeSimpleGroup(ctx, t, impl, 10)
 
 			cancelableContext, cancel := context.WithCancel(ctx)
@@ -101,7 +130,7 @@ func TestDeps(t *testing.T) {
 				}
 			}
 
-			checkReady(ch, func(id string) {
+			checkReady(cancelableContext, t, ch, func(id string) {
 				if id == groupID {
 					t.Fatalf("group(%s) got to ready channel after resolving only one dependency(%s)",
 						groupID, dependencies[0])
@@ -125,12 +154,15 @@ func TestDeps(t *testing.T) {
 }
 
 // create channel here?
-func checkReady(ch <-chan string, receive func(id string), nothing func()) {
-	time.Sleep(time.Second * 3)
+func checkReady(ctx context.Context, t *testing.T, ch <-chan transactional.Object[string], receive func(id string), nothing func()) {
 	select {
-	case id := <-ch:
+	case tx := <-ch:
+		id, err := tx.Get(ctx)
+		if err != nil {
+			t.Fatalf("failed to get value of transaction: %s", err)
+		}
 		receive(id)
-	default:
+	case <-time.After(5 * time.Second):
 		nothing()
 	}
 }
