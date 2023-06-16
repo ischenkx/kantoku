@@ -49,7 +49,7 @@ func newInstantDeps(ctx context.Context) deps.Deps {
 		panic("failed to make ping postgres: " + err.Error())
 	}
 
-	app := instant.New(client, mempool.New[string](mempool.DefaultConfig), mempool.New[string](mempool.DefaultConfig))
+	app := instant.New(client, mempool.New[string](mempool.DefaultConfig))
 	err = app.DropTables(ctx)
 	if err != nil {
 		panic("failed to init postgres tables: " + err.Error())

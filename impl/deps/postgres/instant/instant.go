@@ -15,17 +15,15 @@ var _ postgres.Deps = &Deps{}
 
 type Deps struct {
 	resolvedGroups pool.Pool[string]
-	resolvedDeps   pool.Pool[string]
 	client         *pgxpool.Pool
 }
 
 // New creates an instance of the dependency manager with *instant* resolving.
 // client is a connection to a postgres database (all dependencies and groups are stored there)
-// queues are for storing resolved groups and deps, waiting to be processed
-func New(client *pgxpool.Pool, groupsQueue, depsQueue pool.Pool[string]) *Deps {
+// queue is for storing resolved groups waiting to be processed
+func New(client *pgxpool.Pool, groupsQueue pool.Pool[string]) *Deps {
 	return &Deps{
 		resolvedGroups: groupsQueue,
-		resolvedDeps:   depsQueue,
 		client:         client,
 	}
 }
@@ -102,7 +100,7 @@ func (d *Deps) Group(ctx context.Context, group string) (deps.Group, error) {
 // Make generates a new dependency (but it does not store the information about it in the database
 //
 // Generation algorithm: UUID
-func (d *Deps) Make(ctx context.Context) (deps.Dependency, error) {
+func (d *Deps) Make(_ context.Context) (deps.Dependency, error) {
 	id := uuid.New().String()
 
 	return deps.Dependency{
@@ -193,11 +191,14 @@ func (d *Deps) Resolve(ctx context.Context, dep string) error {
 	resolved, err := tx.Query(ctx, sql, dep)
 	var groups []string
 	for resolved.Next() {
-		var id string
+		// I do not understand wny it returns nulls when result should be empty
+		var id *string
 		if err := resolved.Scan(&id); err != nil {
 			return fmt.Errorf("failed to scan the id of a group (please report if it ever happens): %s", err)
 		}
-		groups = append(groups, id)
+		if id != nil {
+			groups = append(groups, *id)
+		}
 	}
 	// now we just add groups to their queue
 	if err := d.resolvedGroups.Write(ctx, groups...); err != nil {
@@ -214,71 +215,4 @@ func (d *Deps) Ready(ctx context.Context) (<-chan transactional.Object[string], 
 	return d.resolvedGroups.Read(ctx)
 }
 
-func (d *Deps) Run(ctx context.Context) {
-	//go d.runDepsProcessing(ctx)
-}
-
-//func (d *Deps) runDepsProcessing(ctx context.Context) {
-//	err := pool.ReadAutoCommit[string](ctx, d.resolvedDeps, d.processDep)
-//	if err != nil {
-//		log.Println("failed to open a resolved deps channel:", err)
-//	}
-//}
-
-//func (d *Deps) processDep(ctx context.Context, dep string) error {
-//	tx, err := d.client.Begin(ctx)
-//	if err != nil {
-//		return fmt.Errorf("failed to begin a postgres transaction: %s", tx)
-//	}
-//	defer tx.Rollback(ctx)
-//	// let's goooooo
-//	// 1) update dep and check if it has been resolved
-//	sql := `
-//		WITH previous AS (
-//			SELECT resolved
-//			FROM InstantDependencies
-//			WHERE id = $1
-//			LIMIT 1
-//		)
-//		INSERT INTO InstantDependencies (id, resolved)
-//		VALUES ($1, $2)
-//		ON CONFLICT (id) DO UPDATE
-//		SET resolved = $2
-//		RETURNING COALESCE((SELECT resolved FROM previous), false) AS previous_resolved;`
-//	before := tx.QueryRow(ctx, sql, dep, true)
-//	var alreadyResolved bool
-//	if err := before.Scan(&alreadyResolved); err != nil {
-//		return err
-//	}
-//	if alreadyResolved {
-//		// if it resolved we are done
-//		return nil
-//	}
-//
-//	// dep hasn't been resolved, so we need to update groups
-//	// we also return groups which have no unresolved deps
-//	sql = `
-//			UPDATE InstantGroups g
-//			SET pending = pending - 1
-//			FROM InstantGroupDependencies gd
-//			WHERE gd.dependency_id = $1 AND gd.group_id = g.id
-//			RETURNING (SELECT g.id WHERE g.pending = 0)` // returns new value
-//	resolved, err := tx.Query(ctx, sql, dep)
-//	var groups []string
-//	for resolved.Next() {
-//		var id string
-//		if err := resolved.Scan(&id); err != nil {
-//			return fmt.Errorf("failed to scan the id of a group (please report if it ever happens): %s", err)
-//		}
-//		groups = append(groups, id)
-//	}
-//	// now we just add groups to their queue
-//	if err := d.resolvedGroups.Write(ctx, groups...); err != nil {
-//		return fmt.Errorf("failed to add groups to queue")
-//	}
-//
-//	if err := tx.Commit(ctx); err != nil {
-//		return fmt.Errorf("failed to commit the transaction: %s", err)
-//	}
-//	return nil
-//}
+func (d *Deps) Run(_ context.Context) {}
