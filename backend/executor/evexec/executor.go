@@ -3,14 +3,14 @@ package evexec
 import (
 	"context"
 	"kantoku/backend/executor/common"
-	platform2 "kantoku/kernel/platform"
+	"kantoku/kernel/platform"
 	"log"
 )
 
 // Executor is an implementation of the Task Events Protocol
-type Executor[Task platform2.Task] struct {
+type Executor[Task platform.Task] struct {
 	runner        common.Runner[Task, []byte]
-	platform      platform2.Platform[Task]
+	platform      platform.Platform[Task]
 	topicResolver TopicResolver
 }
 
@@ -28,28 +28,28 @@ loop:
 		select {
 		case id := <-channel:
 			// TODO: split this code into several methods so I can get rid of all those nasty else's
-			e.emit(ctx, platform2.Event{Name: ReceivedEvent, Data: []byte(id)})
+			e.emit(ctx, platform.Event{Name: ReceivedEvent, Data: []byte(id)})
 			task, err := e.platform.DB().Get(ctx, id)
 			if err != nil {
 				message, err := ErrorMessage{TaskID: id, Message: err.Error()}.Encode()
 				if err != nil {
 					log.Println("failed to generate an error message:", err)
 				} else {
-					e.emit(ctx, platform2.Event{Name: ErrorEvent, Data: message})
+					e.emit(ctx, platform.Event{Name: ErrorEvent, Data: message})
 				}
 				continue
 			}
 
 			output, err := e.runner.Run(ctx, task)
-			e.emit(ctx, platform2.Event{Name: ExecutedEvent, Data: []byte(task.ID())})
+			e.emit(ctx, platform.Event{Name: ExecutedEvent, Data: []byte(task.ID())})
 
-			result := platform2.Result{TaskID: task.ID()}
+			result := platform.Result{TaskID: task.ID()}
 			if err != nil {
 				result.Data = []byte(err.Error())
-				result.Status = platform2.FAILURE
+				result.Status = platform.FAILURE
 			} else {
 				result.Data = output
-				result.Status = platform2.OK
+				result.Status = platform.OK
 			}
 
 			err = e.platform.Outputs().Set(ctx, result.TaskID, result)
@@ -58,10 +58,10 @@ loop:
 				if err != nil {
 					log.Println("failed to generate an error message:", err)
 				} else {
-					e.emit(ctx, platform2.Event{Name: ErrorEvent, Data: message})
+					e.emit(ctx, platform.Event{Name: ErrorEvent, Data: message})
 				}
 			} else {
-				e.emit(ctx, platform2.Event{Name: SentOutputsEvent, Data: []byte(result.TaskID)})
+				e.emit(ctx, platform.Event{Name: SentOutputsEvent, Data: []byte(result.TaskID)})
 			}
 		case <-ctx.Done():
 			break loop
@@ -71,7 +71,7 @@ loop:
 	return nil
 }
 
-func (e *Executor[Task]) emit(ctx context.Context, event platform2.Event) {
+func (e *Executor[Task]) emit(ctx context.Context, event platform.Event) {
 	var err error
 	event.Topic, err = e.topicResolver.Resolve(event.Name)
 

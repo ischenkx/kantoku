@@ -42,13 +42,13 @@ func (task Task) ID() string {
 // with a task
 
 type View struct {
-	kantoku  *Kernel
+	kernel   *Kernel
 	id       string
 	instance *Task
 }
 
-func (view *View) Kantoku() *Kernel {
-	return view.kantoku
+func (view *View) Kernel() *Kernel {
+	return view.kernel
 }
 
 func (view *View) ID() string {
@@ -70,7 +70,7 @@ func (view *View) Instance(ctx context.Context) (Task, error) {
 		return *view.instance, nil
 	}
 
-	instance, err := view.kantoku.platform.DB().Get(ctx, view.id)
+	instance, err := view.kernel.platform.DB().Get(ctx, view.id)
 	if err != nil {
 		return Task{}, err
 	}
@@ -80,5 +80,5 @@ func (view *View) Instance(ctx context.Context) (Task, error) {
 }
 
 func (view *View) Result(ctx context.Context) (platform.Result, error) {
-	return view.Kantoku().Outputs().Get(ctx, view.ID())
+	return view.Kernel().Outputs().Get(ctx, view.ID())
 }

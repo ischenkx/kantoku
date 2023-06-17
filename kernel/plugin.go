@@ -3,7 +3,7 @@ package kernel
 type Plugin any
 
 type InitializePlugin interface {
-	Initialize(kantoku Kernel)
+	Initialize(kernel Kernel)
 }
 
 type BeforeInitializedPlugin interface {
@@ -22,4 +22,10 @@ type AfterScheduledPlugin interface {
 	AfterScheduled(ctx *Context)
 }
 
-// initializer, ok := plugin.(InitializePlugin); ok { ... }
+type BeforePluginInitPlugin interface {
+	BeforePluginInit(kernel *Kernel, plugin Plugin) error
+}
+
+type AfterPluginInitPlugin interface {
+	AfterPluginInit(kernel *Kernel, plugin Plugin)
+}
