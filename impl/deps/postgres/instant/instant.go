@@ -121,14 +121,17 @@ func (d *Deps) MakeGroup(ctx context.Context, ids ...string) (string, error) {
 	}
 	defer tx.Rollback(ctx)
 
-	sql := `INSERT INTO InstantGroups (id, pending)
-			VALUES ($1,
-			        $2 - (SELECT COUNT(*) FROM InstantDependencies d WHERE d.resolved)
-			)`
-	_, err = tx.Exec(ctx, sql, id, len(ids))
-	if err != nil {
-		return "", err
+	sql := `
+			INSERT INTO InstantGroups (id, pending)
+			VALUES ($1, $2 - (SELECT COUNT(*) FROM InstantDependencies as d WHERE d.id = ANY ($3)))
+			RETURNING pending
+			`
+	result := tx.QueryRow(ctx, sql, id, len(ids), ids)
+	var pending int
+	if err := result.Scan(&pending); err != nil {
+		return "", fmt.Errorf("failed to scan number of pending dependencies for a group(%s): %s", id, err)
 	}
+	// if pending = 0, we need to add group to pool. It is done in the end of the method, after committing transaction
 
 	for _, dep := range ids {
 		sql := `INSERT INTO InstantGroupDependencies (dependency_id, group_id) VALUES ($1, $2)`
@@ -140,6 +143,13 @@ func (d *Deps) MakeGroup(ctx context.Context, ids ...string) (string, error) {
 
 	if err := tx.Commit(ctx); err != nil {
 		return "", fmt.Errorf("failed to commit the transaction: %s", err)
+	}
+	// it is possible that adding to pool but if it is so, it's id won't be used, and it shouldn't break anything
+	if pending == 0 {
+		// all deps have already been resolved
+		if err := d.resolvedGroups.Write(ctx, id); err != nil {
+			return "", fmt.Errorf("failed to add resolved group to pool: %s", err)
+		}
 	}
 
 	return id, nil
@@ -189,6 +199,11 @@ func (d *Deps) Resolve(ctx context.Context, dep string) error {
 			WHERE gd.dependency_id = $1 AND gd.group_id = g.id
 			RETURNING (SELECT g.id WHERE g.pending = 0)` // returns new value
 	resolved, err := tx.Query(ctx, sql, dep)
+	if err != nil {
+		return fmt.Errorf("failed to decrement group counters: %s", err)
+	}
+	defer resolved.Close()
+
 	var groups []string
 	for resolved.Next() {
 		// I do not understand wny it returns nulls when result should be empty
@@ -202,7 +217,7 @@ func (d *Deps) Resolve(ctx context.Context, dep string) error {
 	}
 	// now we just add groups to their queue
 	if err := d.resolvedGroups.Write(ctx, groups...); err != nil {
-		return fmt.Errorf("failed to add groups to queue")
+		return fmt.Errorf("failed to add groups to queue: %s", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {

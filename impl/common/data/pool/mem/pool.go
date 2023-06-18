@@ -11,9 +11,9 @@ import (
 )
 
 func New[T any](config Config) *Pool[T] {
-	pool := &Pool[T]{config: config}
-	go pool.runFlusher()
-	return pool
+	p := &Pool[T]{config: config}
+	go p.runFlusher()
+	return p
 }
 
 var _ pool.Pool[types.Object] = &Pool[types.Object]{}
@@ -62,12 +62,12 @@ func (p *Pool[T]) Read(ctx context.Context) (<-chan transactional.Object[T], err
 	return channel, nil
 }
 
-func (p *Pool[T]) Write(ctx context.Context, items ...T) error {
+func (p *Pool[T]) Write(_ context.Context, items ...T) error {
 	p.mu.Lock()
-	p.buffer = append(p.buffer, items...)
 	defer p.mu.Unlock()
+	p.buffer = append(p.buffer, items...)
 
-	p.flush(true) // doing that to guarantee no delay if someone is ready to read
+	p.lockedFlush() // doing that to guarantee no delay if someone is ready to read
 	return nil
 }
 
@@ -88,18 +88,13 @@ func (p *Pool[T]) runFlusher() {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		if !p.flush(false) {
+		if !p.flush() {
 			break
 		}
 	}
 }
 
-func (p *Pool[T]) flush(locked bool) bool {
-	if !locked {
-		p.mu.Lock()
-		defer p.mu.Unlock()
-	}
-
+func (p *Pool[T]) lockedFlush() bool {
 	if p.closed {
 		return false
 	}
@@ -111,6 +106,13 @@ func (p *Pool[T]) flush(locked bool) bool {
 	}
 
 	return true
+}
+
+func (p *Pool[T]) flush() bool {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	return p.lockedFlush()
 }
 
 func (p *Pool[T]) write() bool {
