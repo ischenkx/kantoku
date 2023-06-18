@@ -124,7 +124,7 @@ func TestPool(t *testing.T) {
 
 			ctx := context.Background()
 
-			for i := 1; i <= 10; i++ {
+			for i := 0; i <= 10; i++ {
 				// Generate a random number
 				generated := uuid.New().String()
 

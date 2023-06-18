@@ -275,6 +275,7 @@ func (d *Deps) scheduleGroups(ctx context.Context, batchSize int) error {
 	if err != nil {
 		return err
 	}
+	defer records.Close()
 
 	var groups []string
 	for records.Next() {
@@ -286,7 +287,6 @@ func (d *Deps) scheduleGroups(ctx context.Context, batchSize int) error {
 
 		groups = append(groups, id)
 	}
-	records.Close()
 
 	var failed, succeeded []string
 	for _, group := range groups {
@@ -300,17 +300,14 @@ func (d *Deps) scheduleGroups(ctx context.Context, batchSize int) error {
 	sql = `
 		UPDATE BatchedGroups g
 		SET    status = $1
-		FROM   (values ($2)) as s(id)
-		WHERE  g.id = s.id
+		WHERE  g.id = ANY($2)
 	`
 
-	formattedFailed := postgres.FormatValues(failed...)
-	if _, err := d.client.Exec(ctx, sql, WaitingStatus, formattedFailed); err != nil {
+	if _, err := d.client.Exec(ctx, sql, WaitingStatus, failed); err != nil {
 		log.Println("failed to update the groups that failed to be scheduled:", err)
 	}
 
-	formattedSucceeded := postgres.FormatValues(succeeded...)
-	if _, err := d.client.Exec(ctx, sql, ScheduledStatus, formattedSucceeded); err != nil {
+	if _, err := d.client.Exec(ctx, sql, ScheduledStatus, succeeded); err != nil {
 		log.Println("failed to update the groups that were scheduled:", err)
 	}
 	return nil

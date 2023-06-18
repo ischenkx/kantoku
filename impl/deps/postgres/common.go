@@ -21,6 +21,6 @@ func FormatValues(ids ...string) string {
 			return fmt.Sprintf("'%s'", item)
 		}),
 		", ")
-	values = fmt.Sprintf("(%s)", values)
+	values = fmt.Sprintf("%s", values)
 	return values
 }
