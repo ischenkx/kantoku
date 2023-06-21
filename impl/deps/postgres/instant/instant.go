@@ -7,8 +7,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"kantoku/common/data/pool"
 	"kantoku/common/data/transactional"
+	"kantoku/framework/plugins/depot/deps"
 	"kantoku/impl/deps/postgres"
-	"kantoku/unused/backend/framework/depot/deps"
 )
 
 var _ postgres.Deps = &Deps{}

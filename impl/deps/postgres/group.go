@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	"kantoku/unused/backend/framework/depot/deps"
+	"kantoku/framework/plugins/depot/deps"
 )
 
 type Group struct {
