@@ -2,6 +2,12 @@
 
 A platform for distributed task execution
 
+# Kantoku Framework Components
+
+![kantoku](assets/kantoku.png)
+
+# Kernel Task Pipeline
+
 ![pipeline](assets/pipeline.png)
 
 ### Links
