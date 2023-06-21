@@ -2,6 +2,7 @@ package futdep
 
 import (
 	"context"
+	"fmt"
 	"kantoku/common/data"
 	"kantoku/common/data/kv"
 	"kantoku/framework/future"
@@ -26,21 +27,24 @@ func (manager *Manager) Make(ctx context.Context, id future.ID) (string, error) 
 	if err == nil {
 		return dependencyID, nil
 	} else if err != data.NotFoundErr {
-		return "", err
+		return "", fmt.Errorf("failed to get data from fut2dep: %s", err)
 	}
 
 	dep, err := manager.deps.Make(ctx)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to make a dependency: %s", err)
 	}
 	res, _, err := manager.fut2dep.GetOrSet(ctx, id, dep.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve a dependency by a future id: %s", err)
+	}
 	return res, err
 }
 
 func (manager *Manager) ResolveFuture(ctx context.Context, id future.ID) error {
 	dep, err := manager.fut2dep.Get(ctx, id)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get a dependency id for the given future: %s", err)
 	}
 	return manager.deps.Resolve(ctx, dep)
 }

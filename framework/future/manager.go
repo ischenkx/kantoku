@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
+	"kantoku/common/data"
 	"kantoku/common/data/kv"
 )
 
@@ -51,12 +52,18 @@ func (manager *Manager) Resolve(ctx context.Context, id ID, resource Resource) e
 func (manager *Manager) Load(ctx context.Context, id ID) (Resolution, error) {
 	resource, err := manager.resources.Get(ctx, id)
 	if err != nil {
+		if err == data.NotFoundErr {
+			return Resolution{}, ErrNotResolved
+		}
 		return Resolution{}, fmt.Errorf("failed to load a resource: %s", err)
 	}
 
 	future, err := manager.futures.Get(ctx, id)
 	if err != nil {
-		return Resolution{}, fmt.Errorf("failed to load a future: %s", err)
+		if err != data.NotFoundErr {
+			err = fmt.Errorf("failed to load a future: %s", err)
+		}
+		return Resolution{}, err
 	}
 
 	return Resolution{Future: future, Resource: resource}, nil

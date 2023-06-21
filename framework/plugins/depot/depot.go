@@ -2,6 +2,7 @@ package depot
 
 import (
 	"context"
+	"fmt"
 	"kantoku/common/data/bimap"
 	"kantoku/framework/plugins/depot/deps"
 	"kantoku/kernel"
@@ -40,12 +41,13 @@ func (depot *Depot) Write(ctx context.Context, id string) error {
 
 	group, err := depot.Deps().MakeGroup(ctx, data.Dependencies...)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to make a dependency group: %s", err)
 	}
 
 	// TODO: possible inconsistency
+	// (if the task dependency group had been resolved and processed before the following line was executed)
 	if err := depot.groupTaskBimap.Save(ctx, group, id); err != nil {
-		return err
+		return fmt.Errorf("failed to save the (group, task) pair in the bimap: %s", err)
 	}
 
 	return nil
@@ -58,7 +60,7 @@ func (depot *Depot) Read(ctx context.Context) (<-chan string, error) {
 func (depot *Depot) Process(ctx context.Context) error {
 	ready, err := depot.Deps().Ready(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to initialize the 'ready' channel: %s", err)
 	}
 
 loop:
@@ -68,7 +70,6 @@ loop:
 		case <-ctx.Done():
 			break loop
 		case id := <-ready:
-			log.Println("ready:", id)
 			taskID, err := depot.groupTaskBimap.ByKey(ctx, id)
 			if err != nil {
 				log.Println("failed to get a task assigned to the group:", err)
