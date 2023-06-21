@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/samber/lo"
-	"kantoku/unused/backend/framework/depot/deps"
+	"kantoku/framework/plugins/depot/deps"
 	"strings"
 )
 

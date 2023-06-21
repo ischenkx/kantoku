@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"kantoku/impl/common/codec/jsoncodec"
 	redivent "kantoku/impl/platform/event/redis"
-	"kantoku/platform"
+	"kantoku/kernel/platform"
 	"log"
 	"math/rand"
 	"testing"

@@ -1,15 +1,15 @@
 <svg width="746" height="746" viewBox="0 0 746 746" fill="none" xmlns="http://www.w3.org/2000/svg">
-<g clip-path="url(#clip0_1_5)">
-<g style="mix-blend-mode:darken">
-<path d="M746 746H0V0L746 746Z" fill="#BDA1CA"/>
-</g>
-<g style="mix-blend-mode:multiply">
-<path d="M0 0H746L0 746V0Z" fill="#907ACD"/>
-</g>
-</g>
-<defs>
-<clipPath id="clip0_1_5">
-<rect width="746" height="746" fill="white"/>
-</clipPath>
-</defs>
+    <g clip-path="url(#clip0_1_5)">
+        <g style="mix-blend-mode:darken">
+            <path d="M746 746H0V0L746 746Z" fill="#BDA1CA"/>
+        </g>
+        <g style="mix-blend-mode:multiply">
+            <path d="M0 0H746L0 746V0Z" fill="#907ACD"/>
+        </g>
+    </g>
+    <defs>
+        <clipPath id="clip0_1_5">
+            <rect width="746" height="746" fill="white"/>
+        </clipPath>
+    </defs>
 </svg>

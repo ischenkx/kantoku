@@ -1,4 +1,4 @@
 testing/tmp
 .idea
-unused/stand/*/bin/*
+backend/stand/*/bin/*
 /tmp/

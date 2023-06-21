@@ -94,13 +94,13 @@ func TestKV(t *testing.T) {
 			val1 := Item{Data: uuid.New().String(), Name: uuid.New().String()}
 			val2 := Item{Data: uuid.New().String(), Name: uuid.New().String()}
 
-			receivedValue1, err := impl.GetOrSet(ctx, key, val1)
+			receivedValue1, _, err := impl.GetOrSet(ctx, key, val1)
 			if err != nil {
 				t.Fatal("failed:", err)
 			}
 			assert.Equal(t, val1, receivedValue1)
 
-			receivedValue2, err := impl.GetOrSet(ctx, key, val2)
+			receivedValue2, _, err := impl.GetOrSet(ctx, key, val2)
 			if err != nil {
 				t.Fatal("failed:", err)
 			}

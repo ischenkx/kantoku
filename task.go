@@ -2,83 +2,140 @@ package kantoku
 
 import (
 	"context"
-	"kantoku/platform"
+	"kantoku/common/data"
+	"kantoku/framework/future"
+	taskContext "kantoku/framework/plugins/context"
+	"kantoku/framework/plugins/depot/deps"
+	"kantoku/framework/plugins/meta"
+	"kantoku/framework/plugins/status"
+	"kantoku/kernel"
 )
 
-// Spec is an abstract representation of a task
-
-type Option func(ctx *Context) error
-
-type Spec struct {
-	Type    string
-	Data    []byte
-	Options []Option
+type Task struct {
+	id              string
+	kantoku         *Kantoku
+	parametrization Parametrization
+	raw             kernel.Task
+	cachedRaw       bool
+	cachedParam     bool
 }
 
-func Task(typ string, data []byte) Spec {
-	return Spec{
-		Type: typ,
-		Data: data,
-	}
+func (task *Task) ID() string {
+	return task.id
 }
 
-func (spec Spec) With(options ...Option) Spec {
-	spec.Options = append(spec.Options, options...)
-	return spec
-}
-
-// TaskInstance is a compiled spec.
-type TaskInstance struct {
-	Id   string
-	Type string
-	Data []byte
-}
-
-func (instance TaskInstance) ID() string {
-	return instance.Id
-}
-
-// View is a helper structure that provides convenient methods to work
-// with a task
-
-type View struct {
-	kantoku  *Kantoku
-	id       string
-	instance *TaskInstance
-}
-
-func (view *View) Kantoku() *Kantoku {
-	return view.kantoku
-}
-
-func (view *View) ID() string {
-	return view.id
-}
-
-func (view *View) Type(ctx context.Context) (string, error) {
-	stored, err := view.Instance(ctx)
-	return stored.Type, err
-}
-
-func (view *View) Data(ctx context.Context) ([]byte, error) {
-	stored, err := view.Instance(ctx)
-	return stored.Data, err
-}
-
-func (view *View) Instance(ctx context.Context) (TaskInstance, error) {
-	if view.instance != nil {
-		return *view.instance, nil
-	}
-
-	instance, err := view.kantoku.platform.DB().Get(ctx, view.id)
+func (task *Task) Status(ctx context.Context) (status.Status, error) {
+	info, err := task.Meta(ctx)
 	if err != nil {
-		return TaskInstance{}, err
+		return "", err
 	}
-	view.instance = &instance
 
-	return instance, nil
+	var value status.Status
+	err = info.Get("status").Load(ctx, &value)
+
+	if err == data.NotFoundErr {
+		return status.Unknown, nil
+	}
+
+	return value, err
 }
 
-func (view *View) Result(ctx context.Context) (platform.Result, error) {
-	return view.Kantoku().Outputs().Get(ctx, view.ID())
+func (task *Task) Context(ctx context.Context) (taskContext.Context, error) {
+	info, err := task.Meta(ctx)
+	if err != nil {
+		return taskContext.Empty, err
+	}
+
+	var id string
+	err = info.Get("context").Load(ctx, &id)
+
+	if err == data.NotFoundErr {
+		return taskContext.Empty, nil
+	}
+
+	return task.kantoku.contexts.Get(ctx, id)
+}
+
+func (task *Task) Meta(ctx context.Context) (meta.Meta, error) {
+	return task.kantoku.meta.Get(ctx, task.ID())
+}
+
+func (task *Task) Dependencies(ctx context.Context) ([]deps.Dependency, error) {
+	groupID, err := task.kantoku.depot.GroupTaskBimap().ByKey(ctx, task.ID())
+	if err != nil {
+		return nil, err
+	}
+
+	group, err := task.kantoku.depot.Deps().Group(ctx, groupID)
+	if err != nil {
+		return nil, err
+	}
+
+	return group.Dependencies, err
+}
+
+func (task *Task) Static(ctx context.Context) ([]byte, error) {
+	err := task.loadParametrization(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return task.parametrization.Static, nil
+}
+
+func (task *Task) Inputs(ctx context.Context) ([]future.ID, error) {
+	err := task.loadParametrization(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return task.parametrization.Inputs, nil
+}
+
+func (task *Task) Outputs(ctx context.Context) ([]future.ID, error) {
+	err := task.loadParametrization(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return task.parametrization.Outputs, nil
+}
+
+func (task *Task) Type(ctx context.Context) (string, error) {
+	err := task.loadRaw(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	return task.raw.Type, nil
+}
+
+func (task *Task) loadParametrization(ctx context.Context) error {
+	if task.cachedParam {
+		return nil
+	}
+	if err := task.loadRaw(ctx); err != nil {
+		return err
+	}
+
+	param, err := task.kantoku.parametrizationCodec.Decode(task.raw.Data)
+	if err != nil {
+		return err
+	}
+
+	task.cachedParam = true
+	task.parametrization = param
+	return nil
+}
+
+func (task *Task) loadRaw(ctx context.Context) error {
+	if task.cachedRaw {
+		return nil
+	}
+	raw, err := task.kantoku.kernel.Task(task.id).Instance(ctx)
+	if err != nil {
+		return err
+	}
+	task.raw = raw
+	return nil
 }

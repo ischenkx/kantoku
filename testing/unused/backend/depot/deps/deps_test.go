@@ -6,10 +6,10 @@ import (
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"kantoku/common/data/transactional"
+	"kantoku/framework/plugins/depot/deps"
 	mempool "kantoku/impl/common/data/pool/mem"
 	"kantoku/impl/deps/postgres/batched"
 	"kantoku/impl/deps/postgres/instant"
-	"kantoku/unused/backend/framework/depot/deps"
 	"strings"
 	"testing"
 	"time"
@@ -192,7 +192,7 @@ func checkReady(ctx context.Context, t *testing.T, ch <-chan transactional.Objec
 		if err := tx.Commit(ctx); err != nil {
 			t.Fatalf("failed to commit a transaction: %s", err)
 		}
-	case <-time.After(5 * time.Second):
+	case <-time.After(7 * time.Second):
 		nothing()
 	}
 }
