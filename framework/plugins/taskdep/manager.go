@@ -41,7 +41,6 @@ func (manager *Manager) SubtaskDependency(ctx context.Context, task string) (str
 }
 
 func (manager *Manager) ResolveTask(ctx context.Context, id string) error {
-	log.Println("resolving:", id, manager.task2dep)
 	dep, err := manager.task2dep.Get(ctx, id)
 	if err != nil {
 		return err
