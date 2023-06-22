@@ -2,6 +2,8 @@ name: Test Docs Deployment
 
 on:
   pull_request:
+    paths:
+      - docs/**
     branches:
       - master
     # Review gh actions docs if you want to further define triggers, paths, etc
