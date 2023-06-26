@@ -39,17 +39,29 @@ func (depot *Depot) GroupTaskBimap() bimap.Bimap[string, string] {
 
 func (depot *Depot) Write(ctx context.Context, ids ...string) error {
 	data := kernel.GetPluginData(ctx).GetWithDefault("dependencies", &PluginData{}).(*PluginData)
-	// what to do if there are multiple ids?
+	// what to do if there are multiple ids? (i have only one dependency list)
+	if len(ids) != 1 {
+		return fmt.Errorf("i do not know what to do with multiple task ids")
+	}
 
-	group, err := depot.Deps().MakeGroup(ctx, data.Dependencies...)
+	// obviously making dep for every task is not very cool, why I did that:
+	// 1) it is better to not allow bad groups to inputs queue than filter them when processing,
+	// because latter may cause read() -> error -> rollback() -> repeat
+	// on the other hand we can change deps interface so that group release is delayed
+	tmpDep, err := depot.Deps().Make(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to make a temporary dependency: %s", err)
+	}
+	group, err := depot.Deps().MakeGroup(ctx, append(data.Dependencies, tmpDep.ID)...)
 	if err != nil {
 		return fmt.Errorf("failed to make a dependency group: %s", err)
 	}
 
-	// TODO: possible inconsistency
-	// (if the task dependency group had been resolved and processed before the following line was executed)
-	if err := depot.groupTaskBimap.Save(ctx, group, id); err != nil {
+	if err := depot.groupTaskBimap.Save(ctx, group, ids[0]); err != nil {
 		return fmt.Errorf("failed to save the (group, task) pair in the bimap: %s", err)
+	}
+	if err := depot.Deps().Resolve(ctx, tmpDep.ID); err != nil {
+		return fmt.Errorf("failed to resolve tmp dep: %w", err)
 	}
 
 	return nil
@@ -79,7 +91,6 @@ loop:
 					log.Println("failed to get an id of a group:", err)
 					return
 				}
-				// TODO: check if task wasn't found because it's not yet added
 				taskID, err := depot.groupTaskBimap.ByKey(ctx, id)
 				if err != nil {
 					log.Println("failed to get a task assigned to the group:", err)
