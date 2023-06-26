@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kantoku/common/data/bimap"
+	"kantoku/common/data/transactional"
 	"kantoku/framework/plugins/depot/deps"
 	"kantoku/kernel"
 	"kantoku/kernel/platform"
@@ -36,7 +37,7 @@ func (depot *Depot) GroupTaskBimap() bimap.Bimap[string, string] {
 	return depot.groupTaskBimap
 }
 
-func (depot *Depot) Write(ctx context.Context, id string) error {
+func (depot *Depot) Write(ctx context.Context, ids ...string) error {
 	data := kernel.GetPluginData(ctx).GetWithDefault("dependencies", &PluginData{}).(*PluginData)
 
 	group, err := depot.Deps().MakeGroup(ctx, data.Dependencies...)
@@ -53,7 +54,7 @@ func (depot *Depot) Write(ctx context.Context, id string) error {
 	return nil
 }
 
-func (depot *Depot) Read(ctx context.Context) (<-chan string, error) {
+func (depot *Depot) Read(ctx context.Context) (<-chan transactional.Object[string], error) {
 	return depot.inputs.Read(ctx)
 }
 
@@ -69,16 +70,28 @@ loop:
 		select {
 		case <-ctx.Done():
 			break loop
-		case id := <-ready:
-			taskID, err := depot.groupTaskBimap.ByKey(ctx, id)
-			if err != nil {
-				log.Println("failed to get a task assigned to the group:", err)
-				continue
-			}
-			if err := depot.inputs.Write(ctx, taskID); err != nil {
-				log.Println("failed to schedule a task:", err)
-				continue
-			}
+		case tx := <-ready:
+			func() {
+				defer tx.Rollback(ctx)
+				id, err := tx.Get(ctx)
+				if err != nil {
+					log.Println("failed to get an id of a group:", err)
+					return
+				}
+				// TODO: check if task wasn't found because it's not yet added
+				taskID, err := depot.groupTaskBimap.ByKey(ctx, id)
+				if err != nil {
+					log.Println("failed to get a task assigned to the group:", err)
+					return
+				}
+				if err := depot.inputs.Write(ctx, taskID); err != nil {
+					log.Println("failed to schedule a task:", err)
+					return
+				}
+				if err := tx.Commit(ctx); err != nil {
+					log.Println("INCONSISTENCY! failed to commit reading group:", err)
+				}
+			}()
 		}
 	}
 
