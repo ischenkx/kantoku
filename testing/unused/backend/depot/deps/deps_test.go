@@ -10,6 +10,7 @@ import (
 	mempool "kantoku/impl/common/data/pool/mem"
 	"kantoku/impl/deps/postgres/batched"
 	"kantoku/impl/deps/postgres/instant"
+	"log"
 	"strings"
 	"testing"
 	"time"
@@ -29,7 +30,7 @@ func newBatchedDeps(ctx context.Context) deps.Deps {
 	app := batched.New(client, mempool.New[string](mempool.DefaultConfig))
 	err = app.DropTables(ctx)
 	if err != nil {
-		panic("failed to init postgres tables: " + err.Error())
+		log.Println("Warning: failed to drop postgres tables: ", err.Error())
 	}
 	err = app.InitTables(ctx)
 	if err != nil {
@@ -53,7 +54,7 @@ func newInstantDeps(ctx context.Context) deps.Deps {
 	app := instant.New(client, mempool.New[string](mempool.DefaultConfig))
 	err = app.DropTables(ctx)
 	if err != nil {
-		panic("failed to init postgres tables: " + err.Error())
+		log.Println("Warning: failed to drop postgres tables: ", err.Error())
 	}
 	err = app.InitTables(ctx)
 	if err != nil {

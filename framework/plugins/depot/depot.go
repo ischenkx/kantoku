@@ -39,6 +39,7 @@ func (depot *Depot) GroupTaskBimap() bimap.Bimap[string, string] {
 
 func (depot *Depot) Write(ctx context.Context, ids ...string) error {
 	data := kernel.GetPluginData(ctx).GetWithDefault("dependencies", &PluginData{}).(*PluginData)
+	// what to do if there are multiple ids?
 
 	group, err := depot.Deps().MakeGroup(ctx, data.Dependencies...)
 	if err != nil {

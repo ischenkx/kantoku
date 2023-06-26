@@ -11,6 +11,7 @@ import (
 	"kantoku/common/data/pool"
 	"kantoku/common/data/transactional"
 	"log"
+	"time"
 )
 
 var _ pool.Pool[types.Object] = &Pool[types.Object]{}
@@ -21,6 +22,8 @@ type Pool[T any] struct {
 	codec     codec.Codec[T, []byte]
 	topicName string
 }
+
+const PollPeriod = time.Millisecond * 100
 
 func New[T any](client redis.UniversalClient, codec codec.Codec[T, []byte], topicName string) *Pool[T] {
 	return &Pool[T]{
@@ -64,18 +67,26 @@ func (pool *Pool[T]) Read(ctx context.Context) (<-chan transactional.Object[T], 
 				break loop
 			default:
 			}
-			result, err := pool.client.BLPop(ctx, 0, pool.topicName).Result()
+
+			result, err := pool.client.LPop(ctx, pool.topicName).Result()
+
+			if err == redis.Nil {
+				// nothing in queue
+				time.Sleep(PollPeriod)
+				continue
+			}
+
 			if err != nil {
 				log.Println("failed to pop a task from the queue:", err)
 				continue
 			}
-
-			if len(result) != 2 {
-				log.Println("length of the result is not equal 2")
+			data := []byte(result)
+			output, err := pool.codec.Decode(data)
+			if err != nil {
+				log.Println("failed to decode the incoming message:", err)
 				continue
 			}
 
-			data := result[1]
 			select {
 			case <-ctx.Done():
 				// push results back value if context is closed
@@ -83,18 +94,12 @@ func (pool *Pool[T]) Read(ctx context.Context) (<-chan transactional.Object[T], 
 					log.Println("failed to push back value which was read after context was closed:", err)
 				}
 				break loop
-			default:
-			}
-
-			output, err := pool.codec.Decode([]byte(data))
-			if err != nil {
-				log.Println("failed to decode the incoming message:", err)
-				continue
-			}
-			outputs <- &Transaction[T]{
+			case outputs <- &Transaction[T]{
 				data: output,
 				pool: pool,
+			}:
 			}
+
 		}
 	}(ctx, channel)
 
