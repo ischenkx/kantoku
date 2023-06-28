@@ -14,7 +14,6 @@ import (
 	"math/rand"
 	"sort"
 	"testing"
-	"time"
 )
 
 func newMongoRecords(ctx context.Context) *mongorec.Storage {
@@ -64,7 +63,7 @@ const MaximumTestCases = 15
 const TotalRecords = 100
 
 func TestRecord(t *testing.T) {
-	rand.Seed(time.Now().UnixNano())
+	rand.Seed(42)
 	ctx := context.Background()
 	implementations := map[string]record.Storage{
 		"mongo": newMongoRecords(ctx),
@@ -89,6 +88,7 @@ func TestRecord(t *testing.T) {
 					t.Fatal("failed to insert:", err)
 				}
 			}
+
 			t.Log("Generation successfully finished!")
 
 			t.Run("Read operations", func(t *testing.T) {
@@ -178,7 +178,6 @@ func TestRecord(t *testing.T) {
 			})
 
 			t.Run("Write operations", func(t *testing.T) {
-
 				t.Run("Insert", func(t *testing.T) {
 					t.Run("Empty", func(t *testing.T) {
 						_ = specimen.Insert(ctx, record.R{})
@@ -247,6 +246,47 @@ func TestRecord(t *testing.T) {
 						}
 					})
 
+					t.Run("Upsert", func(t *testing.T) {
+						t.Run("Existing value", func(t *testing.T) {
+							testCases := randomTestCases()
+							for i := 0; i < testCases; i++ {
+								rec := specimen.Sample()
+								upsert := rec.Copy()
+								upsert["surname"] = uuid.New().String()
+
+								err := impl.
+									Filter(record.E{"id", rec["id"]}).
+									Update(ctx, rec, upsert)
+								assert.NoError(t, err)
+
+								_ = specimen.
+									Filter(record.E{"id", rec["id"]}).
+									Update(ctx, rec, upsert)
+
+								RunReadOperationsTests(ctx, t, impl, specimen)
+							}
+						})
+
+						t.Run("Not existing value", func(t *testing.T) {
+							testCases := randomTestCases()
+							for i := 0; i < testCases; i++ {
+								rec := randomRecord()
+								upsert := rec.Copy()
+								upsert["surname"] = uuid.New().String()
+
+								err := impl.
+									Filter(record.E{"id", rec["id"]}).
+									Update(ctx, rec, upsert)
+								assert.NoError(t, err)
+
+								_ = specimen.
+									Filter(record.E{"id", rec["id"]}).
+									Update(ctx, rec, upsert)
+
+								RunReadOperationsTests(ctx, t, impl, specimen)
+							}
+						})
+					})
 					// TODO: implement random
 
 				})
@@ -356,11 +396,13 @@ func TestRecord(t *testing.T) {
 }
 
 func RunReadOperationsTests(ctx context.Context, t *testing.T, impl, specimen record.Set) {
-	t.Run("Common", func(t *testing.T) {
-		RunCursorTests(ctx, t, impl.Cursor(), specimen.Cursor())
-	})
-	t.Run("Distinct", func(t *testing.T) {
-		RunDistinctTests(ctx, t, impl, specimen)
+	t.Run("Read Operations Suite", func(t *testing.T) {
+		t.Run("Common", func(t *testing.T) {
+			RunCursorTests(ctx, t, impl.Cursor(), specimen.Cursor())
+		})
+		t.Run("Distinct", func(t *testing.T) {
+			RunDistinctTests(ctx, t, impl, specimen)
+		})
 	})
 }
 

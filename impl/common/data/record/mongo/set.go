@@ -47,7 +47,12 @@ func (set Set) Update(ctx context.Context, update, upsert record.R) error {
 	bsonUpdate := bson.M{"$set": bsonifyRecord(update)}
 
 	if upsert != nil {
-		bsonUpdate["$setOnInsert"] = bsonifyRecord(upsert)
+		bsonUpsert := bsonifyRecord(upsert)
+		bsonSetter := bsonUpdate["$set"].(bson.M)
+		for key := range bsonSetter {
+			delete(bsonUpsert, key)
+		}
+		bsonUpdate["$setOnInsert"] = bsonUpsert
 	}
 
 	_, err := set.storage.collection.UpdateMany(ctx, makeFilter(set.filters), bsonUpdate, options.Update().SetUpsert(upsert != nil))
