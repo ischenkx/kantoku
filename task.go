@@ -2,11 +2,12 @@ package kantoku
 
 import (
 	"context"
+	"fmt"
 	"kantoku/common/data"
 	"kantoku/framework/future"
 	taskContext "kantoku/framework/plugins/context"
 	"kantoku/framework/plugins/depot/deps"
-	"kantoku/framework/plugins/meta"
+	"kantoku/framework/plugins/info"
 	"kantoku/framework/plugins/status"
 	"kantoku/kernel"
 )
@@ -25,39 +26,41 @@ func (task *Task) ID() string {
 }
 
 func (task *Task) Status(ctx context.Context) (status.Status, error) {
-	info, err := task.Meta(ctx)
+	value, err := task.Info().Get(ctx, "status")
 	if err != nil {
-		return "", err
+		if err == data.NotFoundErr {
+			return status.Unknown, nil
+		}
+		return "", fmt.Errorf("failed to retrieve status: %s", err)
 	}
 
-	var value status.Status
-	err = info.Get("status").Load(ctx, &value)
-
-	if err == data.NotFoundErr {
-		return status.Unknown, nil
+	stat, ok := value.(status.Status)
+	if !ok {
+		return status.Unknown, fmt.Errorf("failed to cast retrieved value to a status struct (value='%s')", value)
 	}
 
-	return value, err
+	return stat, nil
 }
 
 func (task *Task) Context(ctx context.Context) (taskContext.Context, error) {
-	info, err := task.Meta(ctx)
+	value, err := task.Info().Get(ctx, "context")
 	if err != nil {
-		return taskContext.Empty, err
+		if err == data.NotFoundErr {
+			return taskContext.Empty, nil
+		}
+		return taskContext.Empty, fmt.Errorf("failed to retrieve status: %s", err)
 	}
 
-	var id string
-	err = info.Get("context").Load(ctx, &id)
-
-	if err == data.NotFoundErr {
-		return taskContext.Empty, nil
+	cont, ok := value.(taskContext.Context)
+	if !ok {
+		return taskContext.Empty, fmt.Errorf("failed to cast retrieved value to a context struct (value='%s')", value)
 	}
 
-	return task.kantoku.contexts.Get(ctx, id)
+	return cont, nil
 }
 
-func (task *Task) Meta(ctx context.Context) (meta.Meta, error) {
-	return task.kantoku.meta.Get(ctx, task.ID())
+func (task *Task) Info() info.Info {
+	return task.kantoku.Info().Get(task.id)
 }
 
 func (task *Task) Dependencies(ctx context.Context) ([]deps.Dependency, error) {

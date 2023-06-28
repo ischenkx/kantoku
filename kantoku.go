@@ -4,19 +4,17 @@ import (
 	"context"
 	"kantoku/common/codec"
 	"kantoku/framework/future"
-	taskContext "kantoku/framework/plugins/context"
 	"kantoku/framework/plugins/depot"
 	"kantoku/framework/plugins/futdep"
-	"kantoku/framework/plugins/meta"
+	"kantoku/framework/plugins/info"
 	"kantoku/framework/plugins/taskdep"
 	"kantoku/kernel"
 )
 
 type Kantoku struct {
 	depot                *depot.Depot
-	contexts             taskContext.Database
 	parametrizationCodec codec.Codec[Parametrization, []byte]
-	meta                 *meta.Manager
+	info                 *info.Storage
 	futures              *future.Manager
 	futdep               *futdep.Manager
 	taskdep              *taskdep.Manager
@@ -48,16 +46,12 @@ func (kantoku *Kantoku) Task(id string) Task {
 	}
 }
 
-func (kantoku *Kantoku) Meta() *meta.Manager {
-	return kantoku.meta
+func (kantoku *Kantoku) Info() *info.Storage {
+	return kantoku.info
 }
 
 func (kantoku *Kantoku) Depot() *depot.Depot {
 	return kantoku.depot
-}
-
-func (kantoku *Kantoku) Contexts() taskContext.Database {
-	return kantoku.contexts
 }
 
 func (kantoku *Kantoku) Futures() *future.Manager {

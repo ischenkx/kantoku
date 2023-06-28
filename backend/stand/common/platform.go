@@ -12,11 +12,11 @@ import (
 	"kantoku/framework/plugins/depot"
 	"kantoku/impl/common/codec/jsoncodec"
 	"kantoku/impl/common/codec/strcodec"
-	rebimap "kantoku/impl/common/data/bimap/redis"
+	redimap "kantoku/impl/common/data/bimap/redis"
 	redikv "kantoku/impl/common/data/kv/redis"
 	redipool "kantoku/impl/common/data/pool/redis"
+	"kantoku/impl/deps/postgres/instant"
 	redivent "kantoku/impl/platform/event/redis"
-	"kantoku/impl/plugins/deps/postgres"
 	redismeta "kantoku/impl/plugins/meta/redis"
 	"kantoku/kernel"
 	"kantoku/kernel/platform"
@@ -68,9 +68,9 @@ func MakePostgresClient(ctx context.Context) *pgxpool.Pool {
 	return client
 }
 
-func MakeDeps() *postgredeps.Deps {
+func MakeDeps() *instant.Deps {
 	pg := MakePostgresClient(context.Background())
-	deps := postgredeps.New(
+	deps := instant.New(
 		pg,
 		redipool.New[string](MakeRedisClient(), strcodec.Codec{}, "depot_groups"),
 	)
@@ -83,7 +83,7 @@ func MakeDeps() *postgredeps.Deps {
 }
 
 func MakeDepotBimap() bimap.Bimap[string, string] {
-	return rebimap.NewBimap[string, string](
+	return redimap.NewBimap[string, string](
 		"keys___",
 		"values___",
 		strcodec.Codec{},
