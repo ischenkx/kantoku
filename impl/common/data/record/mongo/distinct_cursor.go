@@ -118,7 +118,7 @@ func (iter *DistinctIter) Next(ctx context.Context) (record.Record, error) {
 		return nil, fmt.Errorf("failed to decode the received data: %s", err)
 	}
 
-	rec := debsonifyRecord(doc.ID)
+	rec := bson2record(doc.ID)
 	for _, mask := range iter.masks {
 		if mask.Operation == record.IncludeMask {
 			if _, ok := rec[mask.PropertyPattern]; !ok {

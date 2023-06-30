@@ -80,7 +80,7 @@ func (iter *FilterIter) Next(ctx context.Context) (record.Record, error) {
 	}
 	delete(doc, "_id")
 
-	rec := debsonifyRecord(doc)
+	rec := bson2record(doc)
 	for _, mask := range iter.masks {
 		if mask.Operation == record.IncludeMask {
 			if _, ok := rec[mask.PropertyPattern]; !ok {

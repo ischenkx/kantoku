@@ -60,14 +60,14 @@ func (set Set) Update(ctx context.Context, update, upsert record.R) error {
 }
 
 func (set Set) Distinct(keys ...string) record.Cursor[record.Record] {
-	return DistinctCursor{
+	return Cursor{
 		set:  set,
 		keys: keys,
 	}
 }
 
 func (set Set) Cursor() record.Cursor[record.Record] {
-	return FilterCursor{
+	return Cursor{
 		set: set,
 	}
 }

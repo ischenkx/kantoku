@@ -21,7 +21,7 @@ func (storage *Storage) Insert(ctx context.Context, rec record.Record) error {
 	if len(rec) == 0 {
 		return nil
 	}
-	_, err := storage.collection.InsertOne(ctx, bsonifyRecord(rec))
+	_, err := storage.collection.InsertOne(ctx, record2bson(rec))
 	if err != nil {
 		return fmt.Errorf("failed to insert: %s", err)
 	}

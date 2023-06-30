@@ -44,10 +44,10 @@ func (set Set) Erase(ctx context.Context) error {
 }
 
 func (set Set) Update(ctx context.Context, update, upsert record.R) error {
-	bsonUpdate := bson.M{"$set": bsonifyRecord(update)}
+	bsonUpdate := bson.M{"$set": record2bson(update)}
 
 	if upsert != nil {
-		bsonUpsert := bsonifyRecord(upsert)
+		bsonUpsert := record2bson(upsert)
 		bsonSetter := bsonUpdate["$set"].(bson.M)
 		for key := range bsonSetter {
 			delete(bsonUpsert, key)
