@@ -2,3 +2,4 @@ testing/tmp
 .idea
 backend/stand/*/bin/*
 /tmp/
+local/
