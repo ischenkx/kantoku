@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"kantoku/common/data/record"
 	"kantoku/impl/common/data/record/dumb"
 	mongorec "kantoku/impl/common/data/record/mongo"
@@ -16,7 +17,7 @@ import (
 	"testing"
 )
 
-func newMongoRecords(ctx context.Context) *mongorec.Storage {
+func newMongoRecords(ctx context.Context) record.Storage {
 	// Set connection configurations
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
 
@@ -32,6 +33,10 @@ func newMongoRecords(ctx context.Context) *mongorec.Storage {
 			log.Println("failed to disconnect from mongodb:", err)
 		}
 	}()
+
+	if err := client.Ping(ctx, readpref.Nearest()); err != nil {
+		log.Fatal(err)
+	}
 
 	// Access the "main" database
 	database := client.Database("testing")
@@ -62,11 +67,10 @@ const MinimumTestCases = 5
 const MaximumTestCases = 15
 const TotalRecords = 100
 
-func TestSpecimen(t *testing.T) {
+func HandTest(t *testing.T, impl record.Storage) {
 	ctx := context.Background()
 	t.Log("Dataset initialization...")
-	t.Log("Generating random records...")
-	specimen := dumb.New()
+	t.Log("Generating records...")
 	raw := []record.R{
 		{
 			"updated_at": 1,
@@ -120,13 +124,13 @@ func TestSpecimen(t *testing.T) {
 	}
 
 	for _, rec := range raw {
-		_ = specimen.Insert(ctx, rec)
+		_ = impl.Insert(ctx, rec)
 	}
 
 	t.Log("Generation successfully finished!")
 
 	t.Run("Integrity", func(t *testing.T) {
-		data, err := collect(ctx, specimen.Cursor().Iter())
+		data, err := collect(ctx, impl.Cursor().Iter())
 		assert.NoError(t, err)
 
 		sort.Sort(recordSorter(data))
@@ -137,7 +141,7 @@ func TestSpecimen(t *testing.T) {
 
 	t.Run("Filters", func(t *testing.T) {
 		t.Run("no filter", func(t *testing.T) {
-			iter := specimen.Filter().Filter().Filter().Cursor().Iter()
+			iter := impl.Filter().Filter().Filter().Cursor().Iter()
 			data, err := collect(ctx, iter)
 			assert.NoError(t, err)
 			sorted(data, raw)
@@ -145,7 +149,7 @@ func TestSpecimen(t *testing.T) {
 			assertDatasetsEqual(t, data, raw)
 		})
 		t.Run("group:a", func(t *testing.T) {
-			iter := specimen.Filter(record.E{"group", "a"}).Cursor().Iter()
+			iter := impl.Filter(record.E{"group", "a"}).Cursor().Iter()
 			data, err := collect(ctx, iter)
 			assert.NoError(t, err)
 
@@ -157,7 +161,7 @@ func TestSpecimen(t *testing.T) {
 			assertDatasetsEqual(t, data, filteredRaw)
 		})
 		t.Run("id:3", func(t *testing.T) {
-			iter := specimen.Filter(record.E{"id", "3"}).Cursor().Iter()
+			iter := impl.Filter(record.E{"id", "3"}).Cursor().Iter()
 			data, err := collect(ctx, iter)
 			assert.NoError(t, err)
 
@@ -169,7 +173,7 @@ func TestSpecimen(t *testing.T) {
 			assertDatasetsEqual(t, data, filteredRaw)
 		})
 		t.Run("id:100500 (not existing)", func(t *testing.T) {
-			iter := specimen.Filter(record.E{"id", "100500"}).Cursor().Iter()
+			iter := impl.Filter(record.E{"id", "100500"}).Cursor().Iter()
 			data, err := collect(ctx, iter)
 			assert.NoError(t, err)
 
@@ -181,7 +185,7 @@ func TestSpecimen(t *testing.T) {
 			assertDatasetsEqual(t, data, filteredRaw)
 		})
 		t.Run("updated_at:3", func(t *testing.T) {
-			iter := specimen.Filter(record.E{"updated_at", 3}).Cursor().Iter()
+			iter := impl.Filter(record.E{"updated_at", 3}).Cursor().Iter()
 			data, err := collect(ctx, iter)
 			assert.NoError(t, err)
 
@@ -203,10 +207,10 @@ func TestSpecimen(t *testing.T) {
 			"group":      "y",
 		}
 		raw = append(raw, rec)
-		err := specimen.Insert(ctx, rec)
+		err := impl.Insert(ctx, rec)
 		assert.NoError(t, err)
 
-		data, err := collect(ctx, specimen.Cursor().Iter())
+		data, err := collect(ctx, impl.Cursor().Iter())
 		assert.NoError(t, err)
 
 		sorted(data, raw)
@@ -218,10 +222,10 @@ func TestSpecimen(t *testing.T) {
 			"updated_at": 100600,
 			"id":         "24",
 		}
-		err := specimen.Filter(record.E{"id", "42"}).Update(ctx, rec, nil)
+		err := impl.Filter(record.E{"id", "42"}).Update(ctx, rec, nil)
 		assert.NoError(t, err)
 
-		data, err := collect(ctx, specimen.Cursor().Iter())
+		data, err := collect(ctx, impl.Cursor().Iter())
 		assert.NoError(t, err)
 
 		for _, r := range raw {
@@ -238,339 +242,350 @@ func TestSpecimen(t *testing.T) {
 }
 
 func TestImplementations(t *testing.T) {
+	t.Run("Specimen hand-tests", func(t *testing.T) {
+		HandTest(t, dumb.New())
+	})
+
 	rand.Seed(42)
 	ctx := context.Background()
-	implementations := map[string]record.Storage{
-		"mongo": newMongoRecords(ctx),
+	implementations := map[string]func(ctx context.Context) record.Storage{
+		"mongo": newMongoRecords,
 	}
 
-	for label, _impl := range implementations {
-		impl := _impl
-
+	for label, makeImpl := range implementations {
 		t.Run(label, func(t *testing.T) {
-			t.Log("Dataset initialization...")
-			t.Log("Erasing all data...")
-			if err := impl.Erase(ctx); err != nil {
-				t.Fatal("failed to erase:", err)
-			}
+			impl := makeImpl(ctx)
 
-			t.Log("Generating random records...")
-			specimen := dumb.New()
-			var raw []record.R
-			for i := 0; i < TotalRecords; i++ {
-				rec := randomRecord()
-				_ = specimen.Insert(ctx, rec)
-				raw = append(raw, rec)
-				if err := impl.Insert(ctx, rec); err != nil {
-					t.Fatal("failed to insert:", err)
-				}
-			}
-			t.Log("Generation successfully finished!")
+			RunImplementationTests(ctx, t, impl, dumb.New())
+		})
+	}
+}
 
-			t.Run("Automated", func(t *testing.T) {
-				t.Run("Read operations", func(t *testing.T) {
-					t.Run("Not filtered", func(t *testing.T) {
-						RunReadOperationsTests(ctx, t, impl, specimen)
-					})
+func RunImplementationTests(ctx context.Context, t *testing.T, impl record.Storage, specimen *dumb.Storage) {
+	t.Run("Hand-tests", func(t *testing.T) {
+		HandTest(t, impl)
+	})
 
-					t.Run("Filtered", func(t *testing.T) {
-						t.Run("Single filter", func(t *testing.T) {
-							RunFilterTests(ctx, t, [][][]record.Entry{
-								{
-									{{"group", "a"}},
-								},
-							}, impl, specimen)
-						})
+	t.Log("Dataset initialization...")
+	t.Log("Erasing all data...")
+	if err := impl.Erase(ctx); err != nil {
+		t.Fatal("failed to erase:", err)
+	}
 
-						t.Run("Multiple filters (one term)", func(t *testing.T) {
-							RunFilterTests(ctx, t, [][][]record.Entry{
-								{
-									lo.Map(Groups, func(group string, _ int) record.E {
-										return record.E{"group", group}
-									}),
-								},
-							}, impl, specimen)
-						})
+	t.Log("Generating random records...")
+	var raw []record.R
+	for i := 0; i < TotalRecords; i++ {
+		rec := randomRecord()
+		_ = specimen.Insert(ctx, rec)
+		raw = append(raw, rec)
+		if err := impl.Insert(ctx, rec); err != nil {
+			t.Fatal("failed to insert:", err)
+		}
+	}
+	t.Log("Generation successfully finished!")
 
-						t.Run("Multiple filters (multiple terms)", func(t *testing.T) {
+	t.Run("Automated", func(t *testing.T) {
+		t.Run("Read operations", func(t *testing.T) {
+			t.Run("Not filtered", func(t *testing.T) {
+				RunReadOperationsTests(ctx, t, impl, specimen)
+			})
 
-							var groupFilters []record.E
-							var nameFilters []record.E
-
-							for i := 0; i < 5; i++ {
-								groupFilters = append(groupFilters,
-									record.E{"group", lo.Sample(Groups)})
-							}
-
-							for i := 0; i < 100; i++ {
-								val := specimen.Sample()["name"]
-								nameFilters = append(nameFilters, record.E{"name", val})
-							}
-
-							RunFilterTests(ctx, t, [][][]record.Entry{
-								{
-									groupFilters,
-									nameFilters,
-								},
-							}, impl, specimen)
-						})
-
-						t.Run("Not existing property", func(t *testing.T) {
-							RunFilterTests(ctx, t, [][][]record.Entry{
-								{
-									{{"x", "1"}, {"y", "2"}},
-									{{"x", "4"}, {"y", "3"}},
-								},
-							}, impl, specimen)
-						})
-
-						t.Run("Random", func(t *testing.T) {
-							var cases [][][]record.E
-
-							testCases := randomTestCases()
-							for i := 0; i < testCases; i++ {
-								var workingSet []record.R
-								for j := 0; j < TotalRecords/5; j++ {
-									workingSet = append(workingSet, specimen.Sample())
-								}
-
-								var _case [][]record.E
-								termsCount := 1 + rand.Intn(10)
-								for j := 0; j < termsCount; j++ {
-									var term []record.E
-									for k := 0; k < TotalRecords/8; k++ {
-										key := lo.Sample(Keys)
-										rec := lo.Sample(workingSet)
-
-										term = append(term, record.E{key, rec[key]})
-									}
-									_case = append(_case, term)
-								}
-								cases = append(cases, _case)
-							}
-
-							RunFilterTests(ctx, t, cases, impl, specimen)
-						})
-					})
+			t.Run("Filtered", func(t *testing.T) {
+				t.Run("Single filter", func(t *testing.T) {
+					RunFilterTests(ctx, t, [][][]record.Entry{
+						{
+							{{"group", "a"}},
+						},
+					}, impl, specimen)
 				})
 
-				t.Run("Write operations", func(t *testing.T) {
-					t.Run("Insert", func(t *testing.T) {
-						t.Run("Empty", func(t *testing.T) {
-							_ = specimen.Insert(ctx, record.R{})
-							if err := impl.Insert(ctx, record.R{}); err != nil {
-								t.Fatal("failed to insert:", err)
-							}
-							RunReadOperationsTests(ctx, t, impl, specimen)
-						})
-						t.Run("Random", func(t *testing.T) {
-							testCases := randomTestCases()
-							for i := 0; i < testCases; i++ {
-								rec := randomRecord()
-								_ = specimen.Insert(ctx, rec)
-								if err := impl.Insert(ctx, rec); err != nil {
-									t.Fatal("failed to insert:", err)
-								}
-								RunReadOperationsTests(ctx, t, impl, specimen)
-							}
-						})
+				t.Run("Multiple filters (one term)", func(t *testing.T) {
+					RunFilterTests(ctx, t, [][][]record.Entry{
+						{
+							lo.Map(Groups, func(group string, _ int) record.E {
+								return record.E{"group", group}
+							}),
+						},
+					}, impl, specimen)
+				})
 
-					})
-					t.Run("Update", func(t *testing.T) {
-						t.Run("By ID", func(t *testing.T) {
-							testCases := randomTestCases()
-							for i := 0; i < testCases; i++ {
-								sample := specimen.Sample()
+				t.Run("Multiple filters (multiple terms)", func(t *testing.T) {
+
+					var groupFilters []record.E
+					var nameFilters []record.E
+
+					for i := 0; i < 5; i++ {
+						groupFilters = append(groupFilters,
+							record.E{"group", lo.Sample(Groups)})
+					}
+
+					for i := 0; i < 100; i++ {
+						val := specimen.Sample()["name"]
+						nameFilters = append(nameFilters, record.E{"name", val})
+					}
+
+					RunFilterTests(ctx, t, [][][]record.Entry{
+						{
+							groupFilters,
+							nameFilters,
+						},
+					}, impl, specimen)
+				})
+
+				t.Run("Not existing property", func(t *testing.T) {
+					RunFilterTests(ctx, t, [][][]record.Entry{
+						{
+							{{"x", "1"}, {"y", "2"}},
+							{{"x", "4"}, {"y", "3"}},
+						},
+					}, impl, specimen)
+				})
+
+				t.Run("Random", func(t *testing.T) {
+					var cases [][][]record.E
+
+					testCases := randomTestCases()
+					for i := 0; i < testCases; i++ {
+						var workingSet []record.R
+						for j := 0; j < TotalRecords/5; j++ {
+							workingSet = append(workingSet, specimen.Sample())
+						}
+
+						var _case [][]record.E
+						termsCount := 1 + rand.Intn(10)
+						for j := 0; j < termsCount; j++ {
+							var term []record.E
+							for k := 0; k < TotalRecords/8; k++ {
 								key := lo.Sample(Keys)
-								var newValue any
-								switch key {
-								case "group":
-									newValue = lo.Sample(Groups)
-								case "updated_at":
-									newValue = rand.Intn(1 << 20)
-								default:
-									newValue = uuid.New().String()
-								}
-								_ = specimen.Filter(record.E{"id", sample["id"]}).Update(ctx, record.R{key: newValue}, nil)
-								err := impl.Filter(record.E{"id", sample["id"]}).Update(ctx, record.R{key: newValue}, nil)
-								assert.NoError(t, err)
+								rec := lo.Sample(workingSet)
 
-								RunReadOperationsTests(ctx, t, impl, specimen)
+								term = append(term, record.E{key, rec[key]})
 							}
-						})
+							_case = append(_case, term)
+						}
+						cases = append(cases, _case)
+					}
 
-						t.Run("By Group", func(t *testing.T) {
-							testCases := randomTestCases()
-							for i := 0; i < testCases; i++ {
-								sample := specimen.Sample()
-								key := lo.Sample(Keys)
-								if key == "group" {
-									key = "id"
-								}
+					RunFilterTests(ctx, t, cases, impl, specimen)
+				})
+			})
+		})
 
-								var newValue any
-								switch key {
-								case "updated_at":
-									newValue = rand.Intn(1 << 20)
-								default:
-									newValue = uuid.New().String()
-								}
-								_ = specimen.Filter(record.E{"group", sample["group"]}).Update(ctx, record.R{key: newValue}, nil)
-								err := impl.Filter(record.E{"group", sample["group"]}).Update(ctx, record.R{key: newValue}, nil)
-								assert.NoError(t, err)
+		t.Run("Write operations", func(t *testing.T) {
+			t.Run("Insert", func(t *testing.T) {
+				t.Run("Empty", func(t *testing.T) {
+					_ = specimen.Insert(ctx, record.R{})
+					if err := impl.Insert(ctx, record.R{}); err != nil {
+						t.Fatal("failed to insert:", err)
+					}
+					RunReadOperationsTests(ctx, t, impl, specimen)
+				})
+				t.Run("Random", func(t *testing.T) {
+					testCases := randomTestCases()
+					for i := 0; i < testCases; i++ {
+						rec := randomRecord()
+						_ = specimen.Insert(ctx, rec)
+						if err := impl.Insert(ctx, rec); err != nil {
+							t.Fatal("failed to insert:", err)
+						}
+						RunReadOperationsTests(ctx, t, impl, specimen)
+					}
+				})
 
-								RunReadOperationsTests(ctx, t, impl, specimen)
-							}
-						})
+			})
+			t.Run("Update", func(t *testing.T) {
+				t.Run("By ID", func(t *testing.T) {
+					testCases := randomTestCases()
+					for i := 0; i < testCases; i++ {
+						sample := specimen.Sample()
+						key := lo.Sample(Keys)
+						var newValue any
+						switch key {
+						case "group":
+							newValue = lo.Sample(Groups)
+						case "updated_at":
+							newValue = rand.Intn(1 << 20)
+						default:
+							newValue = uuid.New().String()
+						}
+						_ = specimen.Filter(record.E{"id", sample["id"]}).Update(ctx, record.R{key: newValue}, nil)
+						err := impl.Filter(record.E{"id", sample["id"]}).Update(ctx, record.R{key: newValue}, nil)
+						assert.NoError(t, err)
 
-						t.Run("Upsert", func(t *testing.T) {
-							t.Run("Existing value", func(t *testing.T) {
-								testCases := randomTestCases()
-								for i := 0; i < testCases; i++ {
-									rec := specimen.Sample()
-									upsert := rec.Copy()
-									upsert["surname"] = uuid.New().String()
+						RunReadOperationsTests(ctx, t, impl, specimen)
+					}
+				})
 
-									err := impl.
-										Filter(record.E{"id", rec["id"]}).
-										Update(ctx, rec, upsert)
-									assert.NoError(t, err)
+				t.Run("By Group", func(t *testing.T) {
+					testCases := randomTestCases()
+					for i := 0; i < testCases; i++ {
+						sample := specimen.Sample()
+						key := lo.Sample(Keys)
+						if key == "group" {
+							key = "id"
+						}
 
-									_ = specimen.
-										Filter(record.E{"id", rec["id"]}).
-										Update(ctx, rec, upsert)
+						var newValue any
+						switch key {
+						case "updated_at":
+							newValue = rand.Intn(1 << 20)
+						default:
+							newValue = uuid.New().String()
+						}
+						_ = specimen.Filter(record.E{"group", sample["group"]}).Update(ctx, record.R{key: newValue}, nil)
+						err := impl.Filter(record.E{"group", sample["group"]}).Update(ctx, record.R{key: newValue}, nil)
+						assert.NoError(t, err)
 
-									RunReadOperationsTests(ctx, t, impl, specimen)
-								}
-							})
+						RunReadOperationsTests(ctx, t, impl, specimen)
+					}
+				})
 
-							t.Run("Not existing value", func(t *testing.T) {
-								testCases := randomTestCases()
-								for i := 0; i < testCases; i++ {
-									rec := randomRecord()
-									upsert := rec.Copy()
-									upsert["surname"] = uuid.New().String()
-
-									err := impl.
-										Filter(record.E{"id", rec["id"]}).
-										Update(ctx, rec, upsert)
-									assert.NoError(t, err)
-
-									_ = specimen.
-										Filter(record.E{"id", rec["id"]}).
-										Update(ctx, rec, upsert)
-
-									RunReadOperationsTests(ctx, t, impl, specimen)
-								}
-							})
-						})
-						// TODO: implement random
-
-					})
-					t.Run("Erase", func(t *testing.T) {
+				t.Run("Upsert", func(t *testing.T) {
+					t.Run("Existing value", func(t *testing.T) {
 						testCases := randomTestCases()
 						for i := 0; i < testCases; i++ {
-							sample := specimen.Sample()
-							key := lo.Sample(Keys)
-							value := sample[key]
+							rec := specimen.Sample()
+							upsert := rec.Copy()
+							upsert["surname"] = uuid.New().String()
 
-							_ = specimen.Filter(record.E{key, value}).Erase(ctx)
-							err := impl.Filter(record.E{key, value}).Erase(ctx)
+							err := impl.
+								Filter(record.E{"id", rec["id"]}).
+								Update(ctx, rec, upsert)
 							assert.NoError(t, err)
+
+							_ = specimen.
+								Filter(record.E{"id", rec["id"]}).
+								Update(ctx, rec, upsert)
+
+							RunReadOperationsTests(ctx, t, impl, specimen)
+						}
+					})
+
+					t.Run("Not existing value", func(t *testing.T) {
+						testCases := randomTestCases()
+						for i := 0; i < testCases; i++ {
+							rec := randomRecord()
+							upsert := rec.Copy()
+							upsert["surname"] = uuid.New().String()
+
+							err := impl.
+								Filter(record.E{"id", rec["id"]}).
+								Update(ctx, rec, upsert)
+							assert.NoError(t, err)
+
+							_ = specimen.
+								Filter(record.E{"id", rec["id"]}).
+								Update(ctx, rec, upsert)
 
 							RunReadOperationsTests(ctx, t, impl, specimen)
 						}
 					})
 				})
+				// TODO: implement random
 
-				t.Run("Post Write Read operations", func(t *testing.T) {
-					t.Run("Not filtered", func(t *testing.T) {
-						RunReadOperationsTests(ctx, t, impl, specimen)
-					})
+			})
+			t.Run("Erase", func(t *testing.T) {
+				testCases := randomTestCases()
+				for i := 0; i < testCases; i++ {
+					sample := specimen.Sample()
+					key := lo.Sample(Keys)
+					value := sample[key]
 
-					t.Run("Filtered", func(t *testing.T) {
-						t.Run("Single filter", func(t *testing.T) {
-							RunFilterTests(ctx, t, [][][]record.Entry{
-								{
-									{{"group", "a"}},
-								},
-							}, impl, specimen)
-						})
+					_ = specimen.Filter(record.E{key, value}).Erase(ctx)
+					err := impl.Filter(record.E{key, value}).Erase(ctx)
+					assert.NoError(t, err)
 
-						t.Run("Multiple filters (one term)", func(t *testing.T) {
-							RunFilterTests(ctx, t, [][][]record.Entry{
-								{
-									lo.Map(Groups, func(group string, _ int) record.E {
-										return record.E{"group", group}
-									}),
-								},
-							}, impl, specimen)
-						})
+					RunReadOperationsTests(ctx, t, impl, specimen)
+				}
+			})
+		})
 
-						t.Run("Multiple filters (multiple terms)", func(t *testing.T) {
+		t.Run("Post Write Read operations", func(t *testing.T) {
+			t.Run("Not filtered", func(t *testing.T) {
+				RunReadOperationsTests(ctx, t, impl, specimen)
+			})
 
-							var groupFilters []record.E
-							var nameFilters []record.E
+			t.Run("Filtered", func(t *testing.T) {
+				t.Run("Single filter", func(t *testing.T) {
+					RunFilterTests(ctx, t, [][][]record.Entry{
+						{
+							{{"group", "a"}},
+						},
+					}, impl, specimen)
+				})
 
-							for i := 0; i < 5; i++ {
-								groupFilters = append(groupFilters,
-									record.E{"group", lo.Sample(Groups)})
+				t.Run("Multiple filters (one term)", func(t *testing.T) {
+					RunFilterTests(ctx, t, [][][]record.Entry{
+						{
+							lo.Map(Groups, func(group string, _ int) record.E {
+								return record.E{"group", group}
+							}),
+						},
+					}, impl, specimen)
+				})
+
+				t.Run("Multiple filters (multiple terms)", func(t *testing.T) {
+
+					var groupFilters []record.E
+					var nameFilters []record.E
+
+					for i := 0; i < 5; i++ {
+						groupFilters = append(groupFilters,
+							record.E{"group", lo.Sample(Groups)})
+					}
+
+					for i := 0; i < 100; i++ {
+						val := specimen.Sample()["name"]
+						nameFilters = append(nameFilters, record.E{"name", val})
+					}
+
+					RunFilterTests(ctx, t, [][][]record.Entry{
+						{
+							groupFilters,
+							nameFilters,
+						},
+					}, impl, specimen)
+				})
+
+				t.Run("Not existing property", func(t *testing.T) {
+					RunFilterTests(ctx, t, [][][]record.Entry{
+						{
+							{{"x", "1"}, {"y", "2"}},
+							{{"x", "4"}, {"y", "3"}},
+						},
+					}, impl, specimen)
+				})
+
+				t.Run("Random", func(t *testing.T) {
+					var cases [][][]record.E
+
+					testCases := randomTestCases()
+					for i := 0; i < testCases; i++ {
+						var workingSet []record.R
+						for j := 0; j < TotalRecords/5; j++ {
+							workingSet = append(workingSet, specimen.Sample())
+						}
+
+						var _case [][]record.E
+						termsCount := 1 + rand.Intn(10)
+						for j := 0; j < termsCount; j++ {
+							var term []record.E
+							for k := 0; k < TotalRecords/8; k++ {
+								key := lo.Sample(Keys)
+								rec := lo.Sample(workingSet)
+
+								term = append(term, record.E{key, rec[key]})
 							}
+							_case = append(_case, term)
+						}
+						cases = append(cases, _case)
+					}
 
-							for i := 0; i < 100; i++ {
-								val := specimen.Sample()["name"]
-								nameFilters = append(nameFilters, record.E{"name", val})
-							}
-
-							RunFilterTests(ctx, t, [][][]record.Entry{
-								{
-									groupFilters,
-									nameFilters,
-								},
-							}, impl, specimen)
-						})
-
-						t.Run("Not existing property", func(t *testing.T) {
-							RunFilterTests(ctx, t, [][][]record.Entry{
-								{
-									{{"x", "1"}, {"y", "2"}},
-									{{"x", "4"}, {"y", "3"}},
-								},
-							}, impl, specimen)
-						})
-
-						t.Run("Random", func(t *testing.T) {
-							var cases [][][]record.E
-
-							testCases := randomTestCases()
-							for i := 0; i < testCases; i++ {
-								var workingSet []record.R
-								for j := 0; j < TotalRecords/5; j++ {
-									workingSet = append(workingSet, specimen.Sample())
-								}
-
-								var _case [][]record.E
-								termsCount := 1 + rand.Intn(10)
-								for j := 0; j < termsCount; j++ {
-									var term []record.E
-									for k := 0; k < TotalRecords/8; k++ {
-										key := lo.Sample(Keys)
-										rec := lo.Sample(workingSet)
-
-										term = append(term, record.E{key, rec[key]})
-									}
-									_case = append(_case, term)
-								}
-								cases = append(cases, _case)
-							}
-
-							RunFilterTests(ctx, t, cases, impl, specimen)
-						})
-					})
+					RunFilterTests(ctx, t, cases, impl, specimen)
 				})
 			})
 		})
-	}
+	})
 }
 
 func RunReadOperationsTests(ctx context.Context, t *testing.T, impl, specimen record.Set) {
