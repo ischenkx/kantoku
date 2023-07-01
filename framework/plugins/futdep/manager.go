@@ -30,7 +30,7 @@ func (manager *Manager) Make(ctx context.Context, id future.ID) (string, error) 
 		return "", fmt.Errorf("failed to get data from fut2dep: %s", err)
 	}
 
-	dep, err := manager.deps.Make(ctx)
+	dep, err := manager.deps.MakeDependency(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to make a dependency: %s", err)
 	}

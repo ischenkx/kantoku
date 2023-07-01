@@ -177,34 +177,6 @@ func TestDeps(t *testing.T) {
 					})
 				}
 			})
-
-			t.Run("intercept is called", func(t *testing.T) {
-				ctx, cancel := context.WithCancel(ctx)
-				defer cancel()
-
-				impl := newImpl(ctx)
-				ch := make(chan bool, 1)
-				interceptId := ""
-				interceptCalled := false
-				group, err := impl.MakeGroup(ctx, func(ctx context.Context, id string) error {
-					if interceptCalled {
-						t.Fatalf("intercept called twice")
-					}
-					interceptCalled = true
-					ch <- true
-					interceptId = id
-					return nil
-				})
-				if err != nil {
-					t.Fatalf("failed to create group: %s", err)
-				}
-				select {
-				case <-ch:
-					assert.Equal(t, group, interceptId, "id passed to intercept is not the same as returned")
-				default: // assumes intercept blocks MakeGroup
-					t.Fatalf("intercept wasn't called")
-				}
-			})
 		})
 	}
 }
@@ -255,7 +227,7 @@ func getDep(ctx context.Context, impl deps.Deps, t *testing.T, id string) deps.D
 }
 
 func makeDep(ctx context.Context, impl deps.Deps, t *testing.T) deps.Dependency {
-	dep, err := impl.Make(ctx)
+	dep, err := impl.MakeDependency(ctx)
 	if err != nil {
 		t.Fatal("failed to make a dependency:", err)
 	}
@@ -263,10 +235,11 @@ func makeDep(ctx context.Context, impl deps.Deps, t *testing.T) deps.Dependency 
 }
 
 func makeGroup(ctx context.Context, impl deps.Deps, t *testing.T, ids ...string) string {
-	group, err := impl.MakeGroup(ctx, func(ctx context.Context, id string) error {
-		return nil
-	}, ids...)
+	group, err := impl.MakeGroupId(ctx)
 	if err != nil {
+		t.Fatalf("failed to create group from dependecies(%s):\n%s", strings.Join(ids, ", "), err)
+	}
+	if err := impl.SaveGroup(ctx, group, ids...); err != nil {
 		t.Fatalf("failed to create group from dependecies(%s):\n%s", strings.Join(ids, ", "), err)
 	}
 	return group

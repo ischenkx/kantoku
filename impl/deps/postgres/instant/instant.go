@@ -97,10 +97,10 @@ func (d *Deps) Group(ctx context.Context, group string) (deps.Group, error) {
 	return result, nil
 }
 
-// Make generates a new dependency (but it does not store the information about it in the database
+// MakeDependency generates a new dependency (but it does not store the information about it in the database
 //
 // Generation algorithm: UUID
-func (d *Deps) Make(_ context.Context) (deps.Dependency, error) {
+func (d *Deps) MakeDependency(_ context.Context) (deps.Dependency, error) {
 	id := uuid.New().String()
 
 	return deps.Dependency{
@@ -109,21 +109,14 @@ func (d *Deps) Make(_ context.Context) (deps.Dependency, error) {
 	}, nil
 }
 
-// MakeGroup creates a new dependency group
-//
-// NOTE: the new group's id is generated via a UUID algorithm
-func (d *Deps) MakeGroup(ctx context.Context, intercept func(context.Context, string) error,
-	ids ...string) (string, error) {
+func (d *Deps) MakeGroupId(ctx context.Context) (string, error) {
+	return uuid.New().String(), nil
+}
 
-	id := uuid.New().String()
-
-	if err := intercept(ctx, id); err != nil {
-		return "", fmt.Errorf("failed to call intercept: %w", err)
-	}
-
+func (d *Deps) SaveGroup(ctx context.Context, groupId string, depIds ...string) error {
 	tx, err := d.client.Begin(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to begin a postgres transaction: %s", tx)
+		return fmt.Errorf("failed to begin a postgres transaction: %s", tx)
 	}
 	defer tx.Rollback(ctx)
 
@@ -132,33 +125,32 @@ func (d *Deps) MakeGroup(ctx context.Context, intercept func(context.Context, st
 			VALUES ($1, $2 - (SELECT COUNT(*) FROM InstantDependencies as d WHERE d.id = ANY ($3)))
 			RETURNING pending
 			`
-	result := tx.QueryRow(ctx, sql, id, len(ids), ids)
+	result := tx.QueryRow(ctx, sql, groupId, len(depIds), depIds)
 	var pending int
 	if err := result.Scan(&pending); err != nil {
-		return "", fmt.Errorf("failed to scan number of pending dependencies for a group(%s): %s", id, err)
+		return fmt.Errorf("failed to scan number of pending dependencies for a group(%s): %s", groupId, err)
 	}
 	// if pending = 0, we need to add group to pool. It is done in the end of the method, after committing transaction
 
-	for _, dep := range ids {
+	for _, dep := range depIds {
 		sql := `INSERT INTO InstantGroupDependencies (dependency_id, group_id) VALUES ($1, $2)`
-		_, err := tx.Exec(ctx, sql, dep, id)
-		if err != nil {
-			return "", err
+		if _, err := tx.Exec(ctx, sql, dep, groupId); err != nil {
+			return err
 		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return "", fmt.Errorf("failed to commit the transaction: %s", err)
+		return fmt.Errorf("failed to commit the transaction: %s", err)
 	}
 	// it is possible that adding to pool but if it is so, it's id won't be used, and it shouldn't break anything
 	if pending == 0 {
 		// all deps have already been resolved
-		if err := d.resolvedGroups.Write(ctx, id); err != nil {
-			return "", fmt.Errorf("failed to add resolved group to pool: %s", err)
+		if err := d.resolvedGroups.Write(ctx, groupId); err != nil {
+			return fmt.Errorf("failed to add resolved group to pool: %s", err)
 		}
 	}
 
-	return id, nil
+	return nil
 }
 
 func (d *Deps) Resolve(ctx context.Context, dep string) error {

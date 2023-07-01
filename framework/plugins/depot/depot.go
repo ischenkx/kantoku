@@ -2,7 +2,6 @@ package depot
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"kantoku/common/data/bimap"
 	"kantoku/common/data/transactional"
@@ -47,17 +46,22 @@ func (depot *Depot) Write(ctx context.Context, ids ...string) error {
 
 	data := kernel.GetPluginData(ctx).GetWithDefault("dependencies", &PluginData{}).(*PluginData)
 
-	// todo: somehow process error after intercepting
-	group, err := depot.Deps().MakeGroup(ctx, func(ctx context.Context, id string) error {
-		err := depot.groupTaskBimap.Save(ctx, id, taskId)
-		if err != nil {
-			return fmt.Errorf("failed to save the (group, task) pair in the bimap: %w", err)
-		}
-		return nil
-	}, data.Dependencies...)
-	if errors.Is(err, "failed to save the (group, task) pair in the bimap:")
+	group, err := depot.Deps().MakeGroupId(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to make a dependency group: %s", err)
+		return fmt.Errorf("failed to make group id: %w", err)
+	}
+
+	if err := depot.groupTaskBimap.Save(ctx, group, taskId); err != nil {
+		return fmt.Errorf("failed to save the (group, task) pair in the bimap: %w", err)
+	}
+
+	if err := depot.Deps().SaveGroup(ctx, group, data.Dependencies...); err != nil {
+		returningErr := fmt.Errorf("failed to make a dependency group: %s", err)
+		if err := depot.groupTaskBimap.DeleteByKey(ctx, group); err != nil {
+			return fmt.Errorf("%w\nalso failed to remove (group, task) pair from the bimap: %w",
+				returningErr, err)
+		}
+		return returningErr
 	}
 
 	return nil

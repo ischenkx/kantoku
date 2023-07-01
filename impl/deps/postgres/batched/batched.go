@@ -100,10 +100,10 @@ func (d *Deps) Group(ctx context.Context, group string) (deps.Group, error) {
 	return result, nil
 }
 
-// Make generates a new dependency (but it does not store the information about it in the database
+// MakeDependency generates a new dependency (but it does not store the information about it in the database
 //
 // Generation algorithm: UUID
-func (d *Deps) Make(ctx context.Context) (deps.Dependency, error) {
+func (d *Deps) MakeDependency(ctx context.Context) (deps.Dependency, error) {
 	id := uuid.New().String()
 
 	return deps.Dependency{
@@ -112,43 +112,35 @@ func (d *Deps) Make(ctx context.Context) (deps.Dependency, error) {
 	}, nil
 }
 
-// MakeGroup creates a new dependency group
-//
-// NOTE: the new group's id is generated via a UUID algorithm
-func (d *Deps) MakeGroup(ctx context.Context, intercept func(context.Context, string) error,
-	ids ...string) (string, error) {
+func (d *Deps) MakeGroupId(_ context.Context) (string, error) {
+	return uuid.New().String(), nil
+}
 
-	id := uuid.New().String()
-	if err := intercept(ctx, id); err != nil {
-		return "", fmt.Errorf("failed to call intercept: %w", err)
-	}
-
+func (d *Deps) SaveGroup(ctx context.Context, groupId string, depIds ...string) error {
 	status := InitializingStatus
 	tx, err := d.client.Begin(ctx)
 	if err != nil {
-		return "", fmt.Errorf("failed to begin a postgres transaction: %s", tx)
+		return fmt.Errorf("failed to begin a postgres transaction: %s", tx)
 	}
 	defer tx.Rollback(ctx)
 
 	sql := `INSERT INTO BatchedGroups (id, pending, status) VALUES ($1, $2, $3)`
-	_, err = tx.Exec(ctx, sql, id, -1, status)
-	if err != nil {
-		return "", err
+	if _, err := tx.Exec(ctx, sql, groupId, -1, status); err != nil {
+		return err
 	}
 
-	for _, dep := range ids {
+	for _, dep := range depIds {
 		sql := `INSERT INTO BatchedGroupDependencies (dependency_id, group_id) VALUES ($1, $2)`
-		_, err := tx.Exec(ctx, sql, dep, id)
-		if err != nil {
-			return "", err
+		if _, err := tx.Exec(ctx, sql, dep, groupId); err != nil {
+			return err
 		}
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return "", fmt.Errorf("failed to commit the transaction: %s", err)
+		return fmt.Errorf("failed to commit the transaction: %s", err)
 	}
 
-	return id, nil
+	return nil
 }
 
 func (d *Deps) Resolve(ctx context.Context, dep string) error {

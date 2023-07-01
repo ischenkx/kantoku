@@ -29,7 +29,7 @@ func (manager *Manager) SubtaskDependency(ctx context.Context, task string) (str
 		return "", err
 	}
 
-	dep, err := manager.deps.Make(ctx)
+	dep, err := manager.deps.MakeDependency(ctx)
 	if err != nil {
 		return "", err
 	}
