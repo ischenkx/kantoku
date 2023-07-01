@@ -255,6 +255,7 @@ func TestImplementations(t *testing.T) {
 	for label, makeImpl := range implementations {
 		t.Run(label, func(t *testing.T) {
 			impl := makeImpl(ctx)
+			assert.NoError(t, impl.Erase(ctx))
 
 			RunImplementationTests(ctx, t, impl, dumb.New())
 		})
