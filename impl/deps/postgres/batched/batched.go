@@ -115,10 +115,15 @@ func (d *Deps) Make(ctx context.Context) (deps.Dependency, error) {
 // MakeGroup creates a new dependency group
 //
 // NOTE: the new group's id is generated via a UUID algorithm
-func (d *Deps) MakeGroup(ctx context.Context, ids ...string) (string, error) {
-	id := uuid.New().String()
-	status := InitializingStatus
+func (d *Deps) MakeGroup(ctx context.Context, intercept func(context.Context, string) error,
+	ids ...string) (string, error) {
 
+	id := uuid.New().String()
+	if err := intercept(ctx, id); err != nil {
+		return "", fmt.Errorf("failed to call intercept: %w", err)
+	}
+
+	status := InitializingStatus
 	tx, err := d.client.Begin(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to begin a postgres transaction: %s", tx)
