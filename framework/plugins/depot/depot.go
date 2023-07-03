@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"kantoku/common/data/bimap"
+	"kantoku/common/data/transactional"
 	"kantoku/framework/plugins/depot/deps"
 	"kantoku/kernel"
 	"kantoku/kernel/platform"
@@ -36,24 +37,37 @@ func (depot *Depot) GroupTaskBimap() bimap.Bimap[string, string] {
 	return depot.groupTaskBimap
 }
 
-func (depot *Depot) Write(ctx context.Context, id string) error {
+func (depot *Depot) Write(ctx context.Context, ids ...string) error {
+	// actually it breaks interface
+	if len(ids) != 1 {
+		return fmt.Errorf("multiple ids are not supported")
+	}
+	taskId := ids[0]
+
 	data := kernel.GetPluginData(ctx).GetWithDefault("dependencies", &PluginData{}).(*PluginData)
 
-	group, err := depot.Deps().MakeGroup(ctx, data.Dependencies...)
+	group, err := depot.Deps().NewGroup(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to make a dependency group: %s", err)
+		return fmt.Errorf("failed to make group id: %w", err)
 	}
 
-	// TODO: possible inconsistency
-	// (if the task dependency group had been resolved and processed before the following line was executed)
-	if err := depot.groupTaskBimap.Save(ctx, group, id); err != nil {
-		return fmt.Errorf("failed to save the (group, task) pair in the bimap: %s", err)
+	if err := depot.groupTaskBimap.Save(ctx, group, taskId); err != nil {
+		return fmt.Errorf("failed to save the (group, task) pair in the bimap: %w", err)
+	}
+
+	if err := depot.Deps().InitGroup(ctx, group, data.Dependencies...); err != nil {
+		returningErr := fmt.Errorf("failed to make a dependency group: %s", err)
+		if err := depot.groupTaskBimap.DeleteByKey(ctx, group); err != nil {
+			return fmt.Errorf("%w\nalso failed to remove (group, task) pair from the bimap: %w",
+				returningErr, err)
+		}
+		return returningErr
 	}
 
 	return nil
 }
 
-func (depot *Depot) Read(ctx context.Context) (<-chan string, error) {
+func (depot *Depot) Read(ctx context.Context) (<-chan transactional.Object[string], error) {
 	return depot.inputs.Read(ctx)
 }
 
@@ -69,16 +83,27 @@ loop:
 		select {
 		case <-ctx.Done():
 			break loop
-		case id := <-ready:
-			taskID, err := depot.groupTaskBimap.ByKey(ctx, id)
-			if err != nil {
-				log.Println("failed to get a task assigned to the group:", err)
-				continue
-			}
-			if err := depot.inputs.Write(ctx, taskID); err != nil {
-				log.Println("failed to schedule a task:", err)
-				continue
-			}
+		case tx := <-ready:
+			func() {
+				defer tx.Rollback(ctx)
+				id, err := tx.Get(ctx)
+				if err != nil {
+					log.Println("failed to get an id of a group:", err)
+					return
+				}
+				taskID, err := depot.groupTaskBimap.ByKey(ctx, id)
+				if err != nil {
+					log.Println("failed to get a task assigned to the group:", err)
+					return
+				}
+				if err := depot.inputs.Write(ctx, taskID); err != nil {
+					log.Println("failed to schedule a task:", err)
+					return
+				}
+				if err := tx.Commit(ctx); err != nil {
+					log.Println("INCONSISTENCY! failed to commit reading group:", err)
+				}
+			}()
 		}
 	}
 
