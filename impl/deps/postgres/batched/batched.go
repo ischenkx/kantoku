@@ -100,10 +100,10 @@ func (d *Deps) Group(ctx context.Context, group string) (deps.Group, error) {
 	return result, nil
 }
 
-// MakeDependency generates a new dependency (but it does not store the information about it in the database
+// NewDependency generates a new dependency (but it does not store the information about it in the database
 //
 // Generation algorithm: UUID
-func (d *Deps) MakeDependency(ctx context.Context) (deps.Dependency, error) {
+func (d *Deps) NewDependency(ctx context.Context) (deps.Dependency, error) {
 	id := uuid.New().String()
 
 	return deps.Dependency{
@@ -112,11 +112,11 @@ func (d *Deps) MakeDependency(ctx context.Context) (deps.Dependency, error) {
 	}, nil
 }
 
-func (d *Deps) MakeGroupId(_ context.Context) (string, error) {
+func (d *Deps) NewGroup(_ context.Context) (string, error) {
 	return uuid.New().String(), nil
 }
 
-func (d *Deps) SaveGroup(ctx context.Context, groupId string, depIds ...string) error {
+func (d *Deps) InitGroup(ctx context.Context, groupId string, depIds ...string) error {
 	status := InitializingStatus
 	tx, err := d.client.Begin(ctx)
 	if err != nil {

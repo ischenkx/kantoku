@@ -227,7 +227,7 @@ func getDep(ctx context.Context, impl deps.Deps, t *testing.T, id string) deps.D
 }
 
 func makeDep(ctx context.Context, impl deps.Deps, t *testing.T) deps.Dependency {
-	dep, err := impl.MakeDependency(ctx)
+	dep, err := impl.NewDependency(ctx)
 	if err != nil {
 		t.Fatal("failed to make a dependency:", err)
 	}
@@ -235,11 +235,11 @@ func makeDep(ctx context.Context, impl deps.Deps, t *testing.T) deps.Dependency 
 }
 
 func makeGroup(ctx context.Context, impl deps.Deps, t *testing.T, ids ...string) string {
-	group, err := impl.MakeGroupId(ctx)
+	group, err := impl.NewGroup(ctx)
 	if err != nil {
 		t.Fatalf("failed to create group from dependecies(%s):\n%s", strings.Join(ids, ", "), err)
 	}
-	if err := impl.SaveGroup(ctx, group, ids...); err != nil {
+	if err := impl.InitGroup(ctx, group, ids...); err != nil {
 		t.Fatalf("failed to create group from dependecies(%s):\n%s", strings.Join(ids, ", "), err)
 	}
 	return group

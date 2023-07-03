@@ -97,10 +97,10 @@ func (d *Deps) Group(ctx context.Context, group string) (deps.Group, error) {
 	return result, nil
 }
 
-// MakeDependency generates a new dependency (but it does not store the information about it in the database
+// NewDependency generates a new dependency (but it does not store the information about it in the database
 //
 // Generation algorithm: UUID
-func (d *Deps) MakeDependency(_ context.Context) (deps.Dependency, error) {
+func (d *Deps) NewDependency(_ context.Context) (deps.Dependency, error) {
 	id := uuid.New().String()
 
 	return deps.Dependency{
@@ -109,11 +109,11 @@ func (d *Deps) MakeDependency(_ context.Context) (deps.Dependency, error) {
 	}, nil
 }
 
-func (d *Deps) MakeGroupId(ctx context.Context) (string, error) {
+func (d *Deps) NewGroup(ctx context.Context) (string, error) {
 	return uuid.New().String(), nil
 }
 
-func (d *Deps) SaveGroup(ctx context.Context, groupId string, depIds ...string) error {
+func (d *Deps) InitGroup(ctx context.Context, groupId string, depIds ...string) error {
 	tx, err := d.client.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin a postgres transaction: %s", tx)

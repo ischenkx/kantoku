@@ -46,7 +46,7 @@ func (depot *Depot) Write(ctx context.Context, ids ...string) error {
 
 	data := kernel.GetPluginData(ctx).GetWithDefault("dependencies", &PluginData{}).(*PluginData)
 
-	group, err := depot.Deps().MakeGroupId(ctx)
+	group, err := depot.Deps().NewGroup(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to make group id: %w", err)
 	}
@@ -55,7 +55,7 @@ func (depot *Depot) Write(ctx context.Context, ids ...string) error {
 		return fmt.Errorf("failed to save the (group, task) pair in the bimap: %w", err)
 	}
 
-	if err := depot.Deps().SaveGroup(ctx, group, data.Dependencies...); err != nil {
+	if err := depot.Deps().InitGroup(ctx, group, data.Dependencies...); err != nil {
 		returningErr := fmt.Errorf("failed to make a dependency group: %s", err)
 		if err := depot.groupTaskBimap.DeleteByKey(ctx, group); err != nil {
 			return fmt.Errorf("%w\nalso failed to remove (group, task) pair from the bimap: %w",
