@@ -4,7 +4,7 @@ import (
 	"github.com/samber/lo"
 	"kantoku/framework/future"
 	"kantoku/framework/plugins/depot"
-	"kantoku/framework/plugins/meta"
+	"kantoku/framework/plugins/info"
 	"kantoku/kernel"
 )
 
@@ -28,7 +28,7 @@ func (spec Spec) WithDeps(dependencies ...string) Spec {
 }
 
 func (spec Spec) WithMeta(key string, value any) Spec {
-	return spec.WithOptions(meta.WithEntry(key, value))
+	return spec.WithOptions(info.WithEntry(key, value))
 }
 
 func (spec Spec) WithStatic(static []byte) Spec {

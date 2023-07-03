@@ -4,21 +4,21 @@ import (
 	"kantoku/common/codec"
 	"kantoku/common/data/bimap"
 	"kantoku/common/data/kv"
+	"kantoku/common/data/record"
 	"kantoku/framework/future"
-	taskContext "kantoku/framework/plugins/context"
 	"kantoku/framework/plugins/depot"
 	"kantoku/framework/plugins/depot/deps"
 	"kantoku/framework/plugins/futdep"
-	"kantoku/framework/plugins/meta"
+	"kantoku/framework/plugins/info"
 	"kantoku/framework/plugins/taskdep"
 	"kantoku/kernel"
 	"kantoku/kernel/platform"
 )
 
 type Builder struct {
-	meta struct {
-		storage meta.Storage
-		codec   codec.Dynamic[[]byte]
+	info struct {
+		storage  record.Storage
+		settings info.Settings
 	}
 
 	deps deps.Deps
@@ -28,8 +28,6 @@ type Builder struct {
 	}
 
 	platform platform.Platform[kernel.Task]
-
-	contexts taskContext.Database
 
 	parametrizationCodec codec.Codec[Parametrization, []byte]
 
@@ -52,9 +50,9 @@ func NewBuilder() Builder {
 	return Builder{}
 }
 
-func (builder Builder) ConfigureMeta(storage meta.Storage, codec codec.Dynamic[[]byte]) Builder {
-	builder.meta.storage = storage
-	builder.meta.codec = codec
+func (builder Builder) ConfigureInfo(storage record.Storage, settings info.Settings) Builder {
+	builder.info.storage = storage
+	builder.info.settings = settings
 	return builder
 }
 
@@ -70,11 +68,6 @@ func (builder Builder) ConfigureDepot(groupTaskBimap bimap.Bimap[string, string]
 
 func (builder Builder) ConfigurePlatform(platform platform.Platform[kernel.Task]) Builder {
 	builder.platform = platform
-	return builder
-}
-
-func (builder Builder) ConfigureContexts(contexts taskContext.Database) Builder {
-	builder.contexts = contexts
 	return builder
 }
 
@@ -111,9 +104,8 @@ func (builder Builder) AddPlugins(plugins ...kernel.Plugin) Builder {
 func (builder Builder) Build() *Kantoku {
 	kan := &Kantoku{
 		depot:                depot.New(builder.deps, builder.depot.groupTaskBimap, builder.platform.Inputs()),
-		contexts:             builder.contexts,
 		parametrizationCodec: builder.parametrizationCodec,
-		meta:                 meta.NewManager(builder.meta.storage, builder.meta.codec),
+		info:                 info.NewStorage(builder.info.storage, builder.info.settings),
 		futures:              builder.futures,
 		futdep:               futdep.NewManager(builder.deps, builder.futdep.future2dependency),
 		taskdep:              taskdep.NewManager(builder.deps, builder.taskdep.task2dependency),
@@ -122,7 +114,7 @@ func (builder Builder) Build() *Kantoku {
 	}
 
 	plugins := []kernel.Plugin{
-		meta.NewPlugin(kan.meta),
+		info.NewPlugin(kan.info),
 		futdep.NewPlugin(kan.futdep),
 		taskdep.NewPlugin(kan.taskdep),
 	}

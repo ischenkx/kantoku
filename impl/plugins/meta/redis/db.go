@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/redis/go-redis/v9"
-	"kantoku/framework/plugins/meta"
+	"kantoku/framework/plugins/info"
 	"kantoku/impl/common/codec/bincodec"
 	redikv "kantoku/impl/common/data/kv/redis"
 )
@@ -21,7 +21,7 @@ func NewDB(prefix string, client redis.UniversalClient) DB {
 	}
 }
 
-func (db DB) Get(ctx context.Context, id string) (meta.RawMeta, error) {
+func (db DB) Get(ctx context.Context, id string) (info.RawMeta, error) {
 	setName := fmt.Sprintf("%s_%s", db.prefix, id)
 	return redikv.New[[]byte](db.client, bincodec.Codec{}, setName), nil
 }

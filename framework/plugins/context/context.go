@@ -1,8 +1,5 @@
 package context
 
-type Context struct {
-	ID     string
-	Parent string
-}
+type Context string
 
-var Empty = Context{}
+var Empty Context = "NONE"

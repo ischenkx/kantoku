@@ -12,7 +12,7 @@ import (
 	"kantoku/framework/plugins/depot"
 	"kantoku/impl/common/codec/jsoncodec"
 	"kantoku/impl/common/codec/strcodec"
-	rebimap "kantoku/impl/common/data/bimap/redis"
+	redimap "kantoku/impl/common/data/bimap/redis"
 	redikv "kantoku/impl/common/data/kv/redis"
 	redipool "kantoku/impl/common/data/pool/redis"
 	"kantoku/impl/deps/postgres/instant"
@@ -83,7 +83,7 @@ func MakeDeps() *instant.Deps {
 }
 
 func MakeDepotBimap() bimap.Bimap[string, string] {
-	return rebimap.NewBimap[string, string](
+	return redimap.NewBimap[string, string](
 		"keys___",
 		"values___",
 		strcodec.Codec{},
