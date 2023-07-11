@@ -34,6 +34,10 @@ func New[T any](client redis.UniversalClient, codec codec.Codec[T, []byte], topi
 }
 
 func (pool *Pool[T]) Write(ctx context.Context, items ...T) error {
+	if len(items) == 0 {
+		return nil
+	}
+
 	var err error
 	data := make([][]byte, len(items))
 	for i, item := range items {
@@ -95,8 +99,9 @@ func (pool *Pool[T]) Read(ctx context.Context) (<-chan transactional.Object[T], 
 				}
 				break loop
 			case outputs <- &Transaction[T]{
-				data: output,
-				pool: pool,
+				data:     output,
+				pool:     pool,
+				finished: false,
 			}:
 			}
 

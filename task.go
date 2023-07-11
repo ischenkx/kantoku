@@ -64,7 +64,7 @@ func (task *Task) Info() info.Info {
 }
 
 func (task *Task) Dependencies(ctx context.Context) ([]deps.Dependency, error) {
-	groupID, err := task.kantoku.depot.GroupTaskBimap().ByKey(ctx, task.ID())
+	groupID, err := task.kantoku.depot.GroupTaskBimap().ByValue(ctx, task.ID())
 	if err != nil {
 		return nil, err
 	}

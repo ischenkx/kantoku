@@ -107,6 +107,9 @@ func (kernel *Kernel) Broker() platform.Broker {
 func (kernel *Kernel) Outputs() platform.Outputs {
 	return kernel.platform.Outputs()
 }
+func (kernel *Kernel) Platform() platform.Platform[Task] {
+	return kernel.platform
+}
 func (kernel *Kernel) Plugins() []Plugin {
 	return kernel.plugins
 }

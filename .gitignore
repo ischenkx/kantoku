@@ -1,4 +1,4 @@
-testing/tmp
+tests/tmp
 .idea
 backend/stand/*/bin/*
 /tmp/

@@ -6,24 +6,25 @@ import (
 	"github.com/google/uuid"
 	"kantoku/common/data"
 	"kantoku/common/data/kv"
+	"kantoku/common/data/pool"
 )
 
 type Manager struct {
-	futures   kv.Database[ID, Future]
-	resources kv.Database[ID, Resource]
-	runner    Runner
+	futures     kv.Database[ID, Future]
+	resources   kv.Database[ID, Resource]
+	resolutions pool.Pool[ID]
 }
 
-func NewManager(futures kv.Database[ID, Future], resources kv.Database[ID, Resource], runner Runner) *Manager {
+func NewManager(futures kv.Database[ID, Future], resources kv.Database[ID, Resource], resolutions pool.Pool[ID]) *Manager {
 	return &Manager{
-		futures:   futures,
-		resources: resources,
-		runner:    runner,
+		futures:     futures,
+		resources:   resources,
+		resolutions: resolutions,
 	}
 }
 
 func (manager *Manager) Make(ctx context.Context, typ string, param []byte) (Future, error) {
-	id := ID(uuid.New().String())
+	id := uuid.New().String()
 	future := Future{
 		ID:    id,
 		Type:  typ,
@@ -34,10 +35,6 @@ func (manager *Manager) Make(ctx context.Context, typ string, param []byte) (Fut
 }
 
 func (manager *Manager) Resolve(ctx context.Context, id ID, resource Resource) error {
-	future, err := manager.futures.Get(ctx, id)
-	if err != nil {
-		return err
-	}
 	resource, set, err := manager.resources.GetOrSet(ctx, id, resource)
 	if err != nil {
 		return err
@@ -45,8 +42,7 @@ func (manager *Manager) Resolve(ctx context.Context, id ID, resource Resource) e
 	if !set {
 		return ErrAlreadyResolved
 	}
-	manager.runner.Run(ctx, Resolution{Future: future, Resource: resource})
-	return nil
+	return manager.resolutions.Write(ctx, id)
 }
 
 func (manager *Manager) Load(ctx context.Context, id ID) (Resolution, error) {
@@ -67,4 +63,8 @@ func (manager *Manager) Load(ctx context.Context, id ID) (Resolution, error) {
 	}
 
 	return Resolution{Future: future, Resource: resource}, nil
+}
+
+func (manager *Manager) Resolutions() pool.Reader[ID] {
+	return manager.resolutions
 }

@@ -1,13 +1,13 @@
 package evexec
 
 import (
-	"kantoku/backend/executor/common"
+	"kantoku/backend/executor"
 	"kantoku/kernel/platform"
 )
 
 // Builder is a cosmetic structure to create executor with named args
 type Builder[Task platform.Task] struct {
-	Runner   common.Runner[Task, []byte]
+	Runner   executor.Runner[Task, []byte]
 	Platform platform.Platform[Task]
 	Resolver TopicResolver
 }

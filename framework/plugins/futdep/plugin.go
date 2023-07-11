@@ -1,18 +1,25 @@
 package futdep
 
 import (
+	"context"
+	"kantoku/common/data/pool"
 	"kantoku/framework/future"
+	"kantoku/framework/infra/demon"
 	"kantoku/framework/plugins/depot"
+	"kantoku/framework/utils/demons"
 	"kantoku/kernel"
+	"log"
 )
 
 type Plugin struct {
 	manager *Manager
+	futures *future.Manager
 }
 
-func NewPlugin(manager *Manager) *Plugin {
+func NewPlugin(manager *Manager, futures *future.Manager) *Plugin {
 	return &Plugin{
 		manager: manager,
+		futures: futures,
 	}
 }
 
@@ -35,4 +42,21 @@ func (p *Plugin) BeforeScheduled(ctx *kernel.Context) error {
 	}
 
 	return nil
+}
+
+func (p *Plugin) Demons(ctx context.Context) []demon.Demon {
+	return demons.Multi{
+		demons.TryProvider(p.manager.deps),
+		demons.TryProvider(p.manager.fut2dep),
+		demons.Functional("FUTDEP_PROCESSOR", p.process),
+	}.Demons(ctx)
+}
+
+func (p *Plugin) process(ctx context.Context) error {
+	return pool.ReadAutoCommit[future.ID](ctx, p.futures.Resolutions(), func(ctx context.Context, id future.ID) error {
+		if err := p.manager.ResolveFuture(ctx, id); err != nil {
+			log.Println("failed to resolve a future:", err)
+		}
+		return nil
+	})
 }
