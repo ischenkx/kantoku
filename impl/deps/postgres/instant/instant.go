@@ -109,7 +109,7 @@ func (d *Deps) NewDependency(_ context.Context) (deps.Dependency, error) {
 	}, nil
 }
 
-func (d *Deps) NewGroup(ctx context.Context) (string, error) {
+func (d *Deps) NewGroup(_ context.Context) (string, error) {
 	return uuid.New().String(), nil
 }
 
@@ -213,6 +213,7 @@ func (d *Deps) Resolve(ctx context.Context, dep string) error {
 			groups = append(groups, *id)
 		}
 	}
+
 	// now we just add groups to their queue
 	if err := d.resolvedGroups.Write(ctx, groups...); err != nil {
 		return fmt.Errorf("failed to add groups to queue: %s", err)

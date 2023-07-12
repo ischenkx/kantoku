@@ -2,14 +2,15 @@ package evexec
 
 import (
 	"context"
-	"kantoku/backend/executor/common"
+	"kantoku/backend/executor"
+	"kantoku/common/data/pool"
 	"kantoku/kernel/platform"
 	"log"
 )
 
 // Executor is an implementation of the Task Events Protocol
 type Executor[Task platform.Task] struct {
-	runner        common.Runner[Task, []byte]
+	runner        executor.Runner[Task, []byte]
 	platform      platform.Platform[Task]
 	topicResolver TopicResolver
 }
@@ -18,57 +19,46 @@ type Executor[Task platform.Task] struct {
 //
 // In order to process multiple tasks concurrently simply call this function in multiple Goroutines.
 func (e *Executor[Task]) Run(ctx context.Context) error {
-	channel, err := e.platform.Inputs().Read(ctx)
-	if err != nil {
-		return err
-	}
-
-loop:
-	for {
-		select {
-		case id := <-channel:
-			// TODO: split this code into several methods so I can get rid of all those nasty else's
-			e.emit(ctx, platform.Event{Name: ReceivedEvent, Data: []byte(id)})
-			task, err := e.platform.DB().Get(ctx, id)
+	return pool.ReadAutoCommit[string](ctx, e.platform.Inputs(), func(ctx context.Context, id string) error {
+		// TODO: split this code into several methods, so I can get rid of all those nasty else's
+		e.emit(ctx, platform.Event{Name: ReceivedEvent, Data: []byte(id)})
+		task, err := e.platform.DB().Get(ctx, id)
+		if err != nil {
+			message, err := ErrorMessage{TaskID: id, Message: err.Error()}.Encode()
 			if err != nil {
-				message, err := ErrorMessage{TaskID: id, Message: err.Error()}.Encode()
-				if err != nil {
-					log.Println("failed to generate an error message:", err)
-				} else {
-					e.emit(ctx, platform.Event{Name: ErrorEvent, Data: message})
-				}
-				continue
-			}
-
-			output, err := e.runner.Run(ctx, task)
-			e.emit(ctx, platform.Event{Name: ExecutedEvent, Data: []byte(task.ID())})
-
-			result := platform.Result{TaskID: task.ID()}
-			if err != nil {
-				result.Data = []byte(err.Error())
-				result.Status = platform.FAILURE
+				log.Println("failed to generate an error message:", err)
 			} else {
-				result.Data = output
-				result.Status = platform.OK
+				e.emit(ctx, platform.Event{Name: ErrorEvent, Data: message})
 			}
-
-			err = e.platform.Outputs().Set(ctx, result.TaskID, result)
-			if err != nil {
-				message, err := ErrorMessage{TaskID: result.TaskID, Message: err.Error()}.Encode()
-				if err != nil {
-					log.Println("failed to generate an error message:", err)
-				} else {
-					e.emit(ctx, platform.Event{Name: ErrorEvent, Data: message})
-				}
-			} else {
-				e.emit(ctx, platform.Event{Name: SentOutputsEvent, Data: []byte(result.TaskID)})
-			}
-		case <-ctx.Done():
-			break loop
+			return nil
 		}
-	}
 
-	return nil
+		output, err := e.runner.Run(ctx, task)
+		e.emit(ctx, platform.Event{Name: ExecutedEvent, Data: []byte(task.ID())})
+
+		result := platform.Result{TaskID: task.ID()}
+		if err != nil {
+			result.Data = []byte(err.Error())
+			result.Status = platform.FAILURE
+		} else {
+			result.Data = output
+			result.Status = platform.OK
+		}
+
+		err = e.platform.Outputs().Set(ctx, result.TaskID, result)
+		if err != nil {
+			message, err := ErrorMessage{TaskID: result.TaskID, Message: err.Error()}.Encode()
+			if err != nil {
+				log.Println("failed to generate an error message:", err)
+			} else {
+				e.emit(ctx, platform.Event{Name: ErrorEvent, Data: message})
+			}
+		} else {
+			e.emit(ctx, platform.Event{Name: SentOutputsEvent, Data: []byte(result.TaskID)})
+		}
+
+		return nil
+	})
 }
 
 func (e *Executor[Task]) emit(ctx context.Context, event platform.Event) {

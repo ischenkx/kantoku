@@ -5,10 +5,9 @@ import (
 	"kantoku/kernel/platform"
 )
 
-// Spec is an abstract representation of a task
-
 type Option func(ctx *Context) error
 
+// Spec is an abstract representation of a task
 type Spec struct {
 	Type    string
 	Data    []byte
@@ -40,7 +39,6 @@ func (task Task) ID() string {
 
 // View is a helper structure that provides convenient methods to work
 // with a task
-
 type View struct {
 	kernel   *Kernel
 	id       string

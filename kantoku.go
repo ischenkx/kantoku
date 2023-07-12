@@ -4,6 +4,7 @@ import (
 	"context"
 	"kantoku/common/codec"
 	"kantoku/framework/future"
+	"kantoku/framework/infra/demon"
 	"kantoku/framework/plugins/depot"
 	"kantoku/framework/plugins/futdep"
 	"kantoku/framework/plugins/info"
@@ -19,6 +20,7 @@ type Kantoku struct {
 	futdep               *futdep.Manager
 	taskdep              *taskdep.Manager
 	kernel               *kernel.Kernel
+	deployer             demon.Deployer
 	settings             Settings
 }
 
@@ -39,8 +41,8 @@ func (kantoku *Kantoku) Spawn(ctx context.Context, spec Spec) (kernel.Result, er
 	return kantoku.kernel.Spawn(ctx, kernel.Describe(spec.typ, payload).With(options...))
 }
 
-func (kantoku *Kantoku) Task(id string) Task {
-	return Task{
+func (kantoku *Kantoku) Task(id string) *Task {
+	return &Task{
 		id:      id,
 		kantoku: kantoku,
 	}
@@ -60,4 +62,8 @@ func (kantoku *Kantoku) Futures() *future.Manager {
 
 func (kantoku *Kantoku) Kernel() *kernel.Kernel {
 	return kantoku.kernel
+}
+
+func (kantoku *Kantoku) Infra() Infra {
+	return Infra{kantoku: kantoku}
 }
