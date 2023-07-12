@@ -6,11 +6,11 @@ import (
 
 type Manager struct {
 	demons       []Demon
-	orchestrator Deployer
+	deployer Deployer
 }
 
 func NewManager(orchestrator Deployer) *Manager {
-	return &Manager{orchestrator: orchestrator}
+	return &Manager{deployer: deployer}
 }
 
 func (manager *Manager) Register(demons ...Demon) *Manager {
@@ -25,7 +25,7 @@ func (manager *Manager) List() []Demon {
 }
 
 func (manager *Manager) Run(ctx context.Context) error {
-	return manager.orchestrator.Deploy(ctx, manager.demons...)
+	return manager.deployer.Deploy(ctx, manager.demons...)
 }
 
 func (manager *Manager) register(demon Demon) {
