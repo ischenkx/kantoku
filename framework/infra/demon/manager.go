@@ -9,7 +9,7 @@ type Manager struct {
 	deployer Deployer
 }
 
-func NewManager(orchestrator Deployer) *Manager {
+func NewManager(deployer Deployer) *Manager {
 	return &Manager{deployer: deployer}
 }
 
