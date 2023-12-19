@@ -3,7 +3,7 @@ name: Test Docs Deployment
 on:
   pull_request:
     paths:
-      - docs/**
+      - dev/docs/**
     branches:
       - master
     # Review gh actions docs if you want to further define triggers, paths, etc
@@ -19,10 +19,10 @@ jobs:
         with:
           node-version: 18
           cache: yarn
-          cache-dependency-path: docs/yarn.lock
+          cache-dependency-path: dev/docs/yarn.lock
       - name: Install dependencies
-        working-directory: ./docs
+        working-directory: ./dev/docs
         run: yarn install --frozen-lockfile
       - name: Test build website
-        working-directory: ./docs
+        working-directory: ./dev/docs
         run: yarn build
