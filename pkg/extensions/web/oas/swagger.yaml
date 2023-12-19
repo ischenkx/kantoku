@@ -1,0 +1,454 @@
+openapi: '3.0.0'
+info:
+  version: '1.0.0'
+  title: 'Kantoku API'
+  description: Create and execute distributed workflows
+servers:
+  - url: https://kantoku.api.server:3000
+paths:
+  /tasks/spawn:
+    post:
+      summary: Spawn a new task
+      requestBody:
+        description: The specification of a task to be spawned
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskSpecification'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskSpawnResponse'
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/load:
+    post:
+      summary: Load a set of tasks
+      requestBody:
+        description: A list of task identifiers
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/info/load:
+    post:
+      summary: Load records using a filter
+      requestBody:
+        description: A query
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filter:
+                  $ref: '#/components/schemas/InfoFilter'
+                cursor:
+                  $ref: '#/components/schemas/InfoCursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TaskInfo'
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/info/count:
+    post:
+      summary: Count records using a filter
+      requestBody:
+        description: A query
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filter:
+                  $ref: '#/components/schemas/InfoFilter'
+                cursor:
+                  $ref: '#/components/schemas/InfoCursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: integer
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/info/erase:
+    post:
+      summary: Delete records by a filter
+      requestBody:
+        description: A filter
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                filter:
+                  $ref: '#/components/schemas/InfoFilter'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/info/insert:
+    post:
+      summary: Insert a record
+      requestBody:
+        description: A filter
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskInfo'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/info/update:
+    post:
+      summary: Update a record
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - filter
+                - update
+              properties:
+                filter:
+                  $ref: '#/components/schemas/InfoFilter'
+                update:
+                  $ref: '#/components/schemas/TaskInfo'
+                upsert:
+                  $ref: '#/components/schemas/TaskInfo'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /resources/allocate:
+    post:
+      summary: Allocates N resources
+      parameters:
+        - name: amount
+          required: true
+          in: query
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /resources/deallocate:
+    post:
+      summary: Deallocate resources
+      requestBody:
+        description: A list of resource identifiers
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /resources/initialize:
+    post:
+      summary: Initialize resources
+      requestBody:
+        description: A dictionary (ResourceID -> Value)
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/ResourceInitializer'
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /resources/load:
+    post:
+      summary: Load resources
+      requestBody:
+        description: A list of resource identifiers
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Resource'
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    TaskSpawnResponse:
+      type: object
+      required:
+        - id
+      properties:
+        id:
+          type: string
+    TaskSpecification:
+      type: object
+      required:
+        - inputs
+        - outputs
+        - properties
+      properties:
+        inputs:
+          type: array
+          items:
+            type: string
+        outputs:
+          type: array
+          items:
+            type: string
+        properties:
+          $ref: '#/components/schemas/TaskProperties'
+    PropertySubTree:
+      type: object
+      required:
+        - key
+        - value
+      properties:
+        key:
+          type: string
+        value:
+          $ref: '#/components/schemas/TaskProperties'
+    TaskProperties:
+      type: object
+      required:
+        - data
+        - sub
+      properties:
+        data:
+          type: object
+        sub:
+          type: array
+          items:
+            $ref: '#/components/schemas/PropertySubTree'
+
+    Task:
+      type: object
+      required:
+        - inputs
+        - outputs
+        - properties
+        - id
+      properties:
+        inputs:
+          type: array
+          items:
+            type: string
+        outputs:
+          type: array
+          items:
+            type: string
+        properties:
+          $ref: '#/components/schemas/TaskProperties'
+        id:
+          type: string
+    TaskInfo:
+      type: object
+    InfoFilter:
+      type: object
+    RecordMask:
+      type: object
+      required:
+        - operation
+        - property_pattern
+      properties:
+        operation:
+          type: string
+        property_pattern:
+          type: string
+    RecordSorter:
+      type: object
+      required:
+        - key
+        - ordering
+      properties:
+        key:
+          type: string
+        ordering:
+          type: string
+    InfoCursor:
+      type: object
+      properties:
+        skip:
+          type: integer
+        limit:
+          type: integer
+        masks:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecordMask'
+        sort:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecordSorter'
+        distinct:
+          type: array
+          items:
+            type: string
+    Resource:
+      type: object
+      required:
+        - id
+        - status
+        - value
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+        value:
+          type: string
+    ResourceInitializer:
+      type: object
+      required:
+        - id
+        - value
+      properties:
+        id:
+          type: string
+        value:
+          type: string
+    Error:
+      type: object
+      required:
+        - message
+        - type
+      properties:
+        message:
+          description: A human readable error message
+          type: string

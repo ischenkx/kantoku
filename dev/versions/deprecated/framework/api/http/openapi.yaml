@@ -1,0 +1,272 @@
+openapi: 3.0.3
+info:
+  title: Kantoku API 3.0
+  description: |-
+    This is an official Kantoku API specification
+  version: 0.0.1
+tags:
+  - name: Tasks
+  - name: Plugins
+  - name: Dependencies
+  - name: Demons
+  - name: Futures
+paths:
+  /tasks:
+    get:
+      tags:
+        - Tasks
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+      parameters:
+        - name: query
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Query'
+    put:
+      tags:
+        - Tasks
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: query
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Query'
+        - name: entries
+          in: query
+          required: true
+          schema:
+            type: object
+            properties:
+              property:
+                type: string
+                example: any
+  /tasks/count:
+    get:
+      tags:
+        - Tasks
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  count:
+                    type: integer
+      parameters:
+        - name: query
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/Query'
+  /tasks/{id}:
+    get:
+      tags:
+        - Tasks
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+      parameters:
+        - name: id
+          in: path
+          description: ID of the task
+          required: true
+          schema:
+            type: string
+    put:
+      tags:
+        - Tasks
+      responses:
+        '200':
+          description: ''
+      parameters:
+        - name: id
+          in: path
+          description: ID of the task
+          required: true
+          schema:
+            type: string
+        - name: entries
+          in: query
+          required: true
+          schema:
+            type: object
+            properties:
+              property:
+                type: string
+                example: any
+  /plugins:
+    get:
+      tags:
+        - Plugins
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+
+  /demons:
+    get:
+      tags:
+        - Plugins
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    type:
+                      type: string
+                    parameter:
+                      type: string
+                      example: 'any'
+  /dependencies/{id}:
+    get:
+      tags:
+        - Dependencies
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dependency'
+
+
+components:
+  schemas:
+    Query:
+      type: object
+      properties:
+        filter:
+          type: array
+          items:
+            type: array
+            items:
+              type: object
+              properties:
+                name:
+                  type: string
+                value:
+                  anyOf:
+                    - type: string
+                    - type: integer
+                    - type: boolean
+        distinct:
+          type: array
+          items:
+            type: string
+        cursor:
+          type: object
+          properties:
+            skip:
+              type: integer
+            limit:
+              type: integer
+            masks:
+              type: array
+              items:
+                type: object
+                properties:
+                  operation:
+                    type: string
+                  propertyPattern:
+                    type: string
+
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          example: '<uuid>'
+        status:
+          type: string
+          example: 'ok|failed|unknown'
+        context:
+          type: string
+        info:
+          type: object
+          example:
+            property: value
+        dependencies:
+          type: array
+          items:
+            type: string
+        parametrization:
+          type: object
+          properties:
+            static:
+              type: string
+            inputs:
+              type: array
+              items:
+                type: string
+            outputs:
+              type: array
+              items:
+                type: string
+        type:
+          type: string
+
+    Dependency:
+      type: object
+      properties:
+        id:
+          type: string
+          example: '<uuid>'
+        status:
+          type: string
+          example: 'ok|failed|unknown'
+        context:
+          type: string
+        info:
+          type: object
+          example:
+            property: value
+        dependencies:
+          type: array
+          items:
+            type: string
+        parametrization:
+          type: object
+          properties:
+            static:
+              type: string
+            inputs:
+              type: array
+              items:
+                type: string
+            outputs:
+              type: array
+              items:
+                type: string
+        type:
+          type: string
