@@ -1,0 +1,8 @@
+package: oas
+output: oas.gen.go
+generate:
+  models: true
+  embedded-spec: true
+  strict-server: true
+  client: true
+  echo-server: true
