@@ -16,12 +16,13 @@ func bson2record(m bson.M) record.R {
 }
 
 func makeRecordFilter(rec record.R) (filter bson.M, err error) {
+	filter = bson.M{}
 	for key, value := range rec {
-		filter, err := makeValueFilter(value)
+		subFilter, err := makeValueFilter(value)
 		if err != nil {
 			return nil, fmt.Errorf("failed to make a filter for '%s': %w", key, err)
 		}
-		rec[key] = filter
+		filter[key] = subFilter
 	}
 	return
 }

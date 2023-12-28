@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
-	"github.com/ischenkx/kantoku/pkg/processors/status"
 	"github.com/ischenkx/kantoku/pkg/system"
 	"github.com/ischenkx/kantoku/pkg/system/kernel/event"
+	"github.com/ischenkx/kantoku/pkg/system/kernel/task"
 	"sync"
 )
 
@@ -114,14 +114,14 @@ func (controller *controller) execute(ctx context.Context, id string) error {
 	return nil
 }
 
-func (controller *controller) validateReadyTask(ctx context.Context, task system.Task) error {
-	info, err := task.Info(ctx)
+func (controller *controller) validateReadyTask(ctx context.Context, t system.Task) error {
+	info, err := t.Info(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to load task info: %w", err)
 	}
 
 	if rawStatus, ok := info["status"]; ok {
-		if value, ok := rawStatus.(string); ok && value == status.Cancelled {
+		if value, ok := rawStatus.(string); ok && value == task.CancelledStatus {
 			return fmt.Errorf("task canceled")
 		}
 	}

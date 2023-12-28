@@ -280,6 +280,9 @@ func (iter *iter) Close(ctx context.Context) error {
 }
 
 func (iter *iter) load(ctx context.Context) error {
+	if iter.loaded {
+		return nil
+	}
 	res, err := iter.cursor.httpClient.PostTasksInfoLoadWithResponse(ctx,
 		oas.PostTasksInfoLoadJSONRequestBody{
 			Cursor: iter.cursor.makeCursor(),

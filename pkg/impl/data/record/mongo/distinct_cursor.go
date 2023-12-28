@@ -50,8 +50,13 @@ func (cursor DistinctCursor) Count(ctx context.Context) (int, error) {
 		return 0, nil
 	}
 
+	filter, err := makeRecordFilter(cursor.filter)
+	if err != nil {
+		return 0, fmt.Errorf("failed to make a filter: %w", err)
+	}
+
 	pipeline := bson.A{
-		bson.M{"$match": makeRecordFilter(cursor.filter)},
+		bson.M{"$match": filter},
 		bson.M{
 			"$group": bson.M{
 				"_id": lo.SliceToMap[string, string, any](
@@ -137,8 +142,13 @@ func (iter *DistinctIter) getCursor(ctx context.Context) (*mongo.Cursor, error) 
 		return iter.mongoCursor, nil
 	}
 
+	filter, err := makeRecordFilter(iter.filter)
+	if err != nil {
+		return nil, fmt.Errorf("failed to make a filter: %w", err)
+	}
+
 	pipeline := bson.A{
-		bson.M{"$match": makeRecordFilter(iter.filter)},
+		bson.M{"$match": filter},
 		bson.M{
 			"$group": bson.M{
 				"_id": lo.SliceToMap[string, string, any](

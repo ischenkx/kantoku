@@ -15,7 +15,7 @@ import (
 	"sync"
 )
 
-const Consumers = 16
+const Consumers = 100
 
 func execute(ctx *exe.Context) error {
 	slog.Info("executing", slog.String("id", ctx.Task().ID))

@@ -37,7 +37,7 @@ func (processor *Processor) Process(ctx context.Context) error {
 
 	readyTaskEvents, err := processor.system.Events().Consume(localContext, event2.Queue{
 		Name:   QueueName,
-		Topics: []string{system.TaskReceivedEvent},
+		Topics: []string{system.TaskReadyEvent},
 	})
 	if err != nil {
 		return fmt.Errorf("failed to read events: %w", err)

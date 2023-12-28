@@ -19,6 +19,10 @@ type Server struct {
 	system system.AbstractSystem
 }
 
+func New(system system.AbstractSystem) *Server {
+	return &Server{system: system}
+}
+
 func (server *Server) PostResourcesAllocate(ctx context.Context, request oas.PostResourcesAllocateRequestObject) (oas.PostResourcesAllocateResponseObject, error) {
 	n := request.Params.Amount
 	if n <= 0 {

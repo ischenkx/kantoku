@@ -19,6 +19,12 @@ type Client struct {
 	httpClient oas.ClientWithResponsesInterface
 }
 
+func New(clientInterface oas.ClientWithResponsesInterface) *Client {
+	return &Client{
+		httpClient: clientInterface,
+	}
+}
+
 func (client *Client) Tasks() task.Storage {
 	return taskStorage{httpClient: client.httpClient}
 }

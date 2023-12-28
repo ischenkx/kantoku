@@ -8,6 +8,7 @@ import (
 	"github.com/ischenkx/kantoku/pkg/processors/executor"
 	"github.com/ischenkx/kantoku/pkg/system"
 	event2 "github.com/ischenkx/kantoku/pkg/system/kernel/event"
+	"github.com/ischenkx/kantoku/pkg/system/kernel/task"
 	"log/slog"
 )
 
@@ -81,9 +82,9 @@ func (processor *Processor) processEvent(ctx context.Context, ev event2.Event) {
 			break
 		}
 
-		newStatus := OK
+		newStatus := task.OkStatus
 		if result.Status == executor.Failed {
-			newStatus = Failed
+			newStatus = task.FailedStatus
 		}
 
 		if err := processor.updateStatus(ctx, result.TaskID, newStatus); err != nil {
@@ -110,13 +111,13 @@ func (processor *Processor) processEvent(ctx context.Context, ev event2.Event) {
 func (processor *Processor) event2status(topic string) string {
 	switch topic {
 	case system.TaskNewEvent:
-		return Initialized
+		return task.InitializedStatus
 	case system.TaskReadyEvent:
-		return Ready
+		return task.ReadyStatus
 	case system.TaskReceivedEvent:
-		return Received
+		return task.ReceivedStatus
 	case system.TaskCancelledEvent:
-		return Cancelled
+		return task.CancelledStatus
 	default:
 		return ""
 	}

@@ -4,305 +4,307 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/ischenkx/kantoku/pkg/common/data/transactional"
-	"github.com/ischenkx/kantoku/pkg/impl/data/dependency/postgres"
-	"log"
+	"github.com/ischenkx/kantoku/pkg/common/data/deps"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/samber/lo"
+	"log/slog"
+	"strings"
 	"time"
 )
 
-var _ postgres.Deps = &Deps{}
+var _ deps.Manager = (*Manager)(nil)
 
-type Deps struct {
-	q      pool.Pool[string]
+type Manager struct {
 	client *pgxpool.Pool
+	config Config
 }
 
 // New creates an instance of the dependency manager with *batched* resolving.
 // client - a connection to a postgres database (all dependencies and groups are stored there)
 // queue - a queue for "ready" groups
-func New(client *pgxpool.Pool, queue pool.Pool[string]) *Deps {
-	return &Deps{
-		q:      queue,
+func New(client *pgxpool.Pool, config Config) *Manager {
+	return &Manager{
 		client: client,
+		config: config,
 	}
 }
 
-func (d *Deps) InitTables(ctx context.Context) error {
-	sql := `
-		CREATE TABLE BatchedDependencies (
-			id varchar(255),
-			resolved bool,
-			PRIMARY KEY (id)
-		);
-		
-		CREATE TABLE BatchedGroups (
-			id varchar(255),
-			pending int,
-			status varchar(16),
-			PRIMARY KEY (id)
-		);
-		
-		CREATE TABLE BatchedGroupDependencies (
-			dependency_id varchar(255),
-			group_id varchar(255),
-			PRIMARY KEY (dependency_id, group_id),
-			CONSTRAINT fk_group
-			  FOREIGN KEY(group_id) 
-			  REFERENCES BatchedGroups(id)
-		      ON DELETE CASCADE
-		);
-	`
-	_, err := d.client.Exec(ctx, sql)
-	return err
-}
+func (manager *Manager) LoadDependencies(ctx context.Context, ids ...string) ([]deps.Dependency, error) {
+	sql := `select id, status from dependencies where id in ($1)`
 
-func (d *Deps) Dependency(ctx context.Context, id string) (deps2.Dependency, error) {
-	sql := `SELECT id, resolved FROM BatchedDependencies WHERE id = $1`
-	row := d.client.QueryRow(ctx, sql, id)
-
-	var model deps2.Dependency
-	if err := row.Scan(&model.ID, &model.Resolved); err != nil {
-		return deps2.Dependency{}, err
-	}
-	return model, nil
-}
-
-func (d *Deps) DropTables(ctx context.Context) error {
-	sql := `DROP TABLE BatchedDependencies, BatchedGroups, BatchedGroupDependencies;`
-	_, err := d.client.Exec(ctx, sql)
-	return err
-}
-
-func (d *Deps) Group(ctx context.Context, group string) (deps2.Group, error) {
-	var result deps2.Group
-	result.ID = group
-
-	sql := `SELECT dependency_id, COALESCE(resolved, false) FROM BatchedGroupDependencies gd 
-				LEFT JOIN BatchedDependencies d ON d.id = gd.dependency_id
-				WHERE gd.group_id = $1`
-	records, err := d.client.Query(ctx, sql, group)
+	rows, err := manager.client.Query(ctx, sql, ids)
 	if err != nil {
-		return result, err
+		return nil, fmt.Errorf("failed to query: %w", err)
 	}
-	defer records.Close()
 
-	for records.Next() {
-		var dep deps2.Dependency
-		if err := records.Scan(&dep.ID, &dep.Resolved); err != nil {
-			return result, err
+	result := make([]deps.Dependency, 0, len(ids))
+
+	for rows.Next() {
+		var dep deps.Dependency
+		if err := rows.Scan(&dep.ID, &dep.Status); err != nil {
+			return nil, fmt.Errorf("failed to scan: %w", err)
 		}
-		result.Dependencies = append(result.Dependencies, dep)
+		result = append(result, dep)
 	}
 
 	return result, nil
 }
 
-// NewDependency generates a new dependency (but it does not store the information about it in the database
-//
-// Generation algorithm: UUID
-func (d *Deps) NewDependency(ctx context.Context) (deps2.Dependency, error) {
-	id := uuid.New().String()
+func (manager *Manager) LoadGroups(ctx context.Context, ids ...string) ([]deps.Group, error) {
+	sql := `
+			select group_id, dependency_id, d.status
+			from group_dependencies gd
+			join dependencies d on d.id = gd.dependency_id
+			where group_id in ($1)
+	`
 
-	return deps2.Dependency{
-		ID:       id,
-		Resolved: false,
-	}, nil
-}
-
-func (d *Deps) NewGroup(_ context.Context) (string, error) {
-	return uuid.New().String(), nil
-}
-
-func (d *Deps) InitGroup(ctx context.Context, groupId string, depIds ...string) error {
-	status := InitializingStatus
-	tx, err := d.client.Begin(ctx)
+	rows, err := manager.client.Query(ctx, sql, ids)
 	if err != nil {
-		return fmt.Errorf("failed to begin a postgres transaction: %s", tx)
+		return nil, fmt.Errorf("failed to query: %w", err)
+	}
+
+	result := make(map[string]deps.Group, len(ids))
+
+	for rows.Next() {
+		var groupId, dependencyId, status string
+
+		if err := rows.Scan(&groupId, &dependencyId, &status); err != nil {
+			return nil, fmt.Errorf("failed to scane: %w", err)
+		}
+		if _, ok := result[groupId]; !ok {
+			result[groupId] = deps.Group{ID: groupId}
+		}
+		group := result[groupId]
+
+		group.Dependencies = append(group.Dependencies, deps.Dependency{
+			ID:     dependencyId,
+			Status: deps.Status(status),
+		})
+
+		result[groupId] = group
+	}
+
+	return lo.Values(result), nil
+}
+
+func (manager *Manager) Resolve(ctx context.Context, values ...deps.Dependency) error {
+	validStatuses := []deps.Status{
+		deps.OK,
+		deps.Failed,
+	}
+
+	values = lo.UniqBy(
+		lo.Filter(values, func(item deps.Dependency, _ int) bool {
+			return lo.Contains(validStatuses, item.Status)
+		}),
+		func(item deps.Dependency) string {
+			return item.ID
+		},
+	)
+
+	status2deps := lo.GroupBy(values, func(dep deps.Dependency) deps.Status {
+		return dep.Status
+	})
+
+	sql := `
+		with cte as (
+			update dependencies
+				set status = $1
+				where id = any ($2) and status = $3
+				returning *)
+		update groups
+		set pending = pending - 1
+		where id in
+			  (select distinct gd.group_id
+			   from cte
+						join group_dependencies gd
+							 on gd.dependency_id = cte.id)`
+
+	tx, err := manager.client.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin a transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
-	sql := `INSERT INTO BatchedGroups (id, pending, status) VALUES ($1, $2, $3)`
-	if _, err := tx.Exec(ctx, sql, groupId, -1, status); err != nil {
-		return err
-	}
-
-	for _, dep := range depIds {
-		sql := `INSERT INTO BatchedGroupDependencies (dependency_id, group_id) VALUES ($1, $2)`
-		if _, err := tx.Exec(ctx, sql, dep, groupId); err != nil {
-			return err
+	for status, _deps := range status2deps {
+		ids := lo.Map(_deps, func(dep deps.Dependency, _ int) string {
+			return dep.ID
+		})
+		if _, err := tx.Exec(ctx, sql, status, ids, deps.Pending); err != nil {
+			return fmt.Errorf("failed to resolve dependencies (status=%s): %w", status, err)
 		}
 	}
-
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit the transaction: %s", err)
+		return fmt.Errorf("failed to commit the transaction: %w", err)
 	}
 
 	return nil
 }
 
-func (d *Deps) Resolve(ctx context.Context, dep string) error {
-	tx, err := d.client.Begin(ctx)
+func (manager *Manager) NewDependencies(ctx context.Context, n int) ([]deps.Dependency, error) {
+	ids := make([]string, 0, n)
+	for i := 0; i < n; i++ {
+		ids = append(ids, manager.generateNewID())
+	}
+
+	newDependencies := lo.Map(ids, func(id string, _ int) deps.Dependency {
+		return deps.Dependency{
+			ID:     id,
+			Status: deps.Pending,
+		}
+	})
+
+	_, err := manager.client.CopyFrom(ctx,
+		pgx.Identifier{"dependencies"},
+		[]string{"id", "status"},
+		pgx.CopyFromRows(
+			lo.Map(newDependencies, func(dep deps.Dependency, _ int) []any {
+				return []any{dep.ID, dep.Status}
+			})),
+	)
 	if err != nil {
-		return fmt.Errorf("failed to begin a postgres transaction: %s", tx)
+		return nil, fmt.Errorf("failed to insert dependencies: %w", err)
+	}
+
+	return newDependencies, nil
+}
+
+func (manager *Manager) NewGroup(ctx context.Context, ids ...string) (groupId string, err error) {
+	groupId = manager.generateNewID()
+
+	tx, err := manager.client.Begin(ctx)
+	if err != nil {
+		return "", fmt.Errorf("failed to begin a transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
 
-	sql := `
-		WITH previous AS (
-			SELECT resolved
-			FROM BatchedDependencies
-			WHERE id = $1
-			LIMIT 1
-		)
-		INSERT INTO BatchedDependencies (id, resolved) 
-		VALUES ($1, $2)
-		ON CONFLICT (id) DO UPDATE 
-		SET resolved = $2
-		RETURNING COALESCE((SELECT resolved FROM previous), false) AS previous_resolved;`
-	before := tx.QueryRow(ctx, sql, dep, true)
-	var alreadyResolved bool
-	if err := before.Scan(&alreadyResolved); err != nil {
-		return err
-	}
-	if alreadyResolved {
-		return nil
+	// Initializing the group
+	groupCreationQuery := `
+		INSERT INTO groups (id, pending, status) 
+		VALUES ($1, 0, $2)
+	`
+
+	_, err = tx.Exec(ctx, groupCreationQuery, groupId, GroupInitializingStatus)
+	if err != nil {
+		return "", fmt.Errorf("failed to initialize group: %w", err)
 	}
 
-	sql = `
-			UPDATE BatchedGroups g
-			SET pending = pending - 1
-			FROM BatchedGroupDependencies gd
-			WHERE gd.dependency_id = $1 AND gd.group_id = g.id`
-	if _, err := tx.Exec(ctx, sql, dep); err != nil {
-		return err
+	// Initializing group dependencies
+	_, err = tx.CopyFrom(ctx,
+		pgx.Identifier{"group_dependencies"},
+		[]string{"dependency_id", "group_id"},
+		pgx.CopyFromRows(
+			lo.Map(ids, func(id string, _ int) []any {
+				return []any{id, groupId}
+			})),
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to insert group's dependencies: %w", err)
+	}
+
+	// Updating the group status
+	groupStatusUpdateQuery := `
+		UPDATE groups
+		SET pending = (
+		    SELECT COUNT(*) FROM group_dependencies gd
+				JOIN dependencies d ON d.id = gd.dependency_id
+				WHERE d.status = $2 and gd.group_id = $3
+		), status = $1
+		WHERE id = $3
+		
+	`
+
+	_, err = tx.Exec(ctx,
+		groupStatusUpdateQuery,
+		GroupWaitingStatus,
+		deps.Pending,
+		groupId,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to update a group's status: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("failed to commit the transaction: %s", err)
+		return "", fmt.Errorf("failed to commit: %w", err)
 	}
-	return nil
+
+	return groupId, nil
 }
 
-func (d *Deps) Ready(ctx context.Context) (<-chan transactional.Object[string], error) {
-	return d.q.Read(ctx)
+func (manager *Manager) ReadyGroups(ctx context.Context) (<-chan string, error) {
+	channel := make(chan string, 256)
+
+	go manager.pollReadyGroups(ctx, channel)
+
+	go func(ctx context.Context) {
+		<-ctx.Done()
+		close(channel)
+	}(ctx)
+
+	return channel, nil
 }
 
-func (d *Deps) Run(ctx context.Context) {
-	go d.runGroupsScheduler(ctx, time.Second, 1024)
-	go d.runGroupInitializer(ctx, time.Second)
-}
+func (manager *Manager) pollReadyGroups(ctx context.Context, channel chan<- string) {
+	ticker := time.NewTicker(manager.config.PollingInterval)
 
-func (d *Deps) runGroupInitializer(ctx context.Context, interval time.Duration) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-loop:
+poller:
 	for {
 		select {
 		case <-ctx.Done():
-			break loop
+			break poller
 		case <-ticker.C:
-			if err := d.initializeGroups(ctx); err != nil {
-				log.Println("failed to initialize groups:", err)
+			groups, err := manager.loadReadyGroups(ctx, manager.config.PollingBatchSize)
+			if err != nil {
+				slog.Error("failed to load ready groups",
+					slog.String("error", err.Error()))
+				continue
+			}
+
+		groupsIterator:
+			for _, group := range groups {
+				select {
+				case <-ctx.Done():
+					break groupsIterator
+				case channel <- group:
+				}
 			}
 		}
 	}
 }
 
-func (d *Deps) runGroupsScheduler(ctx context.Context, interval time.Duration, batchSize int) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-
-loop:
-	for {
-		select {
-		case <-ctx.Done():
-			break loop
-		case <-ticker.C:
-			if err := d.scheduleGroups(ctx, batchSize); err != nil {
-				log.Println("failed to schedule groups:", err)
-			}
-		}
-	}
-}
-
-func (d *Deps) initializeGroups(ctx context.Context) error {
+func (manager *Manager) loadReadyGroups(ctx context.Context, limit int) ([]string, error) {
 	sql := `
-		WITH uninitialized_groups AS (
-		   SELECT id
-		   FROM   BatchedGroups
-		   WHERE  status = $1
-		   ) 
-		UPDATE BatchedGroups g
-		SET status = $2, pending = (
-			SELECT COUNT(*)
-				FROM BatchedGroupDependencies gd
-				LEFT OUTER JOIN BatchedDependencies d ON d.id = gd.dependency_id
-				WHERE gd.group_id = g.id
-					AND CASE WHEN d.resolved is NULL THEN true ELSE NOT d.resolved END
-		)
-		FROM   uninitialized_groups
-		WHERE  g.id = uninitialized_groups.id
-		RETURNING g.id
+		update groups
+		set status = $1
+		where id in (select id from groups 
+		                       where status = $2 and pending = 0
+		                       limit $3)
+		returning id
 	`
 
-	_, err := d.client.Exec(ctx, sql, InitializingStatus, WaitingStatus)
-	return err
-}
-
-func (d *Deps) scheduleGroups(ctx context.Context, batchSize int) error {
-	sql := `
-		WITH groups_subset AS (
-		   SELECT id
-		   FROM   BatchedGroups
-		   WHERE  status = $1 AND pending = 0
-		   LIMIT  $2
-		   )
-		UPDATE BatchedGroups g
-		SET    status = $3 
-		FROM   groups_subset
-		WHERE  g.id = groups_subset.id
-		RETURNING g.id
-	`
-
-	records, err := d.client.Query(ctx, sql, WaitingStatus, batchSize, SchedulingStatus)
+	rows, err := manager.client.Query(ctx, sql,
+		GroupCollectedStatus,
+		GroupWaitingStatus,
+		limit)
 	if err != nil {
-		return err
+		return nil, fmt.Errorf("failed to query: %w", err)
 	}
-	defer records.Close()
 
-	var groups []string
-	for records.Next() {
+	result := make([]string, 0, limit)
+
+	for rows.Next() {
 		var id string
-		if err := records.Scan(&id); err != nil {
-			log.Println("failed to scan the id of a group:", err)
-			continue
+
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("failed to scane: %w", err)
 		}
-
-		groups = append(groups, id)
+		result = append(result, id)
 	}
 
-	var failed, succeeded []string
-	for _, group := range groups {
-		if err := d.q.Write(ctx, group); err != nil {
-			failed = append(failed, group)
-		} else {
-			succeeded = append(succeeded, group)
-		}
-	}
+	return result, nil
+}
 
-	sql = `
-		UPDATE BatchedGroups g
-		SET    status = $1
-		WHERE  g.id = ANY($2)
-	`
-
-	if _, err := d.client.Exec(ctx, sql, WaitingStatus, failed); err != nil {
-		log.Println("failed to update the groups that failed to be scheduled:", err)
-	}
-
-	if _, err := d.client.Exec(ctx, sql, ScheduledStatus, succeeded); err != nil {
-		log.Println("failed to update the groups that were scheduled:", err)
-	}
-	return nil
+func (manager *Manager) generateNewID() string {
+	return strings.ReplaceAll(uuid.New().String(), "-", "")
 }
