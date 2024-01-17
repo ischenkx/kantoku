@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/data/record"
+	"github.com/ischenkx/kantoku/pkg/common/data/record/ops"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -20,7 +21,19 @@ func newSet(storage *Storage) Set {
 }
 
 func (set Set) Filter(rec record.R) record.Set {
-	set.filter = rec
+	newFilter := record.R{}
+	for key, value := range set.filter {
+		newFilter[key] = value
+	}
+
+	for key, value := range rec {
+		if oldKey, ok := newFilter[key]; ok {
+			value = ops.And(value, oldKey)
+		}
+		newFilter[key] = value
+	}
+
+	set.filter = newFilter
 	return set
 }
 

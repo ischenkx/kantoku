@@ -14,6 +14,7 @@ type Manager interface {
 	Resolve(ctx context.Context, values ...Dependency) error
 	NewDependencies(ctx context.Context, n int) ([]Dependency, error)
 	// NewGroup generates id for a group, which then can be passed to SaveGroup
-	NewGroup(ctx context.Context, ids ...string) (groupId string, err error)
+	NewGroup(ctx context.Context) (groupId string, err error)
+	InitializeGroup(ctx context.Context, groupId string, dependencyIds ...string) error
 	ReadyGroups(ctx context.Context) (<-chan string, error)
 }

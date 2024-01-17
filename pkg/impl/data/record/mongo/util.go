@@ -18,97 +18,108 @@ func bson2record(m bson.M) record.R {
 func makeRecordFilter(rec record.R) (filter bson.M, err error) {
 	filter = bson.M{}
 	for key, value := range rec {
-		subFilter, err := makeValueFilter(value)
+		err := applyToFilter(filter, key, value)
 		if err != nil {
 			return nil, fmt.Errorf("failed to make a filter for '%s': %w", key, err)
 		}
-		filter[key] = subFilter
 	}
 	return
 }
 
-func makeValueFilter(value any) (any, error) {
-	if operation, ok := value.(ops.Operation); ok {
-		return operation2filter(operation)
+func applyToFilter(filter bson.M, key string, value any) error {
+	operation, ok := value.(ops.Operation)
+	if !ok {
+		operation = ops.Eq(value)
 	}
-
-	return bson.M{"$eq": value}, nil
+	return applyOperation(filter, key, operation)
 }
 
-func operation2filter(op ops.Operation) (any, error) {
+func applyOperation(filter bson.M, key string, op ops.Operation) error {
 	switch op.Type {
 	case ops.InOp:
 		list, ok := op.Data.([]any)
 		if !ok {
-			return nil, fmt.Errorf("'in' operation expects a list as an argument")
+			return fmt.Errorf("'in' operation expects a list as an argument")
 		}
 
-		return bson.M{"$in": list}, nil
+		filter[key] = bson.M{"$in": list}
 	case ops.LessOp:
-		return bson.M{"$lt": op.Data}, nil
+		filter[key] = bson.M{"$lt": op.Data}
 	case ops.LessOrEqOp:
-		return bson.M{"$lte": op.Data}, nil
+		filter[key] = bson.M{"$lte": op.Data}
 	case ops.GreaterOp:
-		return bson.M{"$gt": op.Data}, nil
+		filter[key] = bson.M{"$gt": op.Data}
 	case ops.GreaterOrEq:
-		return bson.M{"$gte": op.Data}, nil
+		filter[key] = bson.M{"$gte": op.Data}
 	case ops.LikeOp:
-		return nil, fmt.Errorf("like operation is not supported")
+		return fmt.Errorf("like operation is not supported")
 	case ops.ContainsOp:
 		list, ok := op.Data.([]any)
 		if !ok {
-			return nil, fmt.Errorf("'contains' operation expects a list as an argument")
+			return fmt.Errorf("'contains' operation expects a list as an argument")
 		}
 
-		subFilters := make([]any, 0, len(list))
-		for _, item := range list {
-			subFilter, err := makeValueFilter(item)
-			if err != nil {
-				return nil, fmt.Errorf("failed to make a sub-filter for '%s': %w", item, err)
-			}
-			subFilters = append(subFilters, subFilter)
-		}
-
-		return bson.M{"$all": subFilters}, nil
+		filter[key] = bson.M{"$all": list}
 	case ops.NotOp:
-		subFilter, err := makeValueFilter(op.Data)
+		subFilter := bson.M{}
+		err := applyToFilter(subFilter, "$not", op.Data)
 		if err != nil {
-			return nil, fmt.Errorf("failed to make a sub-filter for '%s': %w", op.Data, err)
+			return fmt.Errorf("failed to make a sub-filter for '%s': %w", op.Data, err)
 		}
-		return bson.M{"$not": subFilter}, nil
+		filter[key] = subFilter
 	case ops.AndOp:
 		list, ok := op.Data.([]any)
 		if !ok {
-			return nil, fmt.Errorf("'and' operation expects a list as an argument")
+			return fmt.Errorf("'and' operation expects a list as an argument")
 		}
 
-		subFilters := make([]any, 0, len(list))
 		for _, item := range list {
-			subFilter, err := makeValueFilter(item)
-			if err != nil {
-				return nil, fmt.Errorf("failed to make a sub-filter for '%s': %w", item, err)
-			}
-			subFilters = append(subFilters, subFilter)
-		}
+			subFilter := bson.M{}
 
-		return bson.M{"$and": subFilters}, nil
+			err := applyToFilter(subFilter, key, item)
+			if err != nil {
+				return fmt.Errorf("failed to make a sub-filter for '%s': %w", item, err)
+			}
+
+			and, ok := filter["$and"]
+			if !ok {
+				and = []any{}
+				filter["$and"] = and
+			}
+
+			typedAnd := and.([]any)
+			typedAnd = append(typedAnd, subFilter)
+			filter["$and"] = typedAnd
+		}
 	case ops.OrOp:
 		list, ok := op.Data.([]any)
 		if !ok {
-			return nil, fmt.Errorf("'or' operation expects a list as an argument")
+			return fmt.Errorf("'or' operation expects a list as an argument")
 		}
 
-		subFilters := make([]any, 0, len(list))
 		for _, item := range list {
-			subFilter, err := makeValueFilter(item)
-			if err != nil {
-				return nil, fmt.Errorf("failed to make a sub-filter for '%s': %w", item, err)
-			}
-			subFilters = append(subFilters, subFilter)
-		}
+			subFilter := bson.M{}
 
-		return bson.M{"$or": subFilters}, nil
+			err := applyToFilter(subFilter, key, item)
+			if err != nil {
+				return fmt.Errorf("failed to make a sub-filter for '%s': %w", item, err)
+			}
+
+			or, ok := filter["$or"]
+			if !ok {
+				or = []any{}
+				filter["$or"] = or
+			}
+
+			typedOr := or.([]any)
+			typedOr = append(typedOr, subFilter)
+			filter["$or"] = typedOr
+		}
+	case ops.EqOp:
+		filter[key] = bson.M{"$eq": op.Data}
 	default:
-		return nil, fmt.Errorf("unknown operation '%s'", op.Type)
+		return fmt.Errorf("unknown operation '%s'", op.Type)
 	}
+
+	return nil
 }

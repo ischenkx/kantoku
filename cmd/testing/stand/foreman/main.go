@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-var Interval = time.Millisecond * 50
+var Interval = time.Millisecond * 1000
 
 func main() {
 	common.InitLogger()

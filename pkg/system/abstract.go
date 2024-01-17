@@ -13,6 +13,6 @@ type AbstractSystem interface {
 	Resources() resource.Storage
 	Events() event.Bus
 	Info() record.Storage
-	Spawn(ctx context.Context, initializers ...TaskInitializer) (Task, error)
-	Task(id string) Task
+	Spawn(ctx context.Context, initializers ...TaskInitializer) (*Task, error)
+	Task(id string) *Task
 }

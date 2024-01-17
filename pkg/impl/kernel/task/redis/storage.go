@@ -54,6 +54,10 @@ func (storage *Storage) Delete(ctx context.Context, ids ...string) error {
 }
 
 func (storage *Storage) Load(ctx context.Context, ids ...string) (result []task.Task, err error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
 	values, err := storage.client.HMGet(ctx, storage.hashMapKey, ids...).Result()
 	if err != nil {
 		return nil, fmt.Errorf("failed to execute hmget: %w", err)

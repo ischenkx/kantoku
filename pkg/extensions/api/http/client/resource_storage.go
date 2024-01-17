@@ -3,7 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/extensions/web/oas"
+	"github.com/ischenkx/kantoku/pkg/extensions/api/http/oas"
 	"github.com/ischenkx/kantoku/pkg/system/kernel/resource"
 	"github.com/samber/lo"
 	"net/http"

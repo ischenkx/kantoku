@@ -5,8 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/data/record"
-	"github.com/ischenkx/kantoku/pkg/extensions/web/converters"
-	"github.com/ischenkx/kantoku/pkg/extensions/web/oas"
+	"github.com/ischenkx/kantoku/pkg/common/data/record/ops"
+	"github.com/ischenkx/kantoku/pkg/extensions/api/http/converters"
+	"github.com/ischenkx/kantoku/pkg/extensions/api/http/oas"
 	"github.com/ischenkx/kantoku/pkg/system"
 	"github.com/ischenkx/kantoku/pkg/system/kernel/resource"
 	"github.com/ischenkx/kantoku/pkg/system/kernel/task"
@@ -118,7 +119,8 @@ func (server *Server) PostTasksInfoCount(ctx context.Context, request oas.PostTa
 	var records record.Set = server.system.Info()
 
 	if request.Body.Filter != nil {
-		records = records.Filter(*request.Body.Filter)
+		filter := instantiateFilterOperators(*request.Body.Filter)
+		records = records.Filter(filter.(map[string]any))
 	}
 
 	var cursor record.Cursor[record.R]
@@ -179,7 +181,8 @@ func (server *Server) PostTasksInfoErase(ctx context.Context, request oas.PostTa
 	var records record.Set = server.system.Info()
 
 	if request.Body.Filter != nil {
-		records = records.Filter(*request.Body.Filter)
+		filter := instantiateFilterOperators(*request.Body.Filter)
+		records = records.Filter(filter.(map[string]any))
 	}
 
 	if err := records.Erase(ctx); err != nil {
@@ -205,7 +208,8 @@ func (server *Server) PostTasksInfoLoad(ctx context.Context, request oas.PostTas
 	var records record.Set = server.system.Info()
 
 	if request.Body.Filter != nil {
-		records = records.Filter(*request.Body.Filter)
+		filter := instantiateFilterOperators(*request.Body.Filter)
+		records = records.Filter(filter.(map[string]any))
 	}
 
 	var cursor record.Cursor[record.R]
@@ -279,7 +283,8 @@ func (server *Server) PostTasksInfoUpdate(ctx context.Context, request oas.PostT
 	var records record.Set = server.system.Info()
 
 	if request.Body.Filter != nil {
-		records = records.Filter(request.Body.Filter)
+		filter := instantiateFilterOperators(request.Body.Filter)
+		records = records.Filter(filter.(map[string]any))
 	}
 
 	var upsert record.R = nil
@@ -295,4 +300,28 @@ func (server *Server) PostTasksInfoUpdate(ctx context.Context, request oas.PostT
 	}
 
 	return oas.PostTasksInfoUpdate200JSONResponse{}, nil
+}
+
+func instantiateFilterOperators(value any) any {
+	switch d := value.(type) {
+	case map[string]any:
+		data, dataExists := d["Data"]
+		typ, typeExists := d["Type"]
+		if dataExists && typeExists {
+			value = ops.Operation{
+				Type: typ.(string),
+				Data: instantiateFilterOperators(data),
+			}
+		} else {
+			for key, v := range d {
+				d[key] = instantiateFilterOperators(v)
+			}
+		}
+	case []any:
+		for index, v := range d {
+			d[index] = instantiateFilterOperators(v)
+		}
+	}
+
+	return value
 }

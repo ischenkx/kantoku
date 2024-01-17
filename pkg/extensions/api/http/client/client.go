@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/data/record"
-	"github.com/ischenkx/kantoku/pkg/extensions/web/converters"
-	"github.com/ischenkx/kantoku/pkg/extensions/web/oas"
+	"github.com/ischenkx/kantoku/pkg/extensions/api/http/converters"
+	"github.com/ischenkx/kantoku/pkg/extensions/api/http/oas"
 	"github.com/ischenkx/kantoku/pkg/system"
 	event "github.com/ischenkx/kantoku/pkg/system/kernel/event"
 	"github.com/ischenkx/kantoku/pkg/system/kernel/resource"
@@ -41,7 +41,7 @@ func (client *Client) Info() record.Storage {
 	return recordStorage{httpClient: client.httpClient}
 }
 
-func (client *Client) Spawn(ctx context.Context, initializers ...system.TaskInitializer) (system.Task, error) {
+func (client *Client) Spawn(ctx context.Context, initializers ...system.TaskInitializer) (*system.Task, error) {
 	t := task.Task{}
 
 	for _, initializer := range initializers {
@@ -58,7 +58,7 @@ func (client *Client) Spawn(ctx context.Context, initializers ...system.TaskInit
 		Properties: converters.PropertiesToDto(t.Properties),
 	})
 	if err != nil {
-		return system.Task{}, fmt.Errorf("failed to make an http request: %w", err)
+		return nil, fmt.Errorf("failed to make an http request: %w", err)
 	}
 
 	code := res.StatusCode()
@@ -67,14 +67,14 @@ func (client *Client) Spawn(ctx context.Context, initializers ...system.TaskInit
 	case http.StatusOK:
 		return client.Task(res.JSON200.Id), nil
 	case http.StatusInternalServerError:
-		return system.Task{}, fmt.Errorf("server failure: %s", res.JSON500.Message)
+		return nil, fmt.Errorf("server failure: %s", res.JSON500.Message)
 	default:
-		return system.Task{}, fmt.Errorf("unexpected response code: %d", code)
+		return nil, fmt.Errorf("unexpected response code: %d", code)
 	}
 }
 
-func (client *Client) Task(id string) system.Task {
-	return system.Task{
+func (client *Client) Task(id string) *system.Task {
+	return &system.Task{
 		ID:     id,
 		System: client,
 	}

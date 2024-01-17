@@ -10,6 +10,7 @@ import (
 	event2 "github.com/ischenkx/kantoku/pkg/system/kernel/event"
 	"github.com/ischenkx/kantoku/pkg/system/kernel/task"
 	"log/slog"
+	"time"
 )
 
 var QueueName = "scheduler"
@@ -124,10 +125,12 @@ func (processor *Processor) event2status(topic string) string {
 }
 
 func (processor *Processor) updateStatus(ctx context.Context, id string, status string) error {
+	now := time.Now().Unix()
+
 	err := processor.system.
 		Info().
 		Filter(record.R{system.InfoTaskID: id}).
-		Update(ctx, record.R{"status": status}, record.R{system.InfoTaskID: id})
+		Update(ctx, record.R{"status": status, "updated_at": now}, record.R{system.InfoTaskID: id})
 	if err != nil {
 		return fmt.Errorf("failed to update records: %w", err)
 	}
@@ -138,8 +141,8 @@ func (processor *Processor) updateStatus(ctx context.Context, id string, status 
 func (processor *Processor) saveResultData(ctx context.Context, result executor.Result) error {
 	err := processor.system.
 		Info().
-		Filter(record.R{"id": result.TaskID}).
-		Update(ctx, record.R{"result": result.Data}, record.R{"id": result.TaskID})
+		Filter(record.R{system.InfoTaskID: result.TaskID}).
+		Update(ctx, record.R{"result": result.Data}, record.R{system.InfoTaskID: result.TaskID})
 	if err != nil {
 		return fmt.Errorf("failed to update records: %w", err)
 	}

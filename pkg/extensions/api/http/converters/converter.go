@@ -1,7 +1,7 @@
 package converters
 
 import (
-	"github.com/ischenkx/kantoku/pkg/extensions/web/oas"
+	"github.com/ischenkx/kantoku/pkg/extensions/api/http/oas"
 	"github.com/ischenkx/kantoku/pkg/system/kernel/task"
 )
 

@@ -49,7 +49,7 @@ func (system *System) Events() event2.Bus {
 // TODO: move all constants (events, "task_id", etc) to actual constant (probably it'd be better
 // TODO: to have a separate package for event names, so they can be referred from the kernel and this high-level package
 
-func (system *System) Spawn(ctx context.Context, initializers ...TaskInitializer) (Task, error) {
+func (system *System) Spawn(ctx context.Context, initializers ...TaskInitializer) (*Task, error) {
 	var newTask task2.Task
 	for _, initializer := range initializers {
 		if initializer == nil {
@@ -118,14 +118,14 @@ func (system *System) Spawn(ctx context.Context, initializers ...TaskInitializer
 
 	result, err := tx.Process(state{task: newTask})
 	if err != nil {
-		return Task{}, err
+		return nil, err
 	}
 
-	return Task{ID: result.task.ID, System: system}, nil
+	return &Task{ID: result.task.ID, System: system}, nil
 }
 
-func (system *System) Task(id string) Task {
-	return Task{
+func (system *System) Task(id string) *Task {
+	return &Task{
 		ID:     id,
 		System: system,
 	}

@@ -1,6 +1,6 @@
-tests/tmp
+tmp/
 .idea
 .fleet
-backend/stand/*/bin/*
-/tmp/
 local/
+node_modules/
+bin/

@@ -170,7 +170,7 @@ func (manager *Manager) NewDependencies(ctx context.Context, n int) ([]deps.Depe
 	return newDependencies, nil
 }
 
-func (manager *Manager) NewGroup(ctx context.Context, ids ...string) (groupId string, err error) {
+func (manager *Manager) NewGroup(ctx context.Context) (groupId string, err error) {
 	groupId = manager.generateNewID()
 
 	tx, err := manager.client.Begin(ctx)
@@ -185,9 +185,35 @@ func (manager *Manager) NewGroup(ctx context.Context, ids ...string) (groupId st
 		VALUES ($1, 0, $2)
 	`
 
-	_, err = tx.Exec(ctx, groupCreationQuery, groupId, GroupInitializingStatus)
+	_, err = tx.Exec(ctx, groupCreationQuery, groupId, GroupCreatedStatus)
 	if err != nil {
 		return "", fmt.Errorf("failed to initialize group: %w", err)
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return "", fmt.Errorf("failed to commit: %w", err)
+	}
+
+	return groupId, nil
+}
+
+func (manager *Manager) InitializeGroup(ctx context.Context, groupId string, ids ...string) error {
+	tx, err := manager.client.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin a transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	result, err := tx.Exec(ctx, `
+		UPDATE groups 
+		SET status = $1
+		WHERE id = $2 AND status = $3
+	`, GroupInitializingStatus, groupId, GroupCreatedStatus)
+	if err != nil {
+		return fmt.Errorf("failed to update the group status: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("group is already initialized or doesn't exist")
 	}
 
 	// Initializing group dependencies
@@ -200,7 +226,7 @@ func (manager *Manager) NewGroup(ctx context.Context, ids ...string) (groupId st
 			})),
 	)
 	if err != nil {
-		return "", fmt.Errorf("failed to insert group's dependencies: %w", err)
+		return fmt.Errorf("failed to insert group's dependencies: %w", err)
 	}
 
 	// Updating the group status
@@ -212,7 +238,6 @@ func (manager *Manager) NewGroup(ctx context.Context, ids ...string) (groupId st
 				WHERE d.status = $2 and gd.group_id = $3
 		), status = $1
 		WHERE id = $3
-		
 	`
 
 	_, err = tx.Exec(ctx,
@@ -222,14 +247,14 @@ func (manager *Manager) NewGroup(ctx context.Context, ids ...string) (groupId st
 		groupId,
 	)
 	if err != nil {
-		return "", fmt.Errorf("failed to update a group's status: %w", err)
+		return fmt.Errorf("failed to update a group's status: %w", err)
 	}
 
 	if err := tx.Commit(ctx); err != nil {
-		return "", fmt.Errorf("failed to commit: %w", err)
+		return fmt.Errorf("failed to commit: %w", err)
 	}
 
-	return groupId, nil
+	return nil
 }
 
 func (manager *Manager) ReadyGroups(ctx context.Context) (<-chan string, error) {

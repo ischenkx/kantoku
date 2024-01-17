@@ -21,6 +21,6 @@ CREATE TABLE group_dependencies
     PRIMARY KEY (dependency_id, group_id),
     CONSTRAINT fk_group
         FOREIGN KEY (group_id)
-            REFERENCES BatchedGroups (id)
+            REFERENCES groups (id)
             ON DELETE CASCADE
 );

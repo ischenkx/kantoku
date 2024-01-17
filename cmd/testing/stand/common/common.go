@@ -2,6 +2,7 @@ package common
 
 import (
 	"context"
+	"fmt"
 	codec "github.com/ischenkx/kantoku/pkg/common/data/codec"
 	mongorec "github.com/ischenkx/kantoku/pkg/impl/data/record/mongo"
 	redisEvents "github.com/ischenkx/kantoku/pkg/impl/kernel/event/redis"
@@ -10,6 +11,8 @@ import (
 	"github.com/ischenkx/kantoku/pkg/system"
 	"github.com/ischenkx/kantoku/pkg/system/kernel/resource"
 	"github.com/ischenkx/kantoku/pkg/system/kernel/task"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/kelseyhightower/envconfig"
 	"github.com/lmittmann/tint"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,6 +21,17 @@ import (
 	"os"
 	"time"
 )
+
+type Config struct {
+	RedisHost        string `envconfig:"REDIS_HOST" default:"localhost"`
+	RedisPort        int    `envconfig:"REDIS_PORT" default:"6379"`
+	MongoHost        string `envconfig:"MONGO_HOST" default:"localhost"`
+	MongoPort        int    `envconfig:"MONGO_PORT" default:"27017"`
+	PostgresHost     string `envconfig:"POSTGRES_HOST" default:"localhost"`
+	PostgresPort     int    `envconfig:"POSTGRES_PORT" default:"5432"`
+	PostgresUser     string `envconfig:"POSTGRES_USER" default:"postgres"`
+	PostgresPassword string `envconfig:"POSTGRES_PASSWORD" default:"postgres"`
+}
 
 func InitLogger() {
 	slog.SetDefault(
@@ -28,10 +42,10 @@ func InitLogger() {
 	)
 }
 
-func NewRedis(ctx context.Context) redis.UniversalClient {
+func NewRedis(ctx context.Context, host string, port int) redis.UniversalClient {
 	client := redis.NewUniversalClient(&redis.UniversalOptions{
-		Addrs: []string{"172.23.146.206:6379"},
-		//Addrs: []string{":6379"},
+		Addrs:       []string{fmt.Sprintf("%s:%d", host, port)},
+		DialTimeout: time.Minute,
 	})
 
 	if err := client.Ping(ctx).Err(); err != nil {
@@ -41,8 +55,9 @@ func NewRedis(ctx context.Context) redis.UniversalClient {
 	return client
 }
 
-func NewMongo(ctx context.Context) *mongo.Client {
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
+func NewMongo(ctx context.Context, host string, port int) *mongo.Client {
+	url := fmt.Sprintf("mongodb://%s:%d", host, port)
+	clientOptions := options.Client().ApplyURI(url)
 
 	// Connect to the MongoDB server
 	client, err := mongo.Connect(ctx, clientOptions)
@@ -53,9 +68,36 @@ func NewMongo(ctx context.Context) *mongo.Client {
 	return client
 }
 
+func NewPostgres(ctx context.Context, host string, port int, user, pwd string) *pgxpool.Pool {
+	pool, err := pgxpool.New(ctx, fmt.Sprintf("postgres://%s:%s@%s:%d/", user, pwd, host, port))
+	if err != nil {
+		panic(fmt.Sprintf("failed to create pool: %s", err))
+	}
+
+	return pool
+}
+
+func NewConfig() Config {
+	var config Config
+	err := envconfig.Process("", &config)
+	if err != nil {
+		panic(err)
+	}
+
+	return config
+}
+
 func NewSystem(ctx context.Context, consumer string) *system.System {
-	mongoClient := NewMongo(ctx)
-	redisClient := NewRedis(ctx)
+	config := NewConfig()
+
+	fmt.Printf("Connecting (mongo=%s:%d redis=%s:%d)\n",
+		config.MongoHost,
+		config.MongoPort,
+		config.RedisHost,
+		config.RedisPort)
+
+	mongoClient := NewMongo(ctx, config.MongoHost, config.MongoPort)
+	redisClient := NewRedis(ctx, config.RedisHost, config.RedisPort)
 
 	return system.New(
 		redisEvents.New(redisClient, redisEvents.StreamSettings{

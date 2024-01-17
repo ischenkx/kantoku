@@ -114,7 +114,7 @@ func (controller *controller) execute(ctx context.Context, id string) error {
 	return nil
 }
 
-func (controller *controller) validateReadyTask(ctx context.Context, t system.Task) error {
+func (controller *controller) validateReadyTask(ctx context.Context, t *system.Task) error {
 	info, err := t.Info(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to load task info: %w", err)

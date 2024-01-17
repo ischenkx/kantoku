@@ -5,7 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/data/record"
-	"github.com/ischenkx/kantoku/pkg/extensions/web/oas"
+	"github.com/ischenkx/kantoku/pkg/common/data/record/ops"
+	"github.com/ischenkx/kantoku/pkg/extensions/api/http/oas"
 	"github.com/samber/lo"
 	"net/http"
 )
@@ -62,7 +63,19 @@ type recordSet struct {
 }
 
 func (set recordSet) Filter(rec record.Record) record.Set {
-	set.filter = rec
+	newFilter := record.R{}
+	for key, value := range set.filter {
+		newFilter[key] = value
+	}
+
+	for key, value := range rec {
+		if oldKey, ok := newFilter[key]; ok {
+			value = ops.And(value, oldKey)
+		}
+		newFilter[key] = value
+	}
+
+	set.filter = newFilter
 	return set
 }
 
@@ -216,7 +229,7 @@ func (cursor recordCursor) makeCursor() *oas.InfoCursor {
 	}
 
 	if cursor.limit >= 0 {
-		infoCursor.Skip = &cursor.limit
+		infoCursor.Limit = &cursor.limit
 	}
 
 	if len(cursor.distinctKeys) > 0 {

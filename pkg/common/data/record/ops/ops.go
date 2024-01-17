@@ -6,6 +6,7 @@ import (
 
 const (
 	InOp        = "in"
+	EqOp        = "eq"
 	LessOp      = "lt"
 	LessOrEqOp  = "le"
 	GreaterOp   = "gt"
@@ -16,6 +17,13 @@ const (
 	AndOp       = "and"
 	OrOp        = "or"
 )
+
+func Eq[T any](item T) Operation {
+	return Operation{
+		Type: EqOp,
+		Data: item,
+	}
+}
 
 func In[T any](items ...T) Operation {
 	return Operation{

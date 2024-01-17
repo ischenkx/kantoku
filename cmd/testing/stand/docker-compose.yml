@@ -1,0 +1,120 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      args:
+        - SERVICE_NAME=frontend
+    environment:
+      - REDIS_HOST=kantoku-testing-redis
+      - REDIS_PORT=6379
+      - MONGO_HOST=kantoku-testing-mongodb
+      - MONGO_PORT=27017
+      - API_HOST=http_server
+    depends_on:
+      - redis
+      - mongodb
+      - postgres
+    container_name: frontend
+    ports:
+      - "3030:3030"
+
+  http_server:
+    build:
+      context: .
+      args:
+        - SERVICE_NAME=http_server
+    environment:
+      - REDIS_HOST=kantoku-testing-redis
+      - REDIS_PORT=6379
+      - MONGO_HOST=kantoku-testing-mongodb
+      - MONGO_PORT=27017
+    depends_on:
+      - redis
+      - mongodb
+      - postgres
+    container_name: http_server
+    ports:
+      - "8080:8080"
+
+  processor:
+    build:
+      context: .
+      args:
+        - SERVICE_NAME=processor
+    environment:
+      - REDIS_HOST=kantoku-testing-redis
+      - REDIS_PORT=6379
+      - MONGO_HOST=kantoku-testing-mongodb
+      - MONGO_PORT=27017
+    depends_on:
+      - redis
+      - mongodb
+      - postgres
+    container_name: processor
+
+  scheduler:
+    build:
+      context: .
+      args:
+        - SERVICE_NAME=scheduler
+    environment:
+      - REDIS_HOST=kantoku-testing-redis
+      - REDIS_PORT=6379
+      - MONGO_HOST=kantoku-testing-mongodb
+      - MONGO_PORT=27017
+    depends_on:
+      - redis
+      - mongodb
+      - postgres
+    container_name: scheduler
+
+  status:
+    build:
+      context: .
+      args:
+        - SERVICE_NAME=status
+    environment:
+      - REDIS_HOST=kantoku-testing-redis
+      - REDIS_PORT=6379
+      - MONGO_HOST=kantoku-testing-mongodb
+      - MONGO_PORT=27017
+    depends_on:
+      - redis
+      - mongodb
+      - postgres
+    container_name: status
+
+  mongodb:
+    image: mongo
+    container_name: kantoku-testing-mongodb
+    ports:
+      - "27018:27017"
+    volumes:
+      - kantoku-testing-mongodb:/data/db
+
+  redis:
+    image: redis
+    container_name: kantoku-testing-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - kantoku-testing-redis:/data
+
+  postgres:
+    image: postgres
+    container_name: kantoku-testing-postgres
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5435:5432"
+    volumes:
+      - kantoku-testing-postgres:/var/lib/postgresql/data
+
+volumes:
+  kantoku-testing-mongodb:
+  kantoku-testing-redis:
+  kantoku-testing-postgres:
