@@ -2,18 +2,22 @@
 
 A platform for distributed task execution
 
-# Kantoku Framework Components
-
-![kantoku](dev/assets/kantoku.png)
-
-# Kernel Task Pipeline
-
-![pipeline](dev/assets/pipeline.png)
-
 # Roadmap
-- [ ] Task Dependencies
+
+### Refactoring
+- [ ] Single storage for tasks
+  - We need to get rid of Task.Properties and use Info as a primary source of knowledge about tasks
+  - It might be better to have immutable fields in record.Record
+- [ ] Consistency
+  - Acknowledgement of successful processing in queues (events)
+  - Eventual consistency of multi-service transactions (using compensating transactions aka SAGAs)
+    - This requires a roll-back action for all mutations (so, we probably need to add deletion of any entities in the system)
+- [ ] Logging
+### Features
+- [x] Task Dependencies
   - A dependency based scheduler
-- [ ] Generalized Services
+- [ ] Logging / Metrics (Prometheus + Grafana)
+- [ ] Services
   - Common service structure for different types of processors
     - We need a single package that would take care of running and gracefully shutting down
       all types of processors
@@ -27,7 +31,8 @@ A platform for distributed task execution
   - Tasks should be grouped by contexts
 - [ ] Pipelines
   - A convenient way to compose tasks
-- [ ] Make everything transactional (via SAGAs)
+- [ ] Test Coverage
+- [ ] Deployment in k8s
 
 ### Links
 
