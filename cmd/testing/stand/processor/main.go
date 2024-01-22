@@ -5,15 +5,16 @@ import (
 	"fmt"
 	"github.com/ischenkx/kantoku/cmd/testing/stand/common"
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
-	"github.com/ischenkx/kantoku/pkg/extensions/exe"
-	"github.com/ischenkx/kantoku/pkg/processors/executor"
-	"github.com/ischenkx/kantoku/pkg/system/kernel/resource"
+	"github.com/ischenkx/kantoku/pkg/common/service"
+	"github.com/ischenkx/kantoku/pkg/core/resource"
+	"github.com/ischenkx/kantoku/pkg/core/services/executor"
+	"github.com/ischenkx/kantoku/pkg/lib/discovery"
+	"github.com/ischenkx/kantoku/pkg/lib/exe"
 	"log/slog"
 	"strconv"
-	"sync"
 )
 
-const Consumers = 100
+const Consumers = 5
 
 //func execute(ctx *exe.Context) error {
 //	slog.Info("executing", slog.String("id", ctx.Task().ID))
@@ -91,7 +92,7 @@ func execute(ctx *exe.Context) error {
 		numberInputs = append(numberInputs, num)
 	}
 
-	typ, ok := ctx.Task().Properties.Data["type"]
+	typ, ok := ctx.Task().Info["type"]
 	if !ok {
 		typ = "sum"
 	}
@@ -138,31 +139,34 @@ func main() {
 
 	slog.Info("Starting...")
 
-	wg := &sync.WaitGroup{}
+	var deployer service.Deployer
 
 	for i := 0; i < Consumers; i++ {
-		wg.Add(1)
-		go func(index int) {
-			defer wg.Done()
 
-			proc := executor.NewProcessor(
-				common.NewSystem(context.Background(), fmt.Sprintf("exe-%d", index)),
-				exe.New(execute),
-				"processor-1",
-				codec.JSON[executor.Result](),
-			)
-
-			err := proc.Process(context.Background())
-			if err != nil {
-				slog.Error("failed:",
-					slog.String("err", err.Error()))
-				return
-			}
-		}(i)
+		sys := common.NewSystem(context.Background(), "")
+		srvc := &executor.Service{
+			System:      sys,
+			ResultCodec: codec.JSON[executor.Result](),
+			Executor:    exe.New(execute),
+			Core: service.NewCore(
+				"executor",
+				fmt.Sprintf("exe-%d", i),
+				slog.Default()),
+		}
+		deployer.Add(srvc,
+			discovery.WithStaticInfo[*executor.Service](
+				map[string]any{
+					"executor": "simple",
+				},
+				sys.Events(),
+				codec.JSON[discovery.Request](),
+				codec.JSON[discovery.Response](),
+			),
+		)
 	}
 
-	slog.Info("Waiting...")
-	wg.Wait()
-
-	slog.Info("Finished!")
+	if err := deployer.Deploy(context.Background()); err != nil {
+		slog.Error("failed to deploy",
+			slog.String("error", err.Error()))
+	}
 }
