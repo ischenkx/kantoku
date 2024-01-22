@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-type Storage interface {
-	Insert(context.Context, Record) error
-	Set
+type Storage[Item any] interface {
+	Insert(context.Context, Item) error
+	Set[Item]
 }

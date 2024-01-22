@@ -3,14 +3,15 @@ package common
 import (
 	"context"
 	"fmt"
+	"github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
 	codec "github.com/ischenkx/kantoku/pkg/common/data/codec"
-	mongorec "github.com/ischenkx/kantoku/pkg/impl/data/record/mongo"
-	redisEvents "github.com/ischenkx/kantoku/pkg/impl/kernel/event/redis"
-	redisResources "github.com/ischenkx/kantoku/pkg/impl/kernel/resource/redis"
-	redisTasks "github.com/ischenkx/kantoku/pkg/impl/kernel/task/redis"
-	"github.com/ischenkx/kantoku/pkg/system"
-	"github.com/ischenkx/kantoku/pkg/system/kernel/resource"
-	"github.com/ischenkx/kantoku/pkg/system/kernel/task"
+	"github.com/ischenkx/kantoku/pkg/core/event"
+	"github.com/ischenkx/kantoku/pkg/core/resource"
+	"github.com/ischenkx/kantoku/pkg/core/system"
+	"github.com/ischenkx/kantoku/pkg/core/task"
+	"github.com/ischenkx/kantoku/pkg/lib/impl/broker/watermill"
+	redisResources "github.com/ischenkx/kantoku/pkg/lib/impl/core/resource/redis"
+	mongorec "github.com/ischenkx/kantoku/pkg/lib/impl/data/record/mongo"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kelseyhightower/envconfig"
 	"github.com/lmittmann/tint"
@@ -31,6 +32,7 @@ type Config struct {
 	PostgresPort     int    `envconfig:"POSTGRES_PORT" default:"5432"`
 	PostgresUser     string `envconfig:"POSTGRES_USER" default:"postgres"`
 	PostgresPassword string `envconfig:"POSTGRES_PASSWORD" default:"postgres"`
+	NatsURL          string `envconfig:"NATS_URL" default:"nats://localhost:4222"`
 }
 
 func InitLogger() {
@@ -90,27 +92,51 @@ func NewConfig() Config {
 func NewSystem(ctx context.Context, consumer string) *system.System {
 	config := NewConfig()
 
-	fmt.Printf("Connecting (mongo=%s:%d redis=%s:%d)\n",
+	fmt.Printf("Connecting (mongo=%s:%d redis=%s:%d nats=%s)\n",
 		config.MongoHost,
 		config.MongoPort,
 		config.RedisHost,
-		config.RedisPort)
+		config.RedisPort,
+		config.NatsURL)
 
 	mongoClient := NewMongo(ctx, config.MongoHost, config.MongoPort)
 	redisClient := NewRedis(ctx, config.RedisHost, config.RedisPort)
 
+	//brokerAgent, err := watermill.Redis(
+	//	redisClient,
+	//	redisstream.SubscriberConfig{
+	//		// TODO move to the constructor
+	//		Consumer: consumer,
+	//	},
+	//	redisstream.PublisherConfig{},
+	//)
+	//if err != nil {
+	//	panic(fmt.Sprintf("failed to create a broker agent: %w", err))
+	//}
+
+	brokerAgent, err := watermill.Nats(
+		config.NatsURL,
+		nats.SubscriberConfig{},
+		nats.PublisherConfig{},
+	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create a broker agent: %w", err))
+	}
+
+	broker := watermill.Broker[event.Event]{
+		Agent:                     brokerAgent,
+		ItemCodec:                 codec.JSON[event.Event](),
+		ConsumerChannelBufferSize: 1024,
+	}
+
 	return system.New(
-		redisEvents.New(redisClient, redisEvents.StreamSettings{
-			BatchSize:         64,
-			ChannelBufferSize: 1024,
-			Consumer:          consumer,
-		}),
+		event.NewBroker(broker),
 		redisResources.New(redisClient, codec.JSON[resource.Resource](), "test-resources"),
-		redisTasks.New(redisClient, codec.JSON[task.Task](), "test-tasks"),
-		mongorec.New(
+		mongorec.New[task.Task](
 			mongoClient.
 				Database("testing").
 				Collection("task_info"),
+			task.Codec{},
 		),
 	)
 }
