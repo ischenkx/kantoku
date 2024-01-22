@@ -5,12 +5,12 @@ A platform for distributed task execution
 # Roadmap
 
 ### Refactoring
-- [ ] Single storage for tasks
-  - We need to get rid of Task.Properties and use Info as a primary source of knowledge about tasks
-  - It might be better to have immutable fields in record.Record
-- [ ] Consistency
-  - Acknowledgement of successful processing in queues (events)
-  - Eventual consistency of multi-service transactions (using compensating transactions aka SAGAs)
+- [x] Single storage for tasks
+  - [x] We need to get rid of Task.Properties and use Info as a primary source of knowledge about tasks
+  - [ ] It might be better to have immutable fields in record.Record
+- [x] Consistency
+  - [x] Acknowledgement of successful processing in queues (events)
+  - [ ] Eventual consistency of multi-service transactions (using compensating transactions aka SAGAs)
     - This requires a roll-back action for all mutations (so, we probably need to add deletion of any entities in the system)
 - [ ] Logging
 ### Features

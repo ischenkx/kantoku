@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"github.com/ischenkx/kantoku/cmd/testing/stand/common"
-	"github.com/ischenkx/kantoku/pkg/processors/scheduler/dependencies/simple/manager"
-	"github.com/ischenkx/kantoku/pkg/system"
-	"github.com/ischenkx/kantoku/pkg/system/kernel/task"
+	"github.com/ischenkx/kantoku/pkg/common/data/record"
+	"github.com/ischenkx/kantoku/pkg/core/resource"
+	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/simple/manager"
+	"github.com/ischenkx/kantoku/pkg/core/task"
 	"time"
 )
 
@@ -30,10 +31,10 @@ func main() {
 	fmt.Println("Output:", out)
 
 	t, err := sys.Spawn(ctx,
-		system.WithInputs(in),
-		system.WithOutputs(out),
-		system.WithProperties(task.Properties{
-			Data: map[string]any{
+		task.Task{
+			Inputs:  []resource.ID{in},
+			Outputs: []resource.ID{out},
+			Info: record.R{
 				"dependencies": []manager.DependencySpec{
 					{
 						Name: "resource",
@@ -41,7 +42,7 @@ func main() {
 					},
 				},
 			},
-		}),
+		},
 	)
 
 	if err != nil {

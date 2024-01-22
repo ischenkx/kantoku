@@ -7,17 +7,16 @@ import (
 	"github.com/ischenkx/kantoku/cmd/testing/stand/common"
 	"github.com/ischenkx/kantoku/pkg/common/data/record"
 	"github.com/ischenkx/kantoku/pkg/common/data/record/ops"
-	"github.com/ischenkx/kantoku/pkg/processors/scheduler/dependencies/simple/manager"
-	"github.com/ischenkx/kantoku/pkg/system"
-	"github.com/ischenkx/kantoku/pkg/system/kernel/resource"
-	"github.com/ischenkx/kantoku/pkg/system/kernel/task"
+	"github.com/ischenkx/kantoku/pkg/core/resource"
+	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/simple/manager"
+	"github.com/ischenkx/kantoku/pkg/core/task"
 	"github.com/samber/lo"
 	"math/rand"
 	"strconv"
 )
 
 const InitialInputsSize = 300
-const TotalTasks = 50
+const TotalTasks = 180
 const MinInputs = 1
 const MaxInputs = 10
 const MinOutputs = 1
@@ -75,15 +74,13 @@ func main() {
 		})
 
 		t, err := sys.Spawn(ctx,
-			system.WithInputs(inputIds...),
-			system.WithOutputs(outputs...),
-			system.WithProperties(
-				task.Properties{
-					Data: map[string]any{
-						"dependencies": dependencies,
-					},
+			task.Task{
+				Inputs:  inputIds,
+				Outputs: outputs,
+				Info: record.R{
+					"dependencies": dependencies,
 				},
-			),
+			},
 		)
 		if err != nil {
 			fmt.Println("failed to spawn:", err)
@@ -106,9 +103,9 @@ func main() {
 
 	ctxId := uuid.New().String()
 	err := sys.
-		Info().
+		Tasks().
 		Filter(record.R{
-			system.InfoTaskID: ops.In(taskList...),
+			"id": ops.In(taskList...),
 		}).
 		Update(ctx, record.R{"context_id": ctxId}, nil)
 	if err != nil {
