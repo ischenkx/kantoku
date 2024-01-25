@@ -1,9 +1,9 @@
 package future
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
-	"github.com/ischenkx/kantoku/pkg/system/kernel/resource"
 	"sync/atomic"
 )
 
@@ -11,17 +11,29 @@ type fid int32
 
 var idCounter fid = 0
 
+// AbstractFuture can hold a future without caring about it's type
+type AbstractFuture interface {
+	//Value() any
+	IsFilled() bool
+	Encode(codec codec.Codec[any, []byte]) ([]byte, error)
+	getId() fid
+}
+
 type Future[T any] struct {
 	id     fid // local id, valid only during program run
 	value  *T
 	filled bool
 }
 
-func (f *Future[T]) Value() T { // or *T?
+func (f Future[T]) getId() fid {
+	return f.id
+}
+
+func (f Future[T]) Value() T { // or *T?
 	return *f.value
 }
 
-func (f *Future[T]) IsFilled() bool {
+func (f Future[T]) IsFilled() bool {
 	return f.filled
 }
 
@@ -35,23 +47,30 @@ func FromValue[T any](val T) Future[T] {
 	return Future[T]{value: &val, filled: true, id: idCounter}
 }
 
-func FromResource[T any](res resource.Resource, codec codec.Codec[T, []byte]) (Future[T], error) {
-	value, err := codec.Decode(res.Data)
+func (f Future[T]) ParseToNew(data []byte) (Future[T], error) {
+	var val T
+	err := json.Unmarshal(data, &val)
 	if err != nil {
 		return Future[T]{}, err
 	}
-	return Future[T]{value: &value, filled: true}, nil
+	atomic.AddInt32((*int32)(&idCounter), 1)
+	return FromValue[T](val), nil
 }
 
-func (f *Future[T]) ToResource(codec codec.Codec[T, []byte]) (resource.Resource, error) {
+func (f Future[T]) EmptyValue() T {
+	var val T
+	return val
+}
+
+func (f Future[T]) Encode(codec codec.Codec[any, []byte]) ([]byte, error) {
 	if !f.IsFilled() {
-		return resource.Resource{}, errors.New("can't make resource from empty future")
+		return nil, errors.New("can't make resource from empty future")
 	}
 	data, err := codec.Encode(f.Value())
 	if err != nil {
-		return resource.Resource{}, err
+		return nil, err
 	}
-	return resource.Resource{Data: data}, nil
+	return data, nil
 }
 
 // banned because new Futures should be created. Otherwise, you can easily fill outputs 💀

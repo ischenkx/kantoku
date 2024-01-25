@@ -3,14 +3,9 @@ package common
 import (
 	"context"
 	"fmt"
-	"github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
-	codec "github.com/ischenkx/kantoku/pkg/common/data/codec"
-	"github.com/ischenkx/kantoku/pkg/core/event"
-	"github.com/ischenkx/kantoku/pkg/core/resource"
 	"github.com/ischenkx/kantoku/pkg/core/system"
 	"github.com/ischenkx/kantoku/pkg/core/task"
-	"github.com/ischenkx/kantoku/pkg/lib/impl/broker/watermill"
-	redisResources "github.com/ischenkx/kantoku/pkg/lib/impl/core/resource/redis"
+	"github.com/ischenkx/kantoku/pkg/lib/impl/core/resource/mock"
 	mongorec "github.com/ischenkx/kantoku/pkg/lib/impl/data/record/mongo"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/kelseyhightower/envconfig"
@@ -100,7 +95,7 @@ func NewSystem(ctx context.Context, consumer string) *system.System {
 		config.NatsURL)
 
 	mongoClient := NewMongo(ctx, config.MongoHost, config.MongoPort)
-	redisClient := NewRedis(ctx, config.RedisHost, config.RedisPort)
+	//redisClient := NewRedis(ctx, config.RedisHost, config.RedisPort)
 
 	//brokerAgent, err := watermill.Redis(
 	//	redisClient,
@@ -114,24 +109,24 @@ func NewSystem(ctx context.Context, consumer string) *system.System {
 	//	panic(fmt.Sprintf("failed to create a broker agent: %w", err))
 	//}
 
-	brokerAgent, err := watermill.Nats(
-		config.NatsURL,
-		nats.SubscriberConfig{},
-		nats.PublisherConfig{},
-	)
-	if err != nil {
-		panic(fmt.Sprintf("failed to create a broker agent: %w", err))
-	}
-
-	broker := watermill.Broker[event.Event]{
-		Agent:                     brokerAgent,
-		ItemCodec:                 codec.JSON[event.Event](),
-		ConsumerChannelBufferSize: 1024,
-	}
+	//brokerAgent, err := watermill.Nats(
+	//	config.NatsURL,
+	//	nats.SubscriberConfig{},
+	//	nats.PublisherConfig{},
+	//)
+	//if err != nil {
+	//	panic(fmt.Sprintf("failed to create a broker agent: %w", err))
+	//}
+	//
+	//broker := watermill.Broker[event.Event]{
+	//	Agent:                     brokerAgent,
+	//	ItemCodec:                 codec.JSON[event.Event](),
+	//	ConsumerChannelBufferSize: 1024,
+	//}
 
 	return system.New(
-		event.NewBroker(broker),
-		redisResources.New(redisClient, codec.JSON[resource.Resource](), "test-resources"),
+		nil,
+		mock.NewMockStorage(),
 		mongorec.New[task.Task](
 			mongoClient.
 				Database("testing").

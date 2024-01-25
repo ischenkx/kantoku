@@ -2,7 +2,7 @@ package functional
 
 import (
 	"errors"
-	"github.com/ischenkx/kantoku/pkg/system/kernel/resource"
+	"github.com/ischenkx/kantoku/pkg/core/resource"
 	"github.com/samber/lo"
 	"log"
 )

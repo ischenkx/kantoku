@@ -2,12 +2,13 @@ package functional
 
 import (
 	"context"
-	"fmt"
-	"github.com/ischenkx/kantoku/pkg/extensions/tasks/future"
-	"github.com/ischenkx/kantoku/pkg/processors/scheduler/dependencies/simple/manager"
-	"github.com/ischenkx/kantoku/pkg/system"
-	"github.com/ischenkx/kantoku/pkg/system/kernel/resource"
-	"github.com/ischenkx/kantoku/pkg/system/kernel/task"
+	"github.com/ischenkx/kantoku/pkg/common/data/record"
+	"github.com/ischenkx/kantoku/pkg/common/data/record/ops"
+	"github.com/ischenkx/kantoku/pkg/core/resource"
+	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/simple/manager"
+	"github.com/ischenkx/kantoku/pkg/core/system"
+	"github.com/ischenkx/kantoku/pkg/core/task"
+	"github.com/ischenkx/kantoku/pkg/lib/tasks/future"
 	"github.com/samber/lo"
 	"log"
 	"reflect"
@@ -15,8 +16,8 @@ import (
 
 type ScheduledTask struct {
 	Name    string
-	Inputs  []future.Future[any]
-	Outputs []future.Future[any]
+	Inputs  []future.AbstractFuture
+	Outputs []future.AbstractFuture
 }
 
 type Context struct {
@@ -28,31 +29,40 @@ type Context struct {
 }
 
 func NewContext(parent context.Context) Context {
-	return Context{Context: parent, Scheduled: make([]ScheduledTask, 0), FutureStorage: future.NewStorage()}
+	return Context{
+		Context:       parent,
+		Scheduled:     make([]ScheduledTask, 0),
+		FutureStorage: future.NewStorage(),
+	}
 }
 
+// where do you get task?! - we can remove it and create empty one with reflect
 func Execute[T Task[I, O], I, O any](ctx Context, task T, input I) O {
 	out := task.EmptyOutput()
 	ctx.Scheduled = append(ctx.Scheduled, ScheduledTask{
 		Name:    taskName[I, O](task),
-		Inputs:  ctx.addFutureStruct(input),
-		Outputs: ctx.addFutureStruct(out),
+		Inputs:  ctx.addFutureStruct(input, nil),
+		Outputs: ctx.addFutureStruct(out, nil),
 	})
 	return out
 }
 
 // doesn't care about resources!
-func (ctx *Context) addFutureStruct(obj any) []future.Future[any] {
+func (ctx *Context) addFutureStruct(obj any, linkTo []resource.ID) []future.AbstractFuture {
+	log.Println(obj)
 	arr := futureStructToArr(obj)
-	for _, f := range arr {
+	for i, f := range arr {
 		ctx.FutureStorage.AddFuture(f)
+		if linkTo != nil {
+			ctx.FutureStorage.AssignResource(f, resource.Resource{ID: linkTo[i]}, false)
+		}
 	}
 	return arr
 }
 
 func (ctx *Context) spawn(sys system.AbstractSystem) error {
 	for _, t := range ctx.Scheduled {
-		fut2res := func(fut future.Future[any], _ int) resource.ID {
+		fut2res := func(fut future.AbstractFuture, _ int) resource.ID {
 			return ctx.FutureStorage.GetResource(fut).ID
 		}
 
@@ -66,16 +76,13 @@ func (ctx *Context) spawn(sys system.AbstractSystem) error {
 		})
 
 		spawned, err := sys.Spawn(ctx,
-			system.WithInputs(inputs...),
-			system.WithOutputs(outputs...),
-			system.WithProperties(
-				task.Properties{
-					Data: map[string]any{
-						"type":         t.Name,
-						"dependencies": deps,
-					},
+			task.Task{
+				Inputs:  inputs,
+				Outputs: outputs,
+				Info: record.R{
+					"dependencies": deps,
 				},
-			))
+			})
 		if err != nil {
 			return err
 		}
@@ -91,7 +98,7 @@ func (ctx *Context) rollback(sys system.AbstractSystem) {
 		log.Printf("failed to rollback resources: %s", err)
 	}
 
-	err = sys.Tasks().Delete(ctx, ctx.spawnedLog...)
+	err = sys.Tasks().Filter(record.R{"id": ops.In(ctx.spawnedLog)}).Erase(ctx)
 	if err != nil {
 		log.Printf("failed to rollback spawned tasks: %s", err)
 	} else {
@@ -100,10 +107,10 @@ func (ctx *Context) rollback(sys system.AbstractSystem) {
 }
 
 //func (ctx Context) Schedule(storage resource.Storage) error {
-//	flatOutputs := lo.FlatMap(ctx.Scheduled, func(item ScheduledTask, _ int) []future.Future[any] {
+//	flatOutputs := lo.FlatMap(ctx.Scheduled, func(item ScheduledTask, _ int) []future.AbstractFuture {
 //		return futureStructToArr(item.Outputs)
 //	})
-//	uniqOutputs := map[future.Future[any]]any{}
+//	uniqOutputs := map[future.AbstractFuture]any{}
 //	for _, o := range flatOutputs {
 //		uniqOutputs[o] = nil
 //	}
@@ -112,8 +119,8 @@ func (ctx *Context) rollback(sys system.AbstractSystem) {
 //	if err != nil {
 //		return err
 //	}
-//	zip := lo.Zip2[string, future.Future[any]](resIds, lo.Keys(uniqOutputs))
-//	filledZip := lo.Filter(zip, func(item lo.Tuple2[string, future.Future[any]], index int) bool {
+//	zip := lo.Zip2[string, future.AbstractFuture](resIds, lo.Keys(uniqOutputs))
+//	filledZip := lo.Filter(zip, func(item lo.Tuple2[string, future.AbstractFuture], index int) bool {
 //		return item.B.IsFilled()
 //	})
 //	filledResources :=
@@ -127,15 +134,15 @@ func taskName[I, O any](task Task[I, O]) string {
 	return reflect.ValueOf(task).Type().Name()
 }
 
-func futureStructToArr(obj any) []future.Future[any] {
+func futureStructToArr(obj any) []future.AbstractFuture {
 	v := reflect.ValueOf(obj)
-	arr := make([]future.Future[any], v.NumField())
+	arr := make([]future.AbstractFuture, v.NumField())
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
-		fmt.Printf("%s: %v\n", v.Type().Field(i).Name, field.Interface())
+		//fmt.Printf("%s: %v\n", v.Type().Field(i).Name, field.Interface())
 
-		if field.Kind() == reflect.Struct && field.Type().ConvertibleTo(reflect.TypeOf(future.Future[any]{})) {
-			x, ok := field.Interface().(future.Future[any])
+		if field.Kind() == reflect.Struct {
+			x, ok := field.Interface().(future.AbstractFuture)
 			if !ok {
 				panic("your struct is still shit")
 			}

@@ -2,7 +2,7 @@ package functional
 
 import (
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/extensions/tasks/future"
+	"github.com/ischenkx/kantoku/pkg/lib/tasks/future"
 	"log"
 	"reflect"
 )
