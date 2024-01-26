@@ -142,7 +142,7 @@ func main() {
 	sys := common.NewSystem(context.Background(), "den-test")
 
 	x1 := resource.Resource{
-		Data:   []byte("1"),
+		Data:   []byte("[1,2,3]"),
 		ID:     "init-res-1",
 		Status: resource.Ready,
 	}
@@ -156,9 +156,9 @@ func main() {
 		panic(err)
 	}
 
-	exec := functional.NewExecutor[AddTask, MathInput, MathOutput](AddTask{})
+	exec := functional.NewExecutor[SumTask, SumInput, MathOutput](SumTask{})
 	err = exec.Execute(context.Background(), sys, task.Task{
-		Inputs:  []resource.ID{x1.ID, x2.ID},
+		Inputs:  []resource.ID{x1.ID},
 		Outputs: []resource.ID{"out-res-1"},
 		ID:      "123",
 		Info:    record.R{},

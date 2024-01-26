@@ -28,8 +28,8 @@ type Context struct {
 	spawnedLog []string // task ids
 }
 
-func NewContext(parent context.Context) Context {
-	return Context{
+func NewContext(parent context.Context) *Context {
+	return &Context{
 		Context:       parent,
 		Scheduled:     make([]ScheduledTask, 0),
 		FutureStorage: future.NewStorage(),
@@ -37,7 +37,7 @@ func NewContext(parent context.Context) Context {
 }
 
 // where do you get task?! - we can remove it and create empty one with reflect
-func Execute[T Task[I, O], I, O any](ctx Context, task T, input I) O {
+func Execute[T Task[I, O], I, O any](ctx *Context, task T, input I) O {
 	out := task.EmptyOutput()
 	ctx.Scheduled = append(ctx.Scheduled, ScheduledTask{
 		Name:    taskName[I, O](task),
@@ -80,6 +80,7 @@ func (ctx *Context) spawn(sys system.AbstractSystem) error {
 				Inputs:  inputs,
 				Outputs: outputs,
 				Info: record.R{
+					"type":         t.Name,
 					"dependencies": deps,
 				},
 			})
@@ -106,32 +107,9 @@ func (ctx *Context) rollback(sys system.AbstractSystem) {
 	}
 }
 
-//func (ctx Context) Schedule(storage resource.Storage) error {
-//	flatOutputs := lo.FlatMap(ctx.Scheduled, func(item ScheduledTask, _ int) []future.AbstractFuture {
-//		return futureStructToArr(item.Outputs)
-//	})
-//	uniqOutputs := map[future.AbstractFuture]any{}
-//	for _, o := range flatOutputs {
-//		uniqOutputs[o] = nil
-//	}
-//
-//	resIds, err := storage.Alloc(ctx, len(uniqOutputs))
-//	if err != nil {
-//		return err
-//	}
-//	zip := lo.Zip2[string, future.AbstractFuture](resIds, lo.Keys(uniqOutputs))
-//	filledZip := lo.Filter(zip, func(item lo.Tuple2[string, future.AbstractFuture], index int) bool {
-//		return item.B.IsFilled()
-//	})
-//	filledResources :=
-//	for _, t := range filledZip {
-//		storage.Load(ctx)
-//		storage.
-//	}
-//}
-
 func taskName[I, O any](task Task[I, O]) string {
-	return reflect.ValueOf(task).Type().Name()
+	typ := reflect.ValueOf(task).Type()
+	return typ.PkgPath() + "." + typ.Name()
 }
 
 func futureStructToArr(obj any) []future.AbstractFuture {

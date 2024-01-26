@@ -17,7 +17,7 @@ type MathOutput struct {
 
 type AddTask struct{ MathTask }
 
-func (t AddTask) Call(context functional.Context, input MathInput) (MathOutput, error) {
+func (t AddTask) Call(context *functional.Context, input MathInput) (MathOutput, error) {
 	return MathOutput{
 		Result: future.FromValue(input.Left.Value() + input.Right.Value()),
 	}, nil
@@ -55,7 +55,7 @@ type SumInput struct {
 
 type SumTask struct{ MathTask }
 
-func (t SumTask) Call(ctx functional.Context, input SumInput) (MathOutput, error) {
+func (t SumTask) Call(ctx *functional.Context, input SumInput) (MathOutput, error) {
 	if len(input.Args.Value()) == 0 {
 		return MathOutput{Result: future.FromValue(0)}, nil
 	}

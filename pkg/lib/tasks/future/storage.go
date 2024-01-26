@@ -52,10 +52,15 @@ func (s Storage) Allocate(ctx context.Context, storage resource.Storage) error {
 	return nil
 }
 
-// Encode all filled futures. It will create resources, or fill (override) Data field for existing ones.
+// Encode all filled futures. It will create resources, or fill Data field for existing ones.
+// Not filled futures and resources with Data are skipped.
 func (s Storage) Encode(codec codec.Codec[any, []byte]) error {
 	for id, fut := range s.id2future {
 		res := s.id2resource[id]
+
+		if !fut.IsFilled() || res.Data != nil {
+			continue
+		}
 
 		data, err := fut.Encode(codec)
 		if err != nil {

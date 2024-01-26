@@ -23,53 +23,53 @@ https://github.com/golang/go/issues/54393
 
 type Task[Input, Output any] interface {
 	EmptyOutput() Output
-	Call(Context, Input) (Output, error)
+	Call(*Context, Input) (Output, error)
 	InputType() reflect.Type
 }
 
-type MyInput struct {
+type ExampleInput struct {
 	a future.Future[int]
 	b future.Future[string]
 }
 
-type MyOutput struct {
+type ExampleOutput struct {
 	x future.Future[float32]
 }
 
-type WorkTask struct{}
+type ExampleTask struct{}
 
-var _ Task[MyInput, MyOutput] = &WorkTask{}
+var _ Task[ExampleInput, ExampleOutput] = &ExampleTask{}
 
-func (wt WorkTask) Call(ctx Context, input MyInput) (MyOutput, error) {
+func (wt ExampleTask) Call(ctx *Context, input ExampleInput) (ExampleOutput, error) {
 	log.Println(input.a)
 	log.Println(input.b)
-	o := MyOutput{x: future.FromValue[float32](4.2)}
+	o := ExampleOutput{x: future.FromValue[float32](4.2)}
 	return o, nil
 }
 
-func (wt WorkTask) CallWithSub(ctx Context, input MyInput) (MyOutput, error) {
+func (wt ExampleTask) CallWithSub(ctx *Context, input ExampleInput) (ExampleOutput, error) {
 	log.Println(input.a)
 	log.Println(input.b)
-	promisedOutput := Execute[WorkTask, MyInput, MyOutput](ctx, wt, MyInput{
+	promisedOutput := Execute[ExampleTask, ExampleInput, ExampleOutput](ctx, wt, ExampleInput{
 		a: future.FromValue[int](len(input.b.Value())),
 		b: future.FromValue[string](fmt.Sprint(input.a.Value())),
 	})
 	return promisedOutput, nil
 }
 
-func (wt WorkTask) EmptyFutureInput() MyInput {
-	return MyInput{
+func (wt ExampleTask) EmptyFutureInput() ExampleInput {
+	return ExampleInput{
 		a: future.Future[int]{},
 		b: future.Future[string]{},
 	}
 }
 
-func (wt WorkTask) EmptyOutput() MyOutput {
-	return MyOutput{
+func (wt ExampleTask) EmptyOutput() ExampleOutput {
+	return ExampleOutput{
 		x: future.Future[float32]{},
 	}
 }
 
-func (wt WorkTask) InputType() reflect.Type {
-	return reflect.TypeOf(MyInput{})
+func (wt ExampleTask) InputType() reflect.Type {
+	return reflect.TypeOf(ExampleInput{})
 }
