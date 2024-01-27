@@ -98,7 +98,7 @@ func (e Executor[T, I, O]) buildInput(resources []resource.Resource, storage fut
 			return structInterface, errors.New("cannot convert field to future")
 		}
 		storage.AddFuture(fut)
-		storage.AssignResource(fut, resources[i], true)
+		storage.AssignResource(fut, &resources[i], true)
 	}
 
 	// Return the initialized struct

@@ -54,7 +54,7 @@ func (ctx *Context) addFutureStruct(obj any, linkTo []resource.ID) []future.Abst
 	for i, f := range arr {
 		ctx.FutureStorage.AddFuture(f)
 		if linkTo != nil {
-			ctx.FutureStorage.AssignResource(f, resource.Resource{ID: linkTo[i]}, false)
+			ctx.FutureStorage.AssignResource(f, &resource.Resource{ID: linkTo[i]}, false)
 		}
 	}
 	return arr
