@@ -2,14 +2,43 @@ package dumb
 
 import (
 	"context"
+	"fmt"
+	"github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/common/data/record"
 	"github.com/samber/lo"
 )
 
-var _ record.Storage = (*Storage)(nil)
+var _ record.Storage[int] = (*Storage[int])(nil)
 
-type Storage struct {
-	data []record.R
+type Storage[Item any] struct {
+	data  []record.R
+	codec codec.Codec[Item, record.R]
+}
+
+func (s *Storage[Item]) Insert(ctx context.Context, item Item) error {
+	rec, err := s.codec.Encode(item)
+	if err != nil {
+		return fmt.Errorf("failed to encode: %w", err)
+	}
+	if len(rec) == 0 {
+		return nil
+	}
+	s.data = append(s.data, rec)
+	return nil
+}
+
+func (s *Storage[Item]) Filter(rec record.Record) record.Set[Item] {
+	return newSet(s).Filter(entries...)
+}
+
+func (s *Storage[Item]) Distinct(key ...string) record.Cursor[Item] {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (s *Storage[Item]) Cursor() record.Cursor[Item] {
+	//TODO implement me
+	panic("implement me")
 }
 
 func New() *Storage {
@@ -25,11 +54,7 @@ func (s *Storage) Sample() record.R {
 }
 
 func (s *Storage) Insert(ctx context.Context, rec record.Record) error {
-	if len(rec) == 0 {
-		return nil
-	}
-	s.data = append(s.data, rec)
-	return nil
+
 }
 
 func (s *Storage) Filter(entries ...record.Entry) record.Set {

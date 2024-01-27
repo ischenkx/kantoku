@@ -3,21 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/common/data/codec"
-	"github.com/ischenkx/kantoku/pkg/common/service"
+	"github.com/ischenkx/kantoku/cmd/testing/stand/common"
+	"github.com/ischenkx/kantoku/pkg/common/data/record"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
-	"github.com/ischenkx/kantoku/pkg/core/services/executor"
-	"github.com/ischenkx/kantoku/pkg/lib/connector/cli/builder"
-	config2 "github.com/ischenkx/kantoku/pkg/lib/connector/cli/config"
-	"github.com/ischenkx/kantoku/pkg/lib/discovery"
+	"github.com/ischenkx/kantoku/pkg/core/task"
 	"github.com/ischenkx/kantoku/pkg/lib/exe"
-	"github.com/joho/godotenv"
+	"github.com/ischenkx/kantoku/pkg/lib/tasks/functional"
 	"log"
 	"log/slog"
 	"strconv"
 )
 
-const Consumers = 100
+const Consumers = 5
 
 //func execute(ctx *exe.Context) error {
 //	slog.Info("executing", slog.String("id", ctx.Task().ID))
@@ -32,7 +29,7 @@ const Consumers = 100
 //
 //	urlResourceArray, err := ctx.System().Resources().Load(ctx, ctx.Task().Inputs[0])
 //	if err != nil {
-//		return fmt.Errorf("failed to load a resource: %w", err)
+//		return fmt.Errorf("failed to load left resource: %w", err)
 //	}
 //
 //	urlResource := urlResourceArray[0]
@@ -50,7 +47,7 @@ const Consumers = 100
 //		return fmt.Errorf("http request failed: %w", err)
 //	}
 //
-//	slog.Debug("received a response",
+//	slog.Debug("received left response",
 //		slog.String("url", url),
 //		slog.String("status", response.Status))
 //
@@ -125,7 +122,7 @@ func execute(ctx *exe.Context) error {
 		outputs[idx] = out
 	}
 
-	slog.Debug("done",
+	slog.Info("done",
 		slog.Any("type", typ),
 		slog.Any("result", result))
 
@@ -138,50 +135,42 @@ func execute(ctx *exe.Context) error {
 }
 
 func main() {
-	//common.InitLogger()
-
-	if err := godotenv.Load("local/host.env"); err != nil {
-		fmt.Println("failed to load env:", err)
-		return
-	}
+	common.InitLogger()
 
 	slog.Info("Starting...")
 
-	var deployer service.Deployer
+	sys := common.NewSystem(context.Background(), "den-test")
 
-	cfg, err := config2.FromFile("local/config.yaml")
+	x1 := resource.Resource{
+		Data:   []byte("[1,2,3]"),
+		ID:     "init-res-1",
+		Status: resource.Ready,
+	}
+	x2 := resource.Resource{
+		Data:   []byte("2"),
+		ID:     "init-res-2",
+		Status: resource.Ready,
+	}
+	err := sys.Resources().Init(context.Background(), []resource.Resource{x1, x2})
 	if err != nil {
-		log.Fatal(err)
-	}
-	var b builder.Builder
-	for i := 0; i < Consumers; i++ {
-		sys, err := b.BuildSystem(context.Background(), cfg.System)
-		if err != nil {
-			log.Fatal(err)
-		}
-		srvc := &executor.Service{
-			System:      sys,
-			ResultCodec: codec.JSON[executor.Result](),
-			Executor:    exe.New(execute),
-			Core: service.NewCore(
-				"executor",
-				fmt.Sprintf("exe-%d", i),
-				slog.Default()),
-		}
-		deployer.Add(srvc,
-			discovery.WithStaticInfo[*executor.Service](
-				map[string]any{
-					"executor": "simple",
-				},
-				sys.Events(),
-				codec.JSON[discovery.Request](),
-				codec.JSON[discovery.Response](),
-			),
-		)
+		panic(err)
 	}
 
-	if err := deployer.Deploy(context.Background()); err != nil {
-		slog.Error("failed to deploy",
-			slog.String("error", err.Error()))
+	exec := functional.NewExecutor[SumTask, SumInput, MathOutput](SumTask{})
+	err = exec.Execute(context.Background(), sys, task.Task{
+		Inputs:  []resource.ID{x1.ID},
+		Outputs: []resource.ID{"out-res-1"},
+		ID:      "123",
+		Info:    record.R{},
+	})
+
+	if err != nil {
+		panic(err)
 	}
+
+	resources, err := sys.Resources().Load(context.Background(), "out-res-1")
+	if err != nil {
+		panic(err)
+	}
+	log.Println(string(resources[0].Data))
 }

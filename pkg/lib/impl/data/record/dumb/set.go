@@ -5,30 +5,33 @@ import (
 	"github.com/ischenkx/kantoku/pkg/common/data/record"
 )
 
-var _ record.Set = Set{}
+var _ record.Set[int] = Set[int]{}
 
-type Set struct {
+type Set[Item any] struct {
 	filters [][]record.Entry
-	storage *Storage
+	storage *Storage[Item]
 }
 
-func newSet(s *Storage) Set {
-	return Set{storage: s}
+func newSet[Item any](s *Storage[Item]) Set[Item] {
+	return Set[Item]{storage: s}
 }
 
-func (set Set) Filter(entries ...record.Entry) record.Set {
+func (set Set[Item]) Filter(rec record.Record) record.Set[Item] {
+	for key, val := range rec {
+
+	}
 	set.filters = append(set.filters, entries)
 	return set
 }
 
-func (set Set) Erase(_ context.Context) error {
+func (set Set[Item]) Erase(_ context.Context) error {
 	set.storage.filter(func(r record.Record, _ int) bool {
 		return !matches(r, set.filters)
 	})
 	return nil
 }
 
-func (set Set) Update(ctx context.Context, update, upsert record.R) error {
+func (set Set[Item]) Update(ctx context.Context, update, upsert record.R) error {
 	matched := false
 	set.storage.update(func(r record.Record, _ int) record.Record {
 		if !matches(r, set.filters) {
@@ -61,20 +64,20 @@ func (set Set) Update(ctx context.Context, update, upsert record.R) error {
 	return nil
 }
 
-func (set Set) Distinct(keys ...string) record.Cursor[record.Record] {
+func (set Set[Item]) Distinct(keys ...string) record.Cursor[record.Record] {
 	return Cursor{
 		set:  set,
 		keys: keys,
 	}
 }
 
-func (set Set) Cursor() record.Cursor[record.Record] {
+func (set Set[Item]) Cursor() record.Cursor[record.Record] {
 	return Cursor{
 		set: set,
 	}
 }
 
-func (set Set) eval() []record.R {
+func (set Set[Item]) eval() []record.R {
 	var matched []record.R
 	set.storage.each(func(r record.Record, _ int) {
 		if matches(r, set.filters) {

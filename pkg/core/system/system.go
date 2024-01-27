@@ -8,7 +8,6 @@ import (
 	"github.com/ischenkx/kantoku/pkg/common/data/uid"
 	"github.com/ischenkx/kantoku/pkg/core/event"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
-	"github.com/ischenkx/kantoku/pkg/core/system/events"
 	"github.com/ischenkx/kantoku/pkg/core/task"
 	"github.com/samber/lo"
 	"log/slog"
@@ -72,10 +71,11 @@ func (system System) Spawn(ctx context.Context, newTask task.Task) (initializedT
 			}).
 		Then(
 			func(s state) (state, error) {
-				err := system.Events().Send(ctx, event.New(events.OnTask.Created, []byte(s.task.ID)))
-				if err != nil {
-					return s, fmt.Errorf("failed to publish an event: %w", err)
-				}
+				// todo: enable back
+				//err := system.Events().Send(ctx, event.New(events.OnTask.Created, []byte(s.task.ID)))
+				//if err != nil {
+				//	return s, fmt.Errorf("failed to publish an event: %w", err)
+				//}
 				return s, nil
 			},
 			func(s state) state {

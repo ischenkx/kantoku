@@ -6,9 +6,9 @@ import (
 	"github.com/samber/lo"
 )
 
-var _ record.Cursor[record.Record] = Cursor{}
+var _ record.Cursor[int] = Cursor[int]{}
 
-type Cursor struct {
+type Cursor[Item any] struct {
 	set     Set
 	keys    []string
 	sorters []record.Sorter

@@ -26,7 +26,7 @@ func New(client redis.UniversalClient, codec codec.Codec[resource.Resource, []by
 	}
 }
 
-func (storage *Storage) Load(ctx context.Context, ids ...string) ([]resource.Resource, error) {
+func (storage *Storage) Load(ctx context.Context, ids ...resource.ID) ([]resource.Resource, error) {
 	if len(ids) == 0 {
 		return []resource.Resource{}, nil
 	}
@@ -54,7 +54,7 @@ func (storage *Storage) Load(ctx context.Context, ids ...string) ([]resource.Res
 	return resources, nil
 }
 
-func (storage *Storage) Alloc(ctx context.Context, amount int) ([]string, error) {
+func (storage *Storage) Alloc(ctx context.Context, amount int) ([]resource.ID, error) {
 	ids := lo.Times(amount, func(_ int) string {
 		return storage.generateKey()
 	})
@@ -141,7 +141,7 @@ func (storage *Storage) Init(ctx context.Context, resources []resource.Resource)
 	return nil
 }
 
-func (storage *Storage) Dealloc(ctx context.Context, ids []string) error {
+func (storage *Storage) Dealloc(ctx context.Context, ids []resource.ID) error {
 	return storage.client.
 		Del(ctx, lo.Map(ids, func(id string, _ int) string {
 			return storage.globalResourceID(id)
