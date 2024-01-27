@@ -13,7 +13,7 @@ import (
 	"log/slog"
 )
 
-var QueueName = "dependencies.simple"
+var QueueName = "dependencies:simple"
 
 type Service struct {
 	System  system.AbstractSystem
@@ -30,7 +30,7 @@ func (srvc *Service) Run(ctx context.Context) error {
 	})
 
 	g.Go(func() error {
-		srvc.Logger().Info("sending ready tasks...")
+		srvc.Logger().Info("processing ready tasks...")
 		return srvc.processReadyTasks(ctx)
 	})
 
@@ -53,21 +53,21 @@ func (srvc *Service) processNewTasks(ctx context.Context) error {
 	broker.Processor[event.Event]{
 		Handler: func(ctx context.Context, ev event.Event) error {
 			taskId := string(ev.Data)
-			srvc.Logger().Info("new task",
+			srvc.Logger().Debug("new task",
 				slog.String("id", taskId))
 
 			if err := srvc.Manager.Register(ctx, taskId); err != nil {
-				return fmt.Errorf("failed to register a task (id='%s'): %w", taskId, err)
+				srvc.Logger().Error("failed to process a created task",
+					slog.String("task_id", taskId),
+					slog.String("error", err.Error()))
+				//return fmt.Errorf("failed to register a task (id='%s'): %w", taskId, err)
 			}
 
 			return nil
 		},
 		ErrorHandler: func(ctx context.Context, ev event.Event, err error) {
-			taskId := string(ev.Data)
+			//taskId := string(ev.Data)
 
-			srvc.Logger().Error("failed to process a created task",
-				slog.String("task_id", taskId),
-				slog.String("error", err.Error()))
 		},
 	}.Process(ctx, channel)
 
@@ -85,7 +85,7 @@ func (srvc *Service) processReadyTasks(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case taskId := <-channel:
-			srvc.Logger().Info("ready task",
+			srvc.Logger().Debug("ready task",
 				slog.String("id", taskId))
 			err := srvc.System.Events().Send(ctx, event.New(events.OnTask.Ready, []byte(taskId)))
 			if err != nil {

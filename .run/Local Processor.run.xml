@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Test Foreman" type="GoApplicationRunConfiguration" factoryName="Go Application">
+  <configuration default="false" name="Local Processor" type="GoApplicationRunConfiguration" factoryName="Go Application">
     <module name="kantoku" />
-    <working_directory value="$PROJECT_DIR$/cmd/testing/stand" />
+    <working_directory value="$PROJECT_DIR$" />
     <EXTENSION ID="net.ashald.envfile">
       <option name="IS_ENABLED" value="true" />
       <option name="IS_SUBST" value="false" />
@@ -10,11 +10,12 @@
       <option name="IS_ENABLE_EXPERIMENTAL_INTEGRATIONS" value="false" />
       <ENTRIES>
         <ENTRY IS_ENABLED="true" PARSER="runconfig" IS_EXECUTABLE="false" />
-        <ENTRY IS_ENABLED="true" PARSER="env" IS_EXECUTABLE="false" PATH="cmd/testing/stand/host.env" />
+        <ENTRY IS_ENABLED="false" PARSER="env" IS_EXECUTABLE="false" PATH="cmd/testing/stand/deprecated.host.env" />
+        <ENTRY IS_ENABLED="true" PARSER="env" IS_EXECUTABLE="false" PATH="local/host.env" />
       </ENTRIES>
     </EXTENSION>
     <kind value="PACKAGE" />
-    <package value="github.com/ischenkx/kantoku/cmd/testing/stand/foreman3" />
+    <package value="github.com/ischenkx/kantoku/cmd/testing/stand/processor" />
     <directory value="$PROJECT_DIR$" />
     <filePath value="$PROJECT_DIR$" />
     <method v="2" />

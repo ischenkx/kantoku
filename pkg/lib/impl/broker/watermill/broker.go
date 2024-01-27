@@ -14,6 +14,7 @@ import (
 type Broker[Item any] struct {
 	Agent                     Agent
 	ItemCodec                 codec.Codec[Item, []byte]
+	Logger                    *slog.Logger
 	ConsumerChannelBufferSize int
 }
 
@@ -29,9 +30,12 @@ func (b Broker[Item]) Consume(ctx context.Context, info broker.TopicsInfo) (<-ch
 		channel, err := subscriber.Subscribe(ctx, topic)
 		if err != nil {
 			if closeErr := subscriber.Close(); closeErr != nil {
-				slog.Error("failed to close a subscriber",
+				b.Logger.Error("failed to close a subscriber",
 					slog.String("error", closeErr.Error()))
 			}
+
+			b.Logger.Error("failed to subscribe",
+				slog.String("error", err.Error()))
 
 			return nil, fmt.Errorf("failed to subscribe: %w", err)
 		}
@@ -52,7 +56,7 @@ func (b Broker[Item]) Consume(ctx context.Context, info broker.TopicsInfo) (<-ch
 			case mes := <-from:
 				item, err := b.ItemCodec.Decode(mes.Payload)
 				if err != nil {
-					slog.Error("failed to decode item",
+					b.Logger.Error("failed to decode item",
 						slog.String("error", err.Error()))
 					continue
 				}
@@ -60,7 +64,7 @@ func (b Broker[Item]) Consume(ctx context.Context, info broker.TopicsInfo) (<-ch
 				rawTopic := mes.Context().Value("topic")
 				topic, ok := rawTopic.(string)
 				if !ok {
-					slog.Error("failed to extract topic from message",
+					b.Logger.Error("failed to extract topic from message",
 						slog.Any("raw_topic", rawTopic))
 					continue
 				}

@@ -89,15 +89,16 @@ func (poller *Poller) collectResponses(ctx context.Context) error {
 				return nil
 			}
 
-			poller.Logger().Info("received a discovery response",
-				slog.String("event_id", ev.ID),
-				slog.String("request_id", response.RequestID),
-				slog.String("service.name", response.ServiceInfo.Name),
-				slog.String("service.id", response.ServiceInfo.ID))
+			//poller.Logger().Info("received a discovery response",
+			//	slog.String("event_id", ev.ID),
+			//	slog.String("request_id", response.RequestID),
+			//	slog.String("service.name", response.ServiceInfo.Name),
+			//	slog.String("service.id", response.ServiceInfo.ID))
 
 			if err := poller.Hub.Register(ctx, response.ServiceInfo); err != nil {
 				poller.Logger().Error("failed to register a service",
 					slog.String("error", err.Error()))
+				return nil
 			}
 
 			return nil

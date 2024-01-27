@@ -18,8 +18,6 @@ type Middleware[Service service.Service] struct {
 }
 
 func (m Middleware[Service]) BeforeRun(ctx context.Context, g *errgroup.Group, service service.Service) {
-	fmt.Println("1111")
-
 	g.Go(func() error {
 		typedService, ok := service.(Service)
 		if !ok {

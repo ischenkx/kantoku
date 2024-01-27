@@ -4,28 +4,41 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/ischenkx/kantoku/cmd/testing/stand/common"
 	"github.com/ischenkx/kantoku/pkg/common/data/record"
 	"github.com/ischenkx/kantoku/pkg/common/data/record/ops"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
 	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/simple/manager"
 	"github.com/ischenkx/kantoku/pkg/core/task"
+	"github.com/ischenkx/kantoku/pkg/lib/connector/api/http/client"
+	"github.com/ischenkx/kantoku/pkg/lib/connector/api/http/oas"
 	"github.com/samber/lo"
+	"log"
 	"math/rand"
+	"os"
 	"strconv"
 )
 
-const InitialInputsSize = 300
-const TotalTasks = 180
+const InitialInputsSize = 4
+const TotalTasks = 100
 const MinInputs = 1
-const MaxInputs = 10
+const MaxInputs = 4
 const MinOutputs = 1
-const MaxOutputs = 10
+const MaxOutputs = 4
 
 func main() {
-	common.InitLogger()
 	ctx := context.Background()
-	sys := common.NewSystem(ctx, "foreman-0")
+
+	apiHost := "localhost"
+	if host, ok := os.LookupEnv("API_HOST"); ok {
+		apiHost = host
+	}
+
+	rawClient, err := oas.NewClientWithResponses(fmt.Sprintf("http://%s:8080", apiHost))
+	if err != nil {
+		log.Fatal("failed to create a raw client:", err)
+		return
+	}
+	sys := client.New(rawClient)
 
 	var inputs []string
 
@@ -102,7 +115,7 @@ func main() {
 	}
 
 	ctxId := uuid.New().String()
-	err := sys.
+	err = sys.
 		Tasks().
 		Filter(record.R{
 			"id": ops.In(taskList...),

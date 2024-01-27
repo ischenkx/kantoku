@@ -15,6 +15,7 @@ type Resolver struct {
 	Storage      Storage
 	PollLimit    int
 	PollInterval time.Duration
+	Logger       *slog.Logger
 }
 
 func (resolver *Resolver) Bind(ctx context.Context, depId string, data any) error {
@@ -39,6 +40,7 @@ func (resolver *Resolver) Ready(ctx context.Context) (<-chan string, error) {
 }
 
 func (resolver *Resolver) collectResolvedDependencies(ctx context.Context, ids chan<- string) {
+
 	pollLimit := resolver.PollLimit
 	if pollLimit <= 0 {
 		pollLimit = 1024
@@ -51,6 +53,8 @@ func (resolver *Resolver) collectResolvedDependencies(ctx context.Context, ids c
 
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
+	resolver.Logger.Info("collecting resolved dependencies",
+		slog.Duration("interval", pollInterval))
 
 poller:
 	for {
@@ -61,7 +65,7 @@ poller:
 		case <-ticker.C:
 			bindings, err := resolver.Storage.Poll(ctx, pollLimit)
 			if err != nil {
-				slog.Info("failed to poll bindings",
+				resolver.Logger.Error("failed to poll bindings",
 					slog.String("error", err.Error()))
 				continue
 			}
@@ -73,7 +77,7 @@ poller:
 			resourceIds := lo.Keys(resource2dependencies)
 			resources, err := resolver.System.Resources().Load(ctx, resourceIds...)
 			if err != nil {
-				slog.Info("failed to load resources",
+				resolver.Logger.Error("failed to load resources",
 					slog.String("error", err.Error()))
 			}
 
@@ -95,7 +99,7 @@ poller:
 				}
 			}
 			if err := resolver.Storage.Resolve(ctx, resolvedIds...); err != nil {
-				slog.Error("failed to resolve resources",
+				resolver.Logger.Error("failed to resolve resources",
 					slog.String("error", err.Error()))
 			}
 		}

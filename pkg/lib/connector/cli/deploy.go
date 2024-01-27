@@ -1,23 +1,20 @@
 package cli
 
 import (
-	"github.com/ischenkx/kantoku/pkg/common/data/uid"
+	"context"
 	"github.com/ischenkx/kantoku/pkg/common/service"
-	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/simple"
-	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dummy"
-	"github.com/ischenkx/kantoku/pkg/core/system"
+	"github.com/ischenkx/kantoku/pkg/lib/connector/cli/builder"
+	config2 "github.com/ischenkx/kantoku/pkg/lib/connector/cli/config"
 	"github.com/spf13/cobra"
-	"log/slog"
 )
 
 type deployFlags struct {
-	env                bool
+	config             string
 	noScheduler        bool
 	noProcessor        bool
 	noStatus           bool
 	noApi              bool
 	noServiceDiscovery bool
-	config             string
 	scheduler          bool
 	processor          bool
 	status             bool
@@ -36,6 +33,7 @@ func NewDeploy() *cobra.Command {
 				flags.processor = true
 				flags.status = true
 				flags.api = true
+				flags.serviceDiscovery = true
 			}
 			if flags.noScheduler {
 				flags.scheduler = false
@@ -53,18 +51,11 @@ func NewDeploy() *cobra.Command {
 				flags.serviceDiscovery = false
 			}
 
-			var config Config
+			var cfg config2.Config
 
-			if flags.env {
+			if flags.config != "" {
 				var err error
-				config, err = configFromEnv()
-				if err != nil {
-					cmd.PrintErrln("failed to parse config from env:", err)
-					return
-				}
-			} else if flags.config != "" {
-				var err error
-				config, err = configFromFile(flags.config)
+				cfg, err = config2.FromFile(flags.config)
 				if err != nil {
 					cmd.PrintErrln("failed to parse config from file:", err)
 					return
@@ -74,7 +65,13 @@ func NewDeploy() *cobra.Command {
 				return
 			}
 
-			sys, err := systemFromConfig(config.System)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			b := &builder.Builder{}
+
+			cmd.Println("building system")
+			sys, err := b.BuildSystem(ctx, cfg.System)
 			if err != nil {
 				cmd.PrintErrln("failed to create a system instance from config:", err)
 				return
@@ -83,48 +80,72 @@ func NewDeploy() *cobra.Command {
 			var deployer service.Deployer
 
 			if flags.scheduler {
-				core := service.NewCore(
-					"dependencies",
-					uid.Generate(),
-					slog.Default(),
-				)
-
-				var srvc service.Service
-
-				switch config.Services.Scheduler.Type {
-				case "dependencies":
-					srvc = &simple.Service{
-						System:  sys,
-						Manager: nil,
-						Core:,
-					}
-				case "dummy":
-				default:
-					cmd.PrintErrf("unsupported scheduler type: %s\n", config.Services.Scheduler.Type)
+				cmd.Println("building scheduler")
+				srvc, mws, err := b.BuildScheduler(ctx, sys, cfg.Services.Scheduler)
+				if err != nil {
+					cmd.PrintErrln(err)
 					return
 				}
+
+				deployer.Add(srvc, mws...)
 			}
 
 			if flags.processor {
+				cmd.Println("building processor")
+				srvc, mws, err := b.BuildProcessor(ctx, sys, cfg.Services.Processor)
+				if err != nil {
+					cmd.PrintErrln(err)
+					return
+				}
 
+				deployer.Add(srvc, mws...)
 			}
 
 			if flags.status {
+				cmd.Println("building status")
 
+				srvc, mws, err := b.BuildStatus(ctx, sys, cfg.Services.Status)
+				if err != nil {
+					cmd.PrintErrln(err)
+					return
+				}
+
+				deployer.Add(srvc, mws...)
 			}
 
 			if flags.api {
+				cmd.Println("building api")
 
+				srvc, mws, err := b.BuildHttpApi(ctx, sys, cfg.Services.HttpServer)
+				if err != nil {
+					cmd.PrintErrln(err)
+					return
+				}
+
+				deployer.Add(srvc, mws...)
 			}
 
 			if flags.serviceDiscovery {
+				cmd.Println("building service discovery")
 
+				srvc, mws, err := b.BuildDiscovery(ctx, sys, cfg.Services.Discovery)
+				if err != nil {
+					cmd.PrintErrln(err)
+					return
+				}
+
+				deployer.Add(srvc, mws...)
 			}
 
+			cmd.Println("deploying...")
+			if err := deployer.Deploy(context.Background()); err != nil {
+				cmd.PrintErrln(err)
+				return
+			}
+			cmd.Println("DONE")
 		},
 	}
 
-	cmd.Flags().BoolVar(&flags.env, "env", false, "Set environment")
 	cmd.Flags().StringVar(&flags.config, "config", "", "Specify config file path")
 	cmd.Flags().BoolVar(&flags.noScheduler, "no-scheduler", false, "Disable scheduler")
 	cmd.Flags().BoolVar(&flags.noProcessor, "no-processor", false, "Disable processor")
@@ -138,32 +159,4 @@ func NewDeploy() *cobra.Command {
 	cmd.Flags().BoolVar(&flags.serviceDiscovery, "service-discovery", false, "Enable API")
 
 	return cmd
-}
-
-type serviceBuilder struct {
-	system system.AbstractSystem
-}
-
-func (builder serviceBuilder) buildScheduler(config SchedulerConfig) (srvc service.Service, mws []service.Middleware, err error) {
-	core := builder.buildServiceCore("scheduler", config.Options)
-
-	switch config.Type {
-	case "dependencies":
-	case "dummy":
-		srvc = &dummy.Service{
-			System: builder.system,
-			Core:   core,
-		}
-
-	}
-
-
-}
-
-func (builder serviceBuilder) buildServiceCore(defaultName string, options map[string]any) service.Core {
-
-}
-
-func (builder serviceBuilder) buildMiddlewares(options map[string]any) []service.Middleware {
-
 }

@@ -3,18 +3,21 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/cmd/testing/stand/common"
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
 	"github.com/ischenkx/kantoku/pkg/core/services/executor"
+	"github.com/ischenkx/kantoku/pkg/lib/connector/cli/builder"
+	config2 "github.com/ischenkx/kantoku/pkg/lib/connector/cli/config"
 	"github.com/ischenkx/kantoku/pkg/lib/discovery"
 	"github.com/ischenkx/kantoku/pkg/lib/exe"
+	"github.com/joho/godotenv"
+	"log"
 	"log/slog"
 	"strconv"
 )
 
-const Consumers = 5
+const Consumers = 100
 
 //func execute(ctx *exe.Context) error {
 //	slog.Info("executing", slog.String("id", ctx.Task().ID))
@@ -122,7 +125,7 @@ func execute(ctx *exe.Context) error {
 		outputs[idx] = out
 	}
 
-	slog.Info("done",
+	slog.Debug("done",
 		slog.Any("type", typ),
 		slog.Any("result", result))
 
@@ -135,15 +138,27 @@ func execute(ctx *exe.Context) error {
 }
 
 func main() {
-	common.InitLogger()
+	//common.InitLogger()
+
+	if err := godotenv.Load("local/host.env"); err != nil {
+		fmt.Println("failed to load env:", err)
+		return
+	}
 
 	slog.Info("Starting...")
 
 	var deployer service.Deployer
 
+	cfg, err := config2.FromFile("local/config.yaml")
+	if err != nil {
+		log.Fatal(err)
+	}
+	var b builder.Builder
 	for i := 0; i < Consumers; i++ {
-
-		sys := common.NewSystem(context.Background(), "")
+		sys, err := b.BuildSystem(context.Background(), cfg.System)
+		if err != nil {
+			log.Fatal(err)
+		}
 		srvc := &executor.Service{
 			System:      sys,
 			ResultCodec: codec.JSON[executor.Result](),

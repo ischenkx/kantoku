@@ -29,7 +29,7 @@ func (responder *Responder[Service]) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to consume: %w", err)
 	}
 
-	responder.Service.Logger().Info("starting a responder")
+	//responder.Service.Logger().Info("starting a responder")
 
 	broker.Processor[event.Event]{
 		Handler: func(ctx context.Context, ev event.Event) error {
@@ -41,8 +41,8 @@ func (responder *Responder[Service]) Run(ctx context.Context) error {
 				return nil
 			}
 
-			responder.Service.Logger().Info("received a discovery request",
-				slog.String("id", request.ID))
+			//responder.Service.Logger().Info("received a discovery request",
+			//	slog.String("id", request.ID))
 
 			var info map[string]any
 			if responder.InfoProvider != nil {

@@ -31,7 +31,7 @@ func (srvc *Service) Run(ctx context.Context) error {
 		Handler: func(ctx context.Context, ev event.Event) error {
 			taskId := string(ev.Data)
 
-			srvc.Logger().Info("new task",
+			srvc.Logger().Debug("new task",
 				slog.String("id", taskId))
 
 			t, err := srvc.System.Task(ctx, taskId)

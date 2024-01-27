@@ -19,35 +19,28 @@ import (
 var _ AbstractSystem = (*System)(nil)
 
 type System struct {
-	events    *event.Broker
-	resources resource.Storage
-	tasks     record.Storage[task.Task]
+	Events_    *event.Broker
+	Resources_ resource.Storage
+	Tasks_     record.Storage[task.Task]
+	Logger     *slog.Logger
 }
 
-func New(events *event.Broker, resources resource.Storage, tasks record.Storage[task.Task]) *System {
-	return &System{
-		events:    events,
-		resources: resources,
-		tasks:     tasks,
-	}
+func (system System) Tasks() record.Set[task.Task] {
+	return system.Tasks_
 }
 
-func (system *System) Tasks() record.Set[task.Task] {
-	return system.tasks
+func (system System) Resources() resource.Storage {
+	return system.Resources_
 }
 
-func (system *System) Resources() resource.Storage {
-	return system.resources
-}
-
-func (system *System) Events() *event.Broker {
-	return system.events
+func (system System) Events() *event.Broker {
+	return system.Events_
 }
 
 // TODO: move all constants (events, "task_id", etc) to actual constant (probably it'd be better
 // TODO: to have a separate package for event names, so they can be referred from the kernel and this high-level package
 
-func (system *System) Spawn(ctx context.Context, newTask task.Task) (initializedTask task.Task, err error) {
+func (system System) Spawn(ctx context.Context, newTask task.Task) (initializedTask task.Task, err error) {
 	type state struct {
 		task task.Task
 	}
@@ -60,7 +53,7 @@ func (system *System) Spawn(ctx context.Context, newTask task.Task) (initialized
 	tx := lo.NewTransaction[state]().
 		Then(
 			func(state state) (state, error) {
-				err := system.tasks.Insert(ctx, newTask)
+				err := system.Tasks_.Insert(ctx, newTask)
 				if err != nil {
 					return state, err
 				}
@@ -68,9 +61,9 @@ func (system *System) Spawn(ctx context.Context, newTask task.Task) (initialized
 				return state, nil
 			},
 			func(state state) state {
-				err := system.tasks.Filter(record.R{"id": state.task.ID}).Erase(ctx)
+				err := system.Tasks_.Filter(record.R{"id": state.task.ID}).Erase(ctx)
 				if err != nil {
-					slog.Error("failed to delete task info in the compensating transaction",
+					system.Logger.Error("failed to delete task info in the compensating transaction",
 						slog.String("id", state.task.ID),
 						slog.String("error", err.Error()))
 				}
@@ -97,7 +90,7 @@ func (system *System) Spawn(ctx context.Context, newTask task.Task) (initialized
 	return result.task, nil
 }
 
-func (system *System) Task(ctx context.Context, id string) (task.Task, error) {
+func (system System) Task(ctx context.Context, id string) (task.Task, error) {
 	t, err := recutil.Single(
 		ctx,
 		system.
