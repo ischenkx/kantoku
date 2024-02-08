@@ -53,8 +53,8 @@ func (srvc *Service) processNewTasks(ctx context.Context) error {
 	broker.Processor[event.Event]{
 		Handler: func(ctx context.Context, ev event.Event) error {
 			taskId := string(ev.Data)
-			srvc.Logger().Info("new task",
-				slog.String("id", taskId))
+			//srvc.Logger().Info("new task",
+			//	slog.String("id", taskId))
 
 			if err := srvc.Manager.Register(ctx, taskId); err != nil {
 				return fmt.Errorf("failed to register a task (id='%s'): %w", taskId, err)
@@ -85,8 +85,8 @@ func (srvc *Service) processReadyTasks(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case taskId := <-channel:
-			srvc.Logger().Info("ready task",
-				slog.String("id", taskId))
+			//srvc.Logger().Info("ready task",
+			//	slog.String("id", taskId))
 			err := srvc.System.Events().Send(ctx, event.New(events.OnTask.Ready, []byte(taskId)))
 			if err != nil {
 				srvc.Logger().Error("failed to publish an event",

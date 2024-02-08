@@ -54,6 +54,7 @@ func (s *Storage) Allocate(ctx context.Context, storage resource.Storage) error 
 		return err
 	}
 	for i := 0; i < len(ids); i++ {
+		unallocated[i].Status = resource.Allocated
 		unallocated[i].ID = ids[i]
 	}
 	return nil
@@ -83,11 +84,11 @@ func (s *Storage) Encode(codec codec.Codec[any, []byte]) error {
 	return nil
 }
 
-// Save all resources that are not marked as saved
+// Save all resources that are not marked as saved and have data
 func (s *Storage) Save(ctx context.Context, storage resource.Storage) error {
 	toSave := make([]resource.Resource, 0)
 	for id, res := range s.id2resource {
-		if s.id2resource[id].ID != "" && !s.isSaved[id] {
+		if s.id2resource[id].ID != "" && !s.isSaved[id] && res.Data != nil {
 			toSave = append(toSave, *res)
 		}
 	}

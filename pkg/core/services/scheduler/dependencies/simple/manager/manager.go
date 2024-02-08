@@ -138,9 +138,9 @@ func (manager *Manager) resolveDependencies(ctx context.Context, g *errgroup.Gro
 				case <-ctx.Done():
 					break depResolver
 				case dep := <-depsChannel:
-					slog.Info("received a dependency from resolver",
-						slog.String("dependency_id", dep),
-						slog.String("resolver", label))
+					//slog.Info("received a dependency from resolver",
+					//	slog.String("dependency_id", dep),
+					//	slog.String("resolver", label))
 					err := manager.dependencies.Resolve(ctx, dependency.Dependency{
 						ID:     dep,
 						Status: dependency.OK,
@@ -172,9 +172,9 @@ collector:
 					slog.String("error", err.Error()))
 				continue
 			}
-			slog.Info("received a ready group",
-				slog.String("group_id", id),
-				slog.String("task_id", task))
+			//slog.Info("received a ready group",
+			//	slog.String("group_id", id),
+			//	slog.String("task_id", task))
 
 			select {
 			case <-ctx.Done():

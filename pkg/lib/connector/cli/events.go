@@ -18,7 +18,7 @@ func NewEvents() *cobra.Command {
 			// Placeholder logic for publish command
 			name, _ := cmd.Flags().GetString("name")
 			payload, _ := cmd.Flags().GetString("payload")
-			fmt.Printf("Publishing event: Name=%s, Payload=%s\n", name, payload)
+			fmt.Printf("Publishing event: Type=%s, Payload=%s\n", name, payload)
 		},
 	}
 

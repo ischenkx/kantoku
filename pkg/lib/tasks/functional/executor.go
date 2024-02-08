@@ -20,17 +20,7 @@ func NewExecutor[T Task[I, O], I, O any](t T) Executor[T, I, O] {
 }
 
 func (e Executor[T, I, O]) Execute(ctx context.Context, sys system.AbstractSystem, task task.Task) error {
-	inputResources, err := sys.Resources().Load(ctx, task.Inputs...)
-	if err != nil {
-		return err
-	}
-
-	taskCtx := NewContext(ctx)
-
-	input, err := e.buildInput(inputResources, taskCtx.FutureStorage)
-	if err != nil {
-		return err
-	}
+	taskCtx, input, err := e.prepare(ctx, sys, task)
 
 	out, err := e.task.Call(taskCtx, input)
 	if err != nil {
@@ -39,28 +29,56 @@ func (e Executor[T, I, O]) Execute(ctx context.Context, sys system.AbstractSyste
 
 	// here we can check for circular dependencies if we want...
 
-	taskCtx.addFutureStruct(out, task.Outputs)
-	err = taskCtx.FutureStorage.Encode(codec.JSON[any]())
+	err = e.save(taskCtx, sys, task, out)
+
+	// write status about successful execution or something
+
+	return err
+}
+
+func (e Executor[T, I, O]) Type() string {
+	return taskType[I, O](e.task)
+}
+
+func (e Executor[T, I, O]) prepare(ctx context.Context, sys system.AbstractSystem, task task.Task) (*Context, I, error) {
+	var input I
+	inputResources, err := sys.Resources().Load(ctx, task.Inputs...)
+	if err != nil {
+		return nil, input, err
+	}
+
+	taskCtx := NewContext(ctx)
+
+	input, err = e.buildInput(inputResources, taskCtx.FutureStorage)
+	if err != nil {
+		return nil, input, err
+	}
+	return taskCtx, input, err
+}
+
+func (e Executor[T, I, O]) save(ctx *Context, sys system.AbstractSystem, task task.Task, out O) error {
+	ctx.addFutureStruct(out, task.Outputs)
+	err := ctx.FutureStorage.Encode(codec.JSON[any]())
 	if err != nil {
 		return err
 	}
 
-	// all futures are created and added to taskCtx
-	err = taskCtx.FutureStorage.Allocate(ctx, sys.Resources())
+	// all futures are created and added to ctx
+	err = ctx.FutureStorage.Allocate(ctx, sys.Resources())
 	if err != nil {
-		taskCtx.rollback(sys)
+		ctx.rollback(sys, err)
 		return err
 	}
 
-	err = taskCtx.spawn(sys)
+	err = ctx.spawn(sys)
 	if err != nil {
-		taskCtx.rollback(sys)
+		ctx.rollback(sys, err)
 		return err
 	}
 
-	err = taskCtx.FutureStorage.Save(ctx, sys.Resources())
+	err = ctx.FutureStorage.Save(ctx, sys.Resources())
 	if err != nil {
-		taskCtx.rollback(sys)
+		ctx.rollback(sys, err)
 		return err
 	}
 	return nil
@@ -127,4 +145,9 @@ func parseField(data []byte, field reflect.Value) error {
 	}
 	field.Set(futAndErr[0])
 	return nil
+}
+
+func taskType[I, O any](task Task[I, O]) string {
+	typ := reflect.ValueOf(task).Type()
+	return typ.PkgPath() + "." + typ.Name()
 }

@@ -2,53 +2,37 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/ischenkx/kantoku/cmd/testing/stand/common"
-	"github.com/ischenkx/kantoku/pkg/common/data/record"
-	"github.com/ischenkx/kantoku/pkg/core/resource"
-	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/simple/manager"
-	"github.com/ischenkx/kantoku/pkg/core/task"
-	"time"
+	"github.com/ischenkx/kantoku/pkg/common/data/codec"
+	"github.com/ischenkx/kantoku/pkg/lib/tasks/functional"
+	"github.com/ischenkx/kantoku/pkg/lib/tasks/future"
+	"log"
 )
-
-var Interval = time.Millisecond * 1000
 
 func main() {
 	common.InitLogger()
 	ctx := context.Background()
-	sys := common.NewSystem(ctx, "foreman-0")
+	sys := common.NewSystem(ctx, "foreman-func")
 
-	resources, err := sys.Resources().Alloc(ctx, 2)
+	res, err := sys.Resources().Load(context.Background(), "c3469a9766e94e4db7e3d6fa8fa86734")
 	if err != nil {
-		fmt.Println("failed to allocate resources:", err)
-		return
+		panic(err)
 	}
-
-	in := resources[0]
-	out := resources[1]
-
-	fmt.Println("Input:", in)
-	fmt.Println("Output:", out)
-
-	t, err := sys.Spawn(ctx,
-		task.Task{
-			Inputs:  []resource.ID{in},
-			Outputs: []resource.ID{out},
-			Info: record.R{
-				"dependencies": []manager.DependencySpec{
-					{
-						Name: "resource",
-						Data: in,
-					},
-				},
-			},
-		},
-	)
-
+	decoded, err := codec.JSON[int]().Decode(res[0].Data)
 	if err != nil {
-		fmt.Println("failed to spawn:", err)
-		return
+		panic(err)
 	}
+	log.Println(decoded)
+	err = functional.SchedulingContext(context.Background(), sys, func(ctx *functional.Context) error {
+		for i := 0; i < 1000; i++ {
+			functional.Execute[common.SumTask, common.SumInput, common.MathOutput](ctx, common.SumTask{},
+				common.SumInput{Args: future.FromValue([]int{1, 2, 3, 4, 5, 6, 7, 8, 9})},
+			)
+		}
 
-	fmt.Println("task id:", t.ID)
+		return nil
+	})
+	if err != nil {
+		panic(err)
+	}
 }

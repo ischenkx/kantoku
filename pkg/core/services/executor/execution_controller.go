@@ -62,6 +62,8 @@ func (controller *executionController) processReadyTask(ctx context.Context, id 
 	if err := controller.execute(ctx, id); err != nil {
 		result.Data = []byte(err.Error())
 		result.Status = Failed
+		// TODO: may be remove
+		controller.Service.Logger().Warn("execution error:", err)
 	}
 
 	encodedResult, err := controller.ResultCodec.Encode(result)

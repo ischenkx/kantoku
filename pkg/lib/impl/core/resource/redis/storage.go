@@ -55,6 +55,10 @@ func (storage *Storage) Load(ctx context.Context, ids ...resource.ID) ([]resourc
 }
 
 func (storage *Storage) Alloc(ctx context.Context, amount int) ([]resource.ID, error) {
+	if amount == 0 {
+		return []resource.ID{}, nil
+	}
+
 	ids := lo.Times(amount, func(_ int) string {
 		return storage.generateKey()
 	})

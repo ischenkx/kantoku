@@ -14,7 +14,7 @@
       </ENTRIES>
     </EXTENSION>
     <kind value="PACKAGE" />
-    <package value="github.com/ischenkx/kantoku/cmd/testing/stand/foreman3" />
+    <package value="github.com/ischenkx/kantoku/cmd/testing/stand/foreman2" />
     <directory value="$PROJECT_DIR$" />
     <filePath value="$PROJECT_DIR$" />
     <method v="2" />

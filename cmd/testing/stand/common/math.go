@@ -1,4 +1,4 @@
-package main
+package common
 
 import (
 	"github.com/ischenkx/kantoku/pkg/lib/tasks/functional"
