@@ -3,11 +3,12 @@ package status
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/common/broker"
 	codec "github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/common/data/record"
 	"github.com/ischenkx/kantoku/pkg/common/data/record/ops"
 	"github.com/ischenkx/kantoku/pkg/common/service"
+	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
+	"github.com/ischenkx/kantoku/pkg/common/transport/queue"
 	"github.com/ischenkx/kantoku/pkg/core/event"
 	"github.com/ischenkx/kantoku/pkg/core/services/executor"
 	"github.com/ischenkx/kantoku/pkg/core/task"
@@ -45,7 +46,7 @@ func (srvc *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to consumer events: %w", err)
 	}
 
-	broker.Processor[event.Event]{
+	queue.Processor[event.Event]{
 		Handler: func(ctx context.Context, ev event.Event) error {
 			if err := srvc.processEvent(ctx, ev); err != nil {
 				return err
@@ -83,7 +84,7 @@ func (srvc *Service) processEvent(ctx context.Context, ev event.Event) error {
 			return fmt.Errorf("failed to decode the result: %w", err)
 		}
 
-		newStatus := task.FinishedStatus
+		newStatus := task.Statuses.Finished
 
 		if err := srvc.updateStatus(ctx, result.TaskID, newStatus, string(result.Status)); err != nil {
 			return fmt.Errorf("failed to update status (task_id='%s' status='%s'): %w",
@@ -108,13 +109,13 @@ func (srvc *Service) processEvent(ctx context.Context, ev event.Event) error {
 func (srvc *Service) event2status(topic string) string {
 	switch topic {
 	case events.OnTask.Created:
-		return task.InitializedStatus
+		return task.Statuses.Initialized
 	case events.OnTask.Ready:
-		return task.ReadyStatus
+		return task.Statuses.Ready
 	case events.OnTask.Received:
-		return task.ReceivedStatus
+		return task.Statuses.Received
 	case events.OnTask.Cancelled:
-		return task.CancelledStatus
+		return task.Statuses.Cancelled
 	default:
 		return ""
 	}
@@ -122,15 +123,15 @@ func (srvc *Service) event2status(topic string) string {
 
 func (srvc *Service) status2precedingStatuses(status string) []any {
 	switch status {
-	case task.InitializedStatus:
+	case task.Statuses.Initialized:
 		return []any{nil}
-	case task.ReadyStatus:
-		return []any{task.InitializedStatus}
-	case task.ReceivedStatus:
-		return []any{task.InitializedStatus, task.ReadyStatus}
-	case task.FinishedStatus:
-		return []any{task.InitializedStatus, task.ReadyStatus, task.ReceivedStatus}
-	case task.CancelledStatus:
+	case task.Statuses.Ready:
+		return []any{task.Statuses.Initialized}
+	case task.Statuses.Received:
+		return []any{task.Statuses.Initialized, task.Statuses.Ready}
+	case task.Statuses.Finished:
+		return []any{task.Statuses.Initialized, task.Statuses.Ready, task.Statuses.Received}
+	case task.Statuses.Cancelled:
 		return []any{}
 	default:
 		return []any{}

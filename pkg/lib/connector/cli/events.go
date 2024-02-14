@@ -2,8 +2,9 @@ package cli
 
 import (
 	"context"
-	"github.com/ischenkx/kantoku/pkg/common/broker"
 	"github.com/ischenkx/kantoku/pkg/common/data/uid"
+	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
+	"github.com/ischenkx/kantoku/pkg/common/transport/queue"
 	"github.com/ischenkx/kantoku/pkg/core/event"
 	"github.com/ischenkx/kantoku/pkg/lib/connector/cli/builder"
 	config2 "github.com/ischenkx/kantoku/pkg/lib/connector/cli/config"
@@ -122,7 +123,7 @@ func NewEvents() *cobra.Command {
 			cmd.Println("Group:", consumeFlags.group)
 			cmd.Println("Events:", strings.Join(consumeFlags.names, ", "))
 
-			broker.Processor[event.Event]{
+			queue.Processor[event.Event]{
 				Handler: func(ctx context.Context, ev event.Event) error {
 					cmd.Printf("id='%s' event='%s' data='%s'\n", ev.ID, ev.Topic, string(ev.Data))
 					return nil

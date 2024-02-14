@@ -1,9 +1,9 @@
 package task
 
-const (
-	InitializedStatus = "initialized"
-	ReadyStatus       = "ready"
-	CancelledStatus   = "cancelled"
-	ReceivedStatus    = "received"
-	FinishedStatus    = "finished"
-)
+var Statuses struct {
+	Initialized string
+	Ready       string
+	Cancelled   string
+	Received    string
+	Finished    string
+}

@@ -3,9 +3,10 @@ package discovery
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/common/broker"
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/common/service"
+	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
+	"github.com/ischenkx/kantoku/pkg/common/transport/queue"
 	"github.com/ischenkx/kantoku/pkg/core/event"
 	"log/slog"
 )
@@ -31,7 +32,7 @@ func (responder *Responder[Service]) Run(ctx context.Context) error {
 
 	//responder.Service.Logger().Info("starting a responder")
 
-	broker.Processor[event.Event]{
+	queue.Processor[event.Event]{
 		Handler: func(ctx context.Context, ev event.Event) error {
 			request, err := responder.RequestCodec.Decode(ev.Data)
 			if err != nil {
