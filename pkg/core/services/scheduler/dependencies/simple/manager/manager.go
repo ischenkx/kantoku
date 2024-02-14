@@ -13,29 +13,16 @@ import (
 )
 
 type Manager struct {
-	system       system.AbstractSystem
-	dependencies dependency.Manager
-	task2group   TaskToGroup
-	resolvers    map[string]Resolver
-}
-
-func New(
-	system system.AbstractSystem,
-	dependencies dependency.Manager,
-	task2group TaskToGroup,
-	resolvers map[string]Resolver) *Manager {
-
-	return &Manager{
-		system:       system,
-		dependencies: dependencies,
-		task2group:   task2group,
-		resolvers:    resolvers,
-	}
+	System       system.AbstractSystem
+	Dependencies dependency.Manager
+	TaskToGroup  TaskToGroup
+	Resolvers    map[string]Resolver
+	Logger       *slog.Logger
 }
 
 func (manager *Manager) Register(ctx context.Context, id string) error {
 	// TODO: use compensating transactions for consistency
-	t, err := manager.system.Task(ctx, id)
+	t, err := manager.System.Task(ctx, id)
 	if err != nil {
 		return fmt.Errorf("failed to get task: %w", err)
 	}
@@ -50,7 +37,7 @@ func (manager *Manager) Register(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to decode dependencies: %w", err)
 	}
 
-	dependencies, err := manager.dependencies.NewDependencies(ctx, len(specs))
+	dependencies, err := manager.Dependencies.NewDependencies(ctx, len(specs))
 	if err != nil {
 		return fmt.Errorf("failed to allocate new dependencies: %w", err)
 	}
@@ -62,7 +49,7 @@ func (manager *Manager) Register(ctx context.Context, id string) error {
 	for index, depId := range depIds {
 		spec := specs[index]
 
-		resolver, ok := manager.resolvers[spec.Name]
+		resolver, ok := manager.Resolvers[spec.Name]
 		if !ok {
 			return fmt.Errorf("failed to find a resolver for '%s'", spec.Name)
 		}
@@ -72,20 +59,20 @@ func (manager *Manager) Register(ctx context.Context, id string) error {
 		}
 	}
 
-	groupId, err := manager.dependencies.NewGroup(ctx)
+	groupId, err := manager.Dependencies.NewGroup(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to create a dependency group: %w", err)
 	}
 
-	if err := manager.task2group.Save(ctx, id, groupId); err != nil {
+	if err := manager.TaskToGroup.Save(ctx, id, groupId); err != nil {
 		return fmt.Errorf("failed to save a task-group binding: %w", err)
 	}
 
-	if err := manager.dependencies.InitializeGroup(ctx, groupId, depIds...); err != nil {
+	if err := manager.Dependencies.InitializeGroup(ctx, groupId, depIds...); err != nil {
 		return fmt.Errorf("failed to initialize group: %w", err)
 	}
 
-	err = manager.system.
+	err = manager.System.
 		Tasks().
 		Filter(record.R{"id": id}).
 		Update(ctx,
@@ -107,13 +94,13 @@ func (manager *Manager) Ready(ctx context.Context) (tasks <-chan string, err err
 	manager.resolveDependencies(ctx, g)
 
 	g.Go(func() error {
-		slog.Info("collecting ready tasks")
+		manager.Logger.Debug("collecting ready tasks")
 		return manager.collectReadyTasks(ctx, _tasks)
 	})
 
 	go func() {
 		if err := g.Wait(); err != nil {
-			slog.Info("failure",
+			manager.Logger.Info("",
 				slog.String("error", err.Error()))
 		}
 	}()
@@ -122,9 +109,9 @@ func (manager *Manager) Ready(ctx context.Context) (tasks <-chan string, err err
 }
 
 func (manager *Manager) resolveDependencies(ctx context.Context, g *errgroup.Group) {
-	for label, resolver := range manager.resolvers {
+	for label, resolver := range manager.Resolvers {
 		g.Go(func() error {
-			slog.Info("starting a resolver",
+			manager.Logger.Info("starting a resolver",
 				slog.String("label", label))
 
 			depsChannel, err := resolver.Ready(ctx)
@@ -138,15 +125,15 @@ func (manager *Manager) resolveDependencies(ctx context.Context, g *errgroup.Gro
 				case <-ctx.Done():
 					break depResolver
 				case dep := <-depsChannel:
-					slog.Info("received a dependency from resolver",
+					manager.Logger.Debug("received a dependency from resolver",
 						slog.String("dependency_id", dep),
 						slog.String("resolver", label))
-					err := manager.dependencies.Resolve(ctx, dependency.Dependency{
+					err := manager.Dependencies.Resolve(ctx, dependency.Dependency{
 						ID:     dep,
 						Status: dependency.OK,
 					})
 					if err != nil {
-						slog.Info("failed to resolve a dependency",
+						manager.Logger.Error("failed to resolve a dependency",
 							slog.String("error", err.Error()))
 					}
 				}
@@ -157,7 +144,7 @@ func (manager *Manager) resolveDependencies(ctx context.Context, g *errgroup.Gro
 }
 
 func (manager *Manager) collectReadyTasks(ctx context.Context, tasks chan<- string) error {
-	channel, err := manager.dependencies.ReadyGroups(ctx)
+	channel, err := manager.Dependencies.ReadyGroups(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to read ready groups: %w", err)
 	}
@@ -166,13 +153,13 @@ collector:
 	for {
 		select {
 		case id := <-channel:
-			task, err := manager.task2group.TaskByGroup(ctx, id)
+			task, err := manager.TaskToGroup.TaskByGroup(ctx, id)
 			if err != nil {
-				slog.Error("failed to get task by group",
+				manager.Logger.Error("failed to get task by group",
 					slog.String("error", err.Error()))
 				continue
 			}
-			slog.Info("received a ready group",
+			manager.Logger.Debug("received a ready group",
 				slog.String("group_id", id),
 				slog.String("task_id", task))
 

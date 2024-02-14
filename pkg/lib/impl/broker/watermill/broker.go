@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"github.com/ThreeDotsLabs/watermill/message"
 	"github.com/google/uuid"
-	"github.com/ischenkx/kantoku/pkg/common/broker"
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
+	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
+	"github.com/ischenkx/kantoku/pkg/common/transport/queue"
 	"github.com/samber/lo"
 	"log/slog"
 )
@@ -14,10 +15,11 @@ import (
 type Broker[Item any] struct {
 	Agent                     Agent
 	ItemCodec                 codec.Codec[Item, []byte]
+	Logger                    *slog.Logger
 	ConsumerChannelBufferSize int
 }
 
-func (b Broker[Item]) Consume(ctx context.Context, info broker.TopicsInfo) (<-chan broker.Message[Item], error) {
+func (b Broker[Item]) Consume(ctx context.Context, info broker.TopicsInfo) (<-chan queue.Message[Item], error) {
 	subscriber, err := b.Agent.SubscriberFactory.New(ctx, info.Group)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a subscriber: %w", err)
@@ -29,9 +31,12 @@ func (b Broker[Item]) Consume(ctx context.Context, info broker.TopicsInfo) (<-ch
 		channel, err := subscriber.Subscribe(ctx, topic)
 		if err != nil {
 			if closeErr := subscriber.Close(); closeErr != nil {
-				slog.Error("failed to close a subscriber",
+				b.Logger.Error("failed to close a subscriber",
 					slog.String("error", closeErr.Error()))
 			}
+
+			b.Logger.Error("failed to subscribe",
+				slog.String("error", err.Error()))
 
 			return nil, fmt.Errorf("failed to subscribe: %w", err)
 		}
@@ -39,10 +44,10 @@ func (b Broker[Item]) Consume(ctx context.Context, info broker.TopicsInfo) (<-ch
 		channels = append(channels, channel)
 	}
 
-	resultChannel := make(chan broker.Message[Item], b.ConsumerChannelBufferSize)
+	resultChannel := make(chan queue.Message[Item], b.ConsumerChannelBufferSize)
 
 	mergedChannel := lo.FanIn[*message.Message](b.ConsumerChannelBufferSize, channels...)
-	go func(ctx context.Context, from <-chan *message.Message, to chan<- broker.Message[Item]) {
+	go func(ctx context.Context, from <-chan *message.Message, to chan<- queue.Message[Item]) {
 		defer subscriber.Close()
 
 		for {
@@ -52,7 +57,7 @@ func (b Broker[Item]) Consume(ctx context.Context, info broker.TopicsInfo) (<-ch
 			case mes := <-from:
 				item, err := b.ItemCodec.Decode(mes.Payload)
 				if err != nil {
-					slog.Error("failed to decode item",
+					b.Logger.Error("failed to decode item",
 						slog.String("error", err.Error()))
 					continue
 				}
@@ -60,7 +65,7 @@ func (b Broker[Item]) Consume(ctx context.Context, info broker.TopicsInfo) (<-ch
 				rawTopic := mes.Context().Value("topic")
 				topic, ok := rawTopic.(string)
 				if !ok {
-					slog.Error("failed to extract topic from message",
+					b.Logger.Error("failed to extract topic from message",
 						slog.Any("raw_topic", rawTopic))
 					continue
 				}

@@ -6,6 +6,7 @@ import (
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/common/data/record"
 	"go.mongodb.org/mongo-driver/mongo"
+	"log"
 )
 
 var _ record.Storage[int] = (*Storage[int])(nil)
@@ -29,6 +30,7 @@ func (storage *Storage[Item]) Insert(ctx context.Context, item Item) error {
 	}
 	_, err = storage.collection.InsertOne(ctx, record2bson(rec))
 	if err != nil {
+		log.Println("failed to insert...")
 		return fmt.Errorf("failed to insert: %s", err)
 	}
 

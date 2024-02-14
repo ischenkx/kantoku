@@ -12,12 +12,13 @@ A platform for distributed task execution
   - [x] Acknowledgement of successful processing in queues (events)
   - [ ] Eventual consistency of multi-service transactions (using compensating transactions aka SAGAs)
     - This requires a roll-back action for all mutations (so, we probably need to add deletion of any entities in the system)
-- [ ] Logging
+- [x] Logging
+
 ### Features
 - [x] Task Dependencies
   - A dependency based scheduler
 - [ ] Logging / Metrics (Prometheus + Grafana)
-- [ ] Services
+- [x] Services
   - Common service structure for different types of processors
     - We need a single package that would take care of running and gracefully shutting down
       all types of processors
@@ -25,6 +26,13 @@ A platform for distributed task execution
     - Each service instance must have its persistent ID that can be used as a consumer group label for queues.
   - Service discovery
     - We need to collect information about services (their presence, id, other properties)
+- [ ] Web
+  - [ ] Context search + Context tree view
+  - [ ] Ability to spawn tasks
+  - [ ] Ability to restart tasks (client side + server side (maybe I should add .Restart() to the task structure))
+  - [ ] Pipelines
+  - [ ] Monitoring dashboard (Grafana)
+  - [ ] Services info (from consul)
 - [ ] Functional Tasks
   - It should be possible to describe tasks as Go/(Other language) functions
 - [ ] Context

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/hashicorp/consul/api"
 	"github.com/ischenkx/kantoku/pkg/lib/discovery"
+	"github.com/mitchellh/mapstructure"
 	"sync"
 )
 
@@ -21,9 +22,9 @@ func (hub *Hub) Register(ctx context.Context, info discovery.ServiceInfo) error 
 	agent := hub.Consul.Agent()
 
 	check := &api.AgentServiceCheck{
-		CheckID:                        "health-check-" + info.ID,
+		Status:                         "passing",
 		TTL:                            "15s",
-		DeregisterCriticalServiceAfter: "1m",
+		DeregisterCriticalServiceAfter: "30s",
 	}
 
 	encodedInfo, err := json.Marshal(info.Info)
@@ -49,15 +50,33 @@ func (hub *Hub) Register(ctx context.Context, info discovery.ServiceInfo) error 
 		Meta:  meta,
 	}
 
+	addr, port, ok := parseLocation(info.Info)
+	if ok {
+		serviceRegistration.Address = addr
+		serviceRegistration.Port = port
+	}
+
 	err = agent.ServiceRegister(serviceRegistration)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Service registered: %+v\n", info)
+	//fmt.Printf("Service registered: %+v\n", info)
 	return nil
 }
 
 func (hub *Hub) Load(ctx context.Context) ([]discovery.ServiceInfo, error) {
 	return nil, fmt.Errorf("not implemented")
+}
+
+func parseLocation(info map[string]any) (addr string, port int, ok bool) {
+	var cfg struct {
+		Addr string
+		Port int
+	}
+	if err := mapstructure.Decode(info, &cfg); err != nil {
+		return "", 0, false
+	}
+
+	return cfg.Addr, cfg.Port, true
 }
