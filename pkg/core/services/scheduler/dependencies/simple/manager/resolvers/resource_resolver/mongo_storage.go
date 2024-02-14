@@ -56,7 +56,7 @@ func (storage *MongoStorage) Poll(ctx context.Context, limit int) ([]Binding, er
 		bson.M{
 			"status": "pending",
 			"updated_at": bson.M{
-				"$gte": updatedAtLowerBoundary,
+				"$lte": updatedAtLowerBoundary,
 			},
 		},
 		options.Find().SetLimit(int64(limit)))

@@ -16,24 +16,15 @@ import (
 var _ dependency.Manager = (*Manager)(nil)
 
 type Manager struct {
-	client *pgxpool.Pool
-	config Config
-}
-
-// New creates an instance of the dependency manager with *batched* resolving.
-// client - a connection to a postgres database (all dependencies and groups are stored there)
-// queue - a queue for "ready" groups
-func New(client *pgxpool.Pool, config Config) *Manager {
-	return &Manager{
-		client: client,
-		config: config,
-	}
+	Client *pgxpool.Pool
+	Config Config
+	Logger *slog.Logger
 }
 
 func (manager *Manager) LoadDependencies(ctx context.Context, ids ...string) ([]dependency.Dependency, error) {
 	sql := `select id, status from dependencies where id in ($1)`
 
-	rows, err := manager.client.Query(ctx, sql, ids)
+	rows, err := manager.Client.Query(ctx, sql, ids)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query: %w", err)
 	}
@@ -59,7 +50,7 @@ func (manager *Manager) LoadGroups(ctx context.Context, ids ...string) ([]depend
 			where group_id in ($1)
 	`
 
-	rows, err := manager.client.Query(ctx, sql, ids)
+	rows, err := manager.Client.Query(ctx, sql, ids)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query: %w", err)
 	}
@@ -121,7 +112,7 @@ func (manager *Manager) Resolve(ctx context.Context, values ...dependency.Depend
 						join group_dependencies gd
 							 on gd.dependency_id = cte.id)`
 
-	tx, err := manager.client.Begin(ctx)
+	tx, err := manager.Client.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin a transaction: %w", err)
 	}
@@ -155,7 +146,7 @@ func (manager *Manager) NewDependencies(ctx context.Context, n int) ([]dependenc
 		}
 	})
 
-	_, err := manager.client.CopyFrom(ctx,
+	_, err := manager.Client.CopyFrom(ctx,
 		pgx.Identifier{"dependencies"},
 		[]string{"id", "status"},
 		pgx.CopyFromRows(
@@ -173,7 +164,7 @@ func (manager *Manager) NewDependencies(ctx context.Context, n int) ([]dependenc
 func (manager *Manager) NewGroup(ctx context.Context) (groupId string, err error) {
 	groupId = manager.generateNewID()
 
-	tx, err := manager.client.Begin(ctx)
+	tx, err := manager.Client.Begin(ctx)
 	if err != nil {
 		return "", fmt.Errorf("failed to begin a transaction: %w", err)
 	}
@@ -198,7 +189,7 @@ func (manager *Manager) NewGroup(ctx context.Context) (groupId string, err error
 }
 
 func (manager *Manager) InitializeGroup(ctx context.Context, groupId string, ids ...string) error {
-	tx, err := manager.client.Begin(ctx)
+	tx, err := manager.Client.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin a transaction: %w", err)
 	}
@@ -271,7 +262,7 @@ func (manager *Manager) ReadyGroups(ctx context.Context) (<-chan string, error) 
 }
 
 func (manager *Manager) pollReadyGroups(ctx context.Context, channel chan<- string) {
-	ticker := time.NewTicker(manager.config.PollingInterval)
+	ticker := time.NewTicker(manager.Config.PollingInterval)
 
 poller:
 	for {
@@ -279,9 +270,9 @@ poller:
 		case <-ctx.Done():
 			break poller
 		case <-ticker.C:
-			groups, err := manager.loadReadyGroups(ctx, manager.config.PollingBatchSize)
+			groups, err := manager.loadReadyGroups(ctx, manager.Config.PollingBatchSize)
 			if err != nil {
-				slog.Error("failed to load ready groups",
+				manager.Logger.Error("failed to load ready groups",
 					slog.String("error", err.Error()))
 				continue
 			}
@@ -308,7 +299,7 @@ func (manager *Manager) loadReadyGroups(ctx context.Context, limit int) ([]strin
 		returning id
 	`
 
-	rows, err := manager.client.Query(ctx, sql,
+	rows, err := manager.Client.Query(ctx, sql,
 		GroupCollectedStatus,
 		GroupWaitingStatus,
 		limit)

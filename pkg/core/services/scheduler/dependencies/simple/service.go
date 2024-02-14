@@ -3,8 +3,9 @@ package simple
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/common/broker"
 	"github.com/ischenkx/kantoku/pkg/common/service"
+	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
+	"github.com/ischenkx/kantoku/pkg/common/transport/queue"
 	"github.com/ischenkx/kantoku/pkg/core/event"
 	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/simple/manager"
 	"github.com/ischenkx/kantoku/pkg/core/system"
@@ -13,7 +14,7 @@ import (
 	"log/slog"
 )
 
-var QueueName = "dependencies.simple"
+var QueueName = "dependencies:simple"
 
 type Service struct {
 	System  system.AbstractSystem
@@ -30,7 +31,7 @@ func (srvc *Service) Run(ctx context.Context) error {
 	})
 
 	g.Go(func() error {
-		srvc.Logger().Info("sending ready tasks...")
+		srvc.Logger().Info("processing ready tasks...")
 		return srvc.processReadyTasks(ctx)
 	})
 
@@ -50,24 +51,24 @@ func (srvc *Service) processNewTasks(ctx context.Context) error {
 		return fmt.Errorf("failed to read events: %w", err)
 	}
 
-	broker.Processor[event.Event]{
+	queue.Processor[event.Event]{
 		Handler: func(ctx context.Context, ev event.Event) error {
 			taskId := string(ev.Data)
-			//srvc.Logger().Info("new task",
-			//	slog.String("id", taskId))
+			srvc.Logger().Debug("new task",
+				slog.String("id", taskId))
 
 			if err := srvc.Manager.Register(ctx, taskId); err != nil {
-				return fmt.Errorf("failed to register a task (id='%s'): %w", taskId, err)
+				srvc.Logger().Error("failed to process a created task",
+					slog.String("task_id", taskId),
+					slog.String("error", err.Error()))
+				//return fmt.Errorf("failed to register a task (id='%s'): %w", taskId, err)
 			}
 
 			return nil
 		},
 		ErrorHandler: func(ctx context.Context, ev event.Event, err error) {
-			taskId := string(ev.Data)
+			//taskId := string(ev.Data)
 
-			srvc.Logger().Error("failed to process a created task",
-				slog.String("task_id", taskId),
-				slog.String("error", err.Error()))
 		},
 	}.Process(ctx, channel)
 
@@ -85,8 +86,8 @@ func (srvc *Service) processReadyTasks(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case taskId := <-channel:
-			//srvc.Logger().Info("ready task",
-			//	slog.String("id", taskId))
+			srvc.Logger().Debug("ready task",
+				slog.String("id", taskId))
 			err := srvc.System.Events().Send(ctx, event.New(events.OnTask.Ready, []byte(taskId)))
 			if err != nil {
 				srvc.Logger().Error("failed to publish an event",

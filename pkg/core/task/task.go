@@ -11,3 +11,13 @@ type Task struct {
 	ID      string
 	Info    record.R
 }
+
+func New(options ...Option) Task {
+	t := Task{Info: record.R{}}
+
+	for _, option := range options {
+		option(&t)
+	}
+
+	return t
+}

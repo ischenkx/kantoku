@@ -3,8 +3,9 @@ package dummy
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/common/broker"
 	"github.com/ischenkx/kantoku/pkg/common/service"
+	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
+	"github.com/ischenkx/kantoku/pkg/common/transport/queue"
 	"github.com/ischenkx/kantoku/pkg/core/event"
 	"github.com/ischenkx/kantoku/pkg/core/system"
 	"github.com/ischenkx/kantoku/pkg/core/system/events"
@@ -27,11 +28,11 @@ func (srvc *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to read events: %w", err)
 	}
 
-	broker.Processor[event.Event]{
+	queue.Processor[event.Event]{
 		Handler: func(ctx context.Context, ev event.Event) error {
 			taskId := string(ev.Data)
 
-			srvc.Logger().Info("new task",
+			srvc.Logger().Debug("new task",
 				slog.String("id", taskId))
 
 			t, err := srvc.System.Task(ctx, taskId)

@@ -48,31 +48,26 @@ func Nats(
 	url string,
 	subscriberConfigTemplate nats.SubscriberConfig,
 	publisherConfigTemplate nats.PublisherConfig,
+	logger *slog.Logger,
 ) (Agent, error) {
-	jsConfig := nats.JetStreamConfig{
-		Disabled: true,
-	}
-
 	subscriberFactory := FunctionalSubscriberFactory(
 		func(ctx context.Context, consumerGroup string) (message.Subscriber, error) {
 			configTemplate := subscriberConfigTemplate
 
 			configTemplate.URL = url
 			configTemplate.QueueGroupPrefix = consumerGroup
-			configTemplate.JetStream = jsConfig
-			fmt.Println("connecting:", configTemplate.URL)
+			configTemplate.JetStream.DurablePrefix = consumerGroup
 			return nats.NewSubscriber(
 				configTemplate,
-				watermill.NewSlogLogger(slog.Default()),
+				watermill.NewSlogLogger(logger),
 			)
 		},
 	)
 
 	publisherConfigTemplate.URL = url
-	publisherConfigTemplate.JetStream = jsConfig
 	publisher, err := nats.NewPublisher(
 		publisherConfigTemplate,
-		watermill.NewSlogLogger(slog.Default()),
+		watermill.NewSlogLogger(logger),
 	)
 	if err != nil {
 		return Agent{}, fmt.Errorf("failed to create a publisher: %w", err)
