@@ -25,7 +25,7 @@ func (t AddTask) Call(context *functional.Context, input MathInput) (MathOutput,
 
 type MulTask struct{ MathTask }
 
-func (t MulTask) Call(context functional.Context, input MathInput) (MathOutput, error) {
+func (t MulTask) Call(context *functional.Context, input MathInput) (MathOutput, error) {
 	return MathOutput{
 		Result: future.FromValue(input.Left.Value() * input.Right.Value()),
 	}, nil
@@ -33,7 +33,7 @@ func (t MulTask) Call(context functional.Context, input MathInput) (MathOutput, 
 
 type DivTask struct{ MathTask }
 
-func (t DivTask) Call(context functional.Context, input MathInput) (MathOutput, error) {
+func (t DivTask) Call(context *functional.Context, input MathInput) (MathOutput, error) {
 	return MathOutput{
 		Result: future.FromValue(input.Left.Value() / input.Right.Value()),
 	}, nil
