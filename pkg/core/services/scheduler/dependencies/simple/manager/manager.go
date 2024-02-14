@@ -172,7 +172,7 @@ collector:
 					slog.String("error", err.Error()))
 				continue
 			}
-			//slog.Info("received a ready group",
+			//  slog.Info("received a ready group",
 			//	slog.String("group_id", id),
 			//	slog.String("task_id", task))
 
