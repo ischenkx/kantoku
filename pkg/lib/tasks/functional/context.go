@@ -15,7 +15,7 @@ import (
 )
 
 type ScheduledTask struct {
-	Name    string
+	Type    string
 	Inputs  []future.AbstractFuture
 	Outputs []future.AbstractFuture
 }
@@ -40,7 +40,7 @@ func NewContext(parent context.Context) *Context {
 func Execute[T Task[I, O], I, O any](ctx *Context, task T, input I) O {
 	out := task.EmptyOutput()
 	ctx.Scheduled = append(ctx.Scheduled, ScheduledTask{
-		Name:    taskName[I, O](task),
+		Type:    taskType[I, O](task),
 		Inputs:  ctx.addFutureStruct(input, nil),
 		Outputs: ctx.addFutureStruct(out, nil),
 	})
@@ -49,18 +49,19 @@ func Execute[T Task[I, O], I, O any](ctx *Context, task T, input I) O {
 
 // doesn't care about resources!
 func (ctx *Context) addFutureStruct(obj any, linkTo []resource.ID) []future.AbstractFuture {
-	log.Println(obj)
 	arr := futureStructToArr(obj)
 	for i, f := range arr {
 		ctx.FutureStorage.AddFuture(f)
 		if linkTo != nil {
-			ctx.FutureStorage.AssignResource(f, &resource.Resource{ID: linkTo[i]}, false)
+			res := resource.Resource{ID: linkTo[i], Status: resource.Allocated}
+			ctx.FutureStorage.AssignResource(f, &res, false)
 		}
 	}
 	return arr
 }
 
 func (ctx *Context) spawn(sys system.AbstractSystem) error {
+	// sort in reverse top-sort order to ensure minimal possible execution while rollback is possible
 	for _, t := range ctx.Scheduled {
 		fut2res := func(fut future.AbstractFuture, _ int) resource.ID {
 			return ctx.FutureStorage.GetResource(fut).ID
@@ -80,7 +81,7 @@ func (ctx *Context) spawn(sys system.AbstractSystem) error {
 				Inputs:  inputs,
 				Outputs: outputs,
 				Info: record.R{
-					"type":         t.Name,
+					"type":         t.Type,
 					"dependencies": deps,
 				},
 			})
@@ -88,13 +89,14 @@ func (ctx *Context) spawn(sys system.AbstractSystem) error {
 			return err
 		}
 		ctx.spawnedLog = append(ctx.spawnedLog, spawned.ID)
-		log.Println("Spawned:", spawned)
 	}
 	return nil
 }
 
-func (ctx *Context) rollback(sys system.AbstractSystem) {
-	err := ctx.FutureStorage.Rollback(ctx, sys.Resources())
+func (ctx *Context) rollback(sys system.AbstractSystem, err error) {
+	log.Printf("encountered error: %s", err)
+
+	err = ctx.FutureStorage.Rollback(ctx, sys.Resources())
 	if err != nil {
 		log.Printf("failed to rollback resources: %s", err)
 	}
@@ -107,17 +109,12 @@ func (ctx *Context) rollback(sys system.AbstractSystem) {
 	}
 }
 
-func taskName[I, O any](task Task[I, O]) string {
-	typ := reflect.ValueOf(task).Type()
-	return typ.PkgPath() + "." + typ.Name()
-}
-
 func futureStructToArr(obj any) []future.AbstractFuture {
 	v := reflect.ValueOf(obj)
 	arr := make([]future.AbstractFuture, v.NumField())
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
-		//fmt.Printf("%s: %v\n", v.Type().Field(i).Name, field.Interface())
+		//fmt.Printf("%s: %v\n", v.Type().Field(i).Type, field.Interface())
 
 		if field.Kind() == reflect.Struct {
 			x, ok := field.Interface().(future.AbstractFuture)
@@ -131,34 +128,3 @@ func futureStructToArr(obj any) []future.AbstractFuture {
 	}
 	return arr
 }
-
-// compare to this:
-//func lol() {
-//	var resources []resource.Resource
-//
-//	// Get the number of fields in the struct
-//	structValue := reflect.ValueOf(data)
-//	numFields := structValue.NumField()
-//
-//	values := make([][]byte, numFields)
-//	// Initialize struct fields from the fields array
-//	for i := 0; i < numFields; i++ {
-//		// todo: 100 checks for basic types
-//		value, err := e.codec.Encode(structValue.Field(i))
-//		if err != nil {
-//			return err
-//		}
-//		values[i] = value
-//	}
-//
-//	ids, err := sys.Resources().Alloc(ctx, numFields)
-//	if err != nil {
-//		return err
-//	}
-//	resources = make([]resource.Resource, numFields)
-//	for i := 0; i < numFields; i++ {
-//		resources[i].ID = ids[i]
-//		resources[i].Data = values[i]
-//	}
-//	return sys.Resources().Init(ctx, resources)
-//}

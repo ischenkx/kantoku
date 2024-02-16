@@ -13,7 +13,6 @@ var idCounter fid = 0
 
 // AbstractFuture can hold a future without caring about it's type
 type AbstractFuture interface {
-	//Value() any
 	IsFilled() bool
 	Encode(codec codec.Codec[any, []byte]) ([]byte, error)
 	getId() fid
@@ -72,36 +71,3 @@ func (f Future[T]) Encode(codec codec.Codec[any, []byte]) ([]byte, error) {
 	}
 	return data, nil
 }
-
-// banned because new Futures should be created. Otherwise, you can easily fill outputs 💀
-// func (f *Future[T]) Fill(val T) {
-//	if f.filled {
-//		panic("tried to set value second time")
-//	}
-//	f.value = &val
-//	f.filled = true
-//}
-
-// do we need it outside?
-//func (f *Future[T]) Id() FutureId { // or *T?
-//	return f.fid
-//}
-
-// feels very wrong
-//func (f *Future[T]) SetResource(res resource.Resource, codec codec.Codec[T, []byte]) error {
-//	if f.HasResource() {
-//		panic("setting resource twice")
-//	}
-//	if res.Data != nil && f.filled {
-//		panic("setting filled resource on filled future")
-//	}
-//	f.resourceId = res.ID
-//	if f.filled {
-//		data, err := codec.Encode(*f.value)
-//		if err != nil {
-//			return err
-//		}
-//		res.Data = data
-//	}
-//	return nil
-//}
