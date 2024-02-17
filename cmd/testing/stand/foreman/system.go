@@ -1,4 +1,4 @@
-package stand
+package main
 
 import (
 	"context"
