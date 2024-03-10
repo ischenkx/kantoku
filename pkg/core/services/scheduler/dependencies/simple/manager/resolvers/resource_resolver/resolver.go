@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
+	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/simple/manager"
 	"github.com/ischenkx/kantoku/pkg/core/system"
 	"github.com/samber/lo"
 	"log/slog"
@@ -18,17 +19,17 @@ type Resolver struct {
 	Logger       *slog.Logger
 }
 
-func (resolver *Resolver) Bind(ctx context.Context, depId string, data any) error {
+func (resolver *Resolver) Bind(ctx context.Context, depId string, data any) (manager.BindingResult, error) {
 	resourceId, ok := data.(string)
 	if !ok {
-		return fmt.Errorf("unexpected data: %s", data)
+		return manager.BindingResult{}, fmt.Errorf("unexpected data: %s", data)
 	}
 
 	if err := resolver.Storage.Save(ctx, depId, resourceId); err != nil {
-		return fmt.Errorf("failed to bind resource and dependency: %w", err)
+		return manager.BindingResult{}, fmt.Errorf("failed to bind resource and dependency: %w", err)
 	}
 
-	return nil
+	return manager.BindingResult{Disabled: false}, nil
 }
 
 func (resolver *Resolver) Ready(ctx context.Context) (<-chan string, error) {

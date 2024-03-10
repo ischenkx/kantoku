@@ -8,6 +8,7 @@ import (
 	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/simple"
 	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/simple/manager"
 	resourceResolver "github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/simple/manager/resolvers/resource_resolver"
+	resourceResolverV2 "github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/simple/manager/resolvers/resource_resolver_v2"
 	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/simple/manager/task2group"
 	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dummy"
 	"github.com/ischenkx/kantoku/pkg/core/system"
@@ -110,7 +111,31 @@ func (builder *Builder) buildResolvers(ctx context.Context, system system.Abstra
 	return mapping, nil
 }
 
-func (builder *Builder) buildResourceResolver(ctx context.Context, system system.AbstractSystem, cfg config.DynamicConfig) (*resourceResolver.Resolver, error) {
+func (builder *Builder) buildResourceResolver(ctx context.Context, system system.AbstractSystem, cfg config.DynamicConfig) (*resourceResolverV2.Resolver, error) {
+	var resolverConfig struct {
+		ResourcesTopic string `mapstructure:"resources_topic"`
+		Bindings       config.DynamicConfig
+	}
+	if err := cfg.Bind(&resolverConfig); err != nil {
+		return nil, errx.FailedToBind(err)
+	}
+
+	bindings, err := builder.buildResourceResolverV2Bindings(ctx, resolverConfig.Bindings)
+	if err != nil {
+		return nil, errx.FailedToBuild("resource resolver storage", err)
+	}
+
+	resolver := &resourceResolverV2.Resolver{
+		System:              system,
+		ReadyResourcesTopic: resolverConfig.ResourcesTopic,
+		Logger:              extractLogger(ctx, slog.Default()),
+		Bindings:            bindings,
+	}
+
+	return resolver, nil
+}
+
+func (builder *Builder) buildDeprecatedResourceResolver(ctx context.Context, system system.AbstractSystem, cfg config.DynamicConfig) (*resourceResolver.Resolver, error) {
 	var resolverConfig struct {
 		Storage config.DynamicConfig
 		Poller  struct {
@@ -145,6 +170,32 @@ func (builder *Builder) buildResourceResolverStorage(ctx context.Context, cfg co
 	default:
 		return nil, errx.UnsupportedKind(cfg.Kind())
 	}
+}
+
+func (builder *Builder) buildResourceResolverV2Bindings(ctx context.Context, cfg config.DynamicConfig) (resourceResolverV2.BindingStorage, error) {
+	switch cfg.Kind() {
+	case "mongo":
+		return builder.buildMongoResourceResolverV2Bindings(ctx, cfg)
+	default:
+		return nil, errx.UnsupportedKind(cfg.Kind())
+	}
+}
+
+func (builder *Builder) buildMongoResourceResolverV2Bindings(ctx context.Context, cfg config.DynamicConfig) (*resourceResolverV2.MongoStorage, error) {
+	var storageConfig struct {
+		Conn        config.DynamicConfig
+		PollTimeout time.Duration
+	}
+	if err := cfg.Bind(&storageConfig); err != nil {
+		return nil, errx.FailedToBind(err)
+	}
+
+	mongoInfo, err := builder.BuildMongo(ctx, storageConfig.Conn)
+	if err != nil {
+		return nil, errx.FailedToBuild("mongo", err)
+	}
+
+	return &resourceResolverV2.MongoStorage{Collection: mongoInfo.GetCollection()}, nil
 }
 
 func (builder *Builder) buildMongoResourceResolverStorage(ctx context.Context, cfg config.DynamicConfig) (*resourceResolver.MongoStorage, error) {

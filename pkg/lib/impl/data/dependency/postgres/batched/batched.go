@@ -93,6 +93,10 @@ func (manager *Manager) Resolve(ctx context.Context, values ...dependency.Depend
 			return item.ID
 		},
 	)
+	slog.Info("resolving",
+		slog.Any("ids", lo.Map(values, func(val dependency.Dependency, index int) string {
+			return val.ID
+		})))
 
 	status2deps := lo.GroupBy(values, func(dep dependency.Dependency) dependency.Status {
 		return dep.Status
@@ -117,6 +121,14 @@ func (manager *Manager) Resolve(ctx context.Context, values ...dependency.Depend
 		return fmt.Errorf("failed to begin a transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
+
+	ids := lo.Map(values, func(val dependency.Dependency, _ int) string {
+		return val.ID
+	})
+
+	if _, err := tx.Exec(ctx, `select * from dependencies where id = any ($1) for update`, ids); err != nil {
+		return fmt.Errorf("failed to lock dependencies: %w", err)
+	}
 
 	for status, _deps := range status2deps {
 		ids := lo.Map(_deps, func(dep dependency.Dependency, _ int) string {
@@ -189,11 +201,18 @@ func (manager *Manager) NewGroup(ctx context.Context) (groupId string, err error
 }
 
 func (manager *Manager) InitializeGroup(ctx context.Context, groupId string, ids ...string) error {
+	slog.Info("initializing group",
+		slog.String("group", groupId),
+		slog.Any("ids", ids))
 	tx, err := manager.Client.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to begin a transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `select * from dependencies where id = any ($1) for update`, ids); err != nil {
+		return fmt.Errorf("failed to lock dependencies: %w", err)
+	}
 
 	result, err := tx.Exec(ctx, `
 		UPDATE groups 
@@ -283,6 +302,8 @@ poller:
 				case <-ctx.Done():
 					break groupsIterator
 				case channel <- group:
+					slog.Info("ready group",
+						slog.String("id", group))
 				}
 			}
 		}

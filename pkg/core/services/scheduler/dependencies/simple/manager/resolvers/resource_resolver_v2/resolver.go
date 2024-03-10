@@ -2,104 +2,105 @@ package resourceResolverV2
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/google/uuid"
+	"github.com/ischenkx/kantoku/pkg/common/data"
+	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
+	"github.com/ischenkx/kantoku/pkg/common/transport/queue"
+	"github.com/ischenkx/kantoku/pkg/core/event"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
+	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/simple/manager"
 	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/samber/lo"
 	"log/slog"
-	"time"
 )
 
 type Resolver struct {
 	System              system.AbstractSystem
 	ReadyResourcesTopic string
 	Logger              *slog.Logger
+	Bindings            BindingStorage
 }
 
-func (resolver *Resolver) Bind(ctx context.Context, depId string, data any) error {
+func (resolver *Resolver) Bind(ctx context.Context, depId string, data any) (manager.BindingResult, error) {
 	resourceId, ok := data.(string)
 	if !ok {
-		return fmt.Errorf("unexpected data: %s", data)
+		return manager.BindingResult{}, fmt.Errorf("unexpected data: %s", data)
 	}
 
-	if err := resolver.Storage.Save(ctx, depId, resourceId); err != nil {
-		return fmt.Errorf("failed to bind resource and dependency: %w", err)
+	if err := resolver.Bindings.Save(ctx, depId, resourceId); err != nil {
+		return manager.BindingResult{}, fmt.Errorf("failed to bind resource and dependency: %w", err)
 	}
 
-	return nil
+	resolver.Logger.Info("binding saved",
+		slog.String("dep_id", depId),
+		slog.String("res_id", resourceId))
+
+	res, err := resolver.System.Resources().Load(ctx, resourceId)
+	if err != nil {
+		return manager.BindingResult{}, fmt.Errorf("failed to load a resource: %w", err)
+	}
+
+	if res[0].Status == resource.Ready {
+		fmt.Println("READY RESOURCE:", res[0].ID)
+		return manager.BindingResult{Disabled: true}, nil
+	}
+
+	return manager.BindingResult{Disabled: false}, nil
 }
 
 func (resolver *Resolver) Ready(ctx context.Context) (<-chan string, error) {
+	events, err := resolver.System.Events().Consume(ctx, broker.TopicsInfo{
+		Group:  "resource_resolver",
+		Topics: []string{resolver.ReadyResourcesTopic},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to consume resource events: %w", err)
+	}
+
 	depIds := make(chan string, 1024)
 
-	go resolver.collectResolvedDependencies(ctx, depIds)
+	go resolver.collectResolvedDependencies(ctx, events, depIds)
 
 	return depIds, nil
 }
 
-func (resolver *Resolver) collectResolvedDependencies(ctx context.Context, ids chan<- string) {
-
-	pollLimit := resolver.PollLimit
-	if pollLimit <= 0 {
-		pollLimit = 1024
-	}
-
-	pollInterval := resolver.PollInterval
-	if pollInterval <= 0 {
-		pollInterval = time.Second * 5
-	}
-
-	ticker := time.NewTicker(pollInterval)
-	defer ticker.Stop()
-	resolver.Logger.Info("collecting resolved dependencies",
-		slog.Duration("interval", pollInterval))
-
-poller:
-	for {
-		select {
-		case <-ctx.Done():
-			break poller
-
-		case <-ticker.C:
-			bindings, err := resolver.Storage.Poll(ctx, pollLimit)
+func (resolver *Resolver) collectResolvedDependencies(ctx context.Context, events <-chan queue.Message[event.Event], ids chan<- string) {
+	queue.Processor[event.Event]{
+		Handler: func(ctx context.Context, ev event.Event) error {
+			resourceId := string(ev.Data)
+			resolver.Logger.Info("(resource resolver) received a resource",
+				slog.String("id", resourceId))
+			dependencyId, err := resolver.Bindings.Load(ctx, resourceId)
 			if err != nil {
-				resolver.Logger.Error("failed to poll bindings",
-					slog.String("error", err.Error()))
-				continue
-			}
-
-			resource2dependencies := lo.GroupBy(bindings, func(binding Binding) string {
-				return binding.ResourceId
-			})
-
-			resourceIds := lo.Keys(resource2dependencies)
-			resources, err := resolver.System.Resources().Load(ctx, resourceIds...)
-			if err != nil {
-				resolver.Logger.Error("failed to load resources",
-					slog.String("error", err.Error()))
-			}
-
-			var resolvedIds []string
-
-			for _, res := range resources {
-				if res.Status != resource.Ready {
-					continue
+				if errors.Is(err, data.NotFoundErr) {
+					resolver.Logger.Info("(resource resolver) resource not found",
+						slog.String("id", resourceId))
+					return nil
 				}
+				return fmt.Errorf("failed to load a dependency id: %w", err)
+			}
 
-				resourceBindings := resource2dependencies[res.ID]
-				for _, binding := range resourceBindings {
-					select {
-					case <-ctx.Done():
-						break poller
-					case ids <- binding.DependencyId:
-						resolvedIds = append(resolvedIds, binding.DependencyId)
-					}
-				}
+			id := uuid.New().String()
+
+			fmt.Println("here we go!", id)
+
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("context done")
+			case ids <- dependencyId:
 			}
-			if err := resolver.Storage.Resolve(ctx, resolvedIds...); err != nil {
-				resolver.Logger.Error("failed to resolve resources",
-					slog.String("error", err.Error()))
-			}
-		}
-	}
+
+			fmt.Println("DONE!", id)
+
+			return nil
+		},
+		ErrorHandler: func(ctx context.Context, ev event.Event, err error) {
+			resourceId := string(ev.Data)
+
+			resolver.Logger.Error("failed to process a ready resource",
+				slog.String("id", resourceId),
+				slog.String("error", err.Error()))
+		},
+	}.Process(ctx, events)
 }

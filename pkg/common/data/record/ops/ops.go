@@ -67,10 +67,10 @@ func Like(value any) Operation {
 	}
 }
 
-func Contains[T any](items ...any) Operation {
+func Contains[T any](items ...T) Operation {
 	return Operation{
 		Type: ContainsOp,
-		Data: items,
+		Data: lo.ToAnySlice(items),
 	}
 }
 func Not(expr any) Operation {

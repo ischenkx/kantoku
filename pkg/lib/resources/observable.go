@@ -234,3 +234,89 @@ func (observer DummyObserver) AfterDealloc(ctx context.Context, resources []reso
 
 func (observer DummyObserver) OnDeallocError(ctx context.Context, resources []resource.ID, err error) {
 }
+
+type MultiObserver []Observer
+
+func (observers MultiObserver) BeforeLoad(ctx context.Context, ids []resource.ID) error {
+	for _, observer := range observers {
+		if err := observer.BeforeLoad(ctx, ids); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (observers MultiObserver) AfterLoad(ctx context.Context, resources []resource.Resource) {
+	for _, observer := range observers {
+		observer.AfterLoad(ctx, resources)
+	}
+}
+
+func (observers MultiObserver) OnLoadError(ctx context.Context, ids []resource.ID, err error) {
+	for _, observer := range observers {
+		observer.OnLoadError(ctx, ids, err)
+	}
+}
+
+func (observers MultiObserver) BeforeAlloc(ctx context.Context, n int) error {
+	for _, observer := range observers {
+		if err := observer.BeforeAlloc(ctx, n); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (observers MultiObserver) AfterAlloc(ctx context.Context, resources []resource.ID) {
+	for _, observer := range observers {
+		observer.AfterAlloc(ctx, resources)
+	}
+}
+
+func (observers MultiObserver) OnAllocError(ctx context.Context, n int, err error) {
+	for _, observer := range observers {
+		observer.OnAllocError(ctx, n, err)
+	}
+}
+
+func (observers MultiObserver) BeforeInit(ctx context.Context, resources []resource.Resource) error {
+	for _, observer := range observers {
+		if err := observer.BeforeInit(ctx, resources); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (observers MultiObserver) AfterInit(ctx context.Context, resources []resource.Resource) {
+	for _, observer := range observers {
+		observer.AfterInit(ctx, resources)
+	}
+}
+
+func (observers MultiObserver) OnInitError(ctx context.Context, resources []resource.Resource, err error) {
+	for _, observer := range observers {
+		observer.OnInitError(ctx, resources, err)
+	}
+}
+
+func (observers MultiObserver) BeforeDealloc(ctx context.Context, resources []resource.ID) error {
+	for _, observer := range observers {
+		if err := observer.BeforeDealloc(ctx, resources); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (observers MultiObserver) AfterDealloc(ctx context.Context, resources []resource.ID) {
+	for _, observer := range observers {
+		observer.AfterDealloc(ctx, resources)
+	}
+}
+
+func (observers MultiObserver) OnDeallocError(ctx context.Context, resources []resource.ID, err error) {
+	for _, observer := range observers {
+		observer.OnDeallocError(ctx, resources, err)
+	}
+}

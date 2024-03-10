@@ -46,6 +46,8 @@ func (manager *Manager) Register(ctx context.Context, id string) error {
 		return dep.ID
 	})
 
+	var enabledDependencyIds []string
+
 	for index, depId := range depIds {
 		spec := specs[index]
 
@@ -54,8 +56,13 @@ func (manager *Manager) Register(ctx context.Context, id string) error {
 			return fmt.Errorf("failed to find a resolver for '%s'", spec.Name)
 		}
 
-		if err := resolver.Bind(ctx, depId, spec.Data); err != nil {
+		result, err := resolver.Bind(ctx, depId, spec.Data)
+		if err != nil {
 			return fmt.Errorf("failed to bind: %w", err)
+		}
+
+		if !result.Disabled {
+			enabledDependencyIds = append(enabledDependencyIds, depId)
 		}
 	}
 
@@ -68,7 +75,11 @@ func (manager *Manager) Register(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to save a task-group binding: %w", err)
 	}
 
-	if err := manager.Dependencies.InitializeGroup(ctx, groupId, depIds...); err != nil {
+	manager.Logger.Debug("initializing group",
+		slog.String("id", groupId),
+		slog.Any("enabledDependencies", enabledDependencyIds))
+
+	if err := manager.Dependencies.InitializeGroup(ctx, groupId, enabledDependencyIds...); err != nil {
 		return fmt.Errorf("failed to initialize group: %w", err)
 	}
 

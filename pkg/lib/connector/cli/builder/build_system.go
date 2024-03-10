@@ -7,6 +7,7 @@ import (
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/common/data/record"
 	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
+	"github.com/ischenkx/kantoku/pkg/common/transport/queue"
 	"github.com/ischenkx/kantoku/pkg/core/event"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
 	"github.com/ischenkx/kantoku/pkg/core/system"
@@ -16,22 +17,27 @@ import (
 	"github.com/ischenkx/kantoku/pkg/lib/impl/broker/watermill"
 	redisResources "github.com/ischenkx/kantoku/pkg/lib/impl/core/resource/redis"
 	mongorec "github.com/ischenkx/kantoku/pkg/lib/impl/data/record/mongo"
+	"github.com/ischenkx/kantoku/pkg/lib/resources"
 	nc "github.com/nats-io/nats.go"
 	"log/slog"
 	"os"
 	"time"
 )
 
-func (builder *Builder) BuildSystem(ctx context.Context, cfg config.SystemConfig) (system.System, error) {
+func (builder *Builder) BuildSystem(ctx context.Context, cfg config.SystemConfig) (system.AbstractSystem, error) {
+	sys := &system.System{}
+
 	logger := newLogger(os.Stdout).With("service", "system")
 	ctx = withLogger(ctx, logger)
+
+	ctx = withSystem(ctx, sys)
 
 	tasks, err := builder.BuildTasks(ctx, cfg.Tasks)
 	if err != nil {
 		return system.System{}, errx.FailedToBuild("tasks", err)
 	}
 
-	resources, err := builder.BuildResources(ctx, cfg.Resources)
+	resourceStorage, err := builder.BuildResources(ctx, cfg.Resources)
 	if err != nil {
 		return system.System{}, errx.FailedToBuild("resources", err)
 	}
@@ -41,9 +47,9 @@ func (builder *Builder) BuildSystem(ctx context.Context, cfg config.SystemConfig
 		return system.System{}, errx.FailedToBuild("events", err)
 	}
 
-	sys := system.System{
+	*sys = system.System{
 		Events_:    events,
-		Resources_: resources,
+		Resources_: resourceStorage,
 		Tasks_:     tasks,
 		Logger:     logger,
 	}
@@ -143,13 +149,31 @@ func (builder *Builder) buildEventBroker(ctx context.Context, cfg config.Dynamic
 
 func (builder *Builder) BuildResources(ctx context.Context, cfg config.DynamicConfig) (resource.Storage, error) {
 	var resourcesConfig struct {
-		Storage config.DynamicConfig
+		Storage   config.DynamicConfig
+		Observers []config.DynamicConfig
 	}
 	if err := cfg.Bind(&resourcesConfig); err != nil {
 		return nil, errx.FailedToBind(err)
 	}
 
-	return builder.buildResourcesStorage(ctx, resourcesConfig.Storage)
+	storage, err := builder.buildResourcesStorage(ctx, resourcesConfig.Storage)
+	if err != nil {
+		return nil, errx.FailedToBuild("resource_storage", err)
+	}
+
+	var observers []resources.Observer
+	for _, observerConfig := range resourcesConfig.Observers {
+		observer, err := builder.buildResourceObserver(ctx, observerConfig)
+		if err != nil {
+			return nil, errx.FailedToBuild(
+				fmt.Sprintf("observer (%s)", observerConfig.Kind()),
+				err)
+		}
+
+		observers = append(observers, observer)
+	}
+
+	return resources.Observe(storage, resources.MultiObserver(observers)), nil
 }
 
 func (builder *Builder) buildResourcesStorage(ctx context.Context, cfg config.DynamicConfig) (resource.Storage, error) {
@@ -160,6 +184,46 @@ func (builder *Builder) buildResourcesStorage(ctx context.Context, cfg config.Dy
 			return nil, errx.FailedToBuild("redis", err)
 		}
 		return redisResources.New(redisClient, codec.JSON[resource.Resource](), "resource"), nil
+	default:
+		return nil, errx.UnsupportedKind(cfg.Kind())
+	}
+}
+
+func (builder *Builder) buildResourceObserver(ctx context.Context, cfg config.DynamicConfig) (resources.Observer, error) {
+	switch cfg.Kind() {
+	case "notifier":
+		var notifierConfig struct {
+			Topic string
+		}
+		if err := cfg.Bind(&notifierConfig); err != nil {
+			return nil, errx.FailedToBind(err)
+		}
+
+		sys, ok := extractSystem(ctx)
+		if !ok {
+			return nil, fmt.Errorf("failed to extract system")
+		}
+
+		notifier := resources.Notifier{
+			Logger: extractLogger(ctx, slog.Default()),
+			Dst: queue.FunctionalPublisher[string]{
+				Func: func(ctx context.Context, item string) error {
+					if sys == nil {
+						return fmt.Errorf("system is nil")
+					}
+
+					err := sys.Events().Send(ctx, event.New(notifierConfig.Topic, []byte(item)))
+					if err != nil {
+						return fmt.Errorf("failed to send an event: %w", err)
+					}
+
+					return nil
+				},
+			},
+			Topic: notifierConfig.Topic,
+		}
+
+		return notifier, nil
 	default:
 		return nil, errx.UnsupportedKind(cfg.Kind())
 	}
