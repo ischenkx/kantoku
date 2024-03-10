@@ -2,13 +2,7 @@ package resourceResolverV2
 
 import "context"
 
-type Binding struct {
-	DependencyId string
-	ResourceId   string
-}
-
-type Storage interface {
+type BindingStorage interface {
 	Save(ctx context.Context, dependencyId string, resourceId string) error
-	PrepareForResolution(ctx context.Context, resourceIds ...string) error
-	Resolve(ctx context.Context, resourceIds ...string) error
+	Load(ctx context.Context, resourceId string) (dependencyId string, err error)
 }

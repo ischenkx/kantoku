@@ -8,7 +8,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func NewSystem(ctx context.Context) *system.System {
+func NewSystem(ctx context.Context) system.AbstractSystem {
 	if err := godotenv.Load("local/host.env"); err != nil {
 		panic(err)
 	}
@@ -20,5 +20,5 @@ func NewSystem(ctx context.Context) *system.System {
 	if err != nil {
 		panic(err)
 	}
-	return &sys
+	return sys
 }

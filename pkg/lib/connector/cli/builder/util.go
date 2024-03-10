@@ -3,6 +3,7 @@ package builder
 import (
 	"context"
 	"github.com/ischenkx/kantoku/pkg/common/logging/prefixed"
+	"github.com/ischenkx/kantoku/pkg/core/system"
 	"github.com/lmittmann/tint"
 	"io"
 	"log/slog"
@@ -34,4 +35,17 @@ func extractLogger(ctx context.Context, defaultLogger *slog.Logger) *slog.Logger
 		}
 	}
 	return defaultLogger
+}
+
+func withSystem(ctx context.Context, system system.AbstractSystem) context.Context {
+	return context.WithValue(ctx, "system", system)
+}
+func extractSystem(ctx context.Context) (system.AbstractSystem, bool) {
+	val := ctx.Value("system")
+	if val != nil {
+		if sys, ok := val.(system.AbstractSystem); ok {
+			return sys, true
+		}
+	}
+	return nil, false
 }

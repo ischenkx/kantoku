@@ -28,6 +28,10 @@ type Context struct {
 	spawnedLog []string // task ids
 }
 
+func (ctx *Context) GetSpawned() []string {
+	return ctx.spawnedLog
+}
+
 func NewContext(parent context.Context) *Context {
 	return &Context{
 		Context:       parent,
