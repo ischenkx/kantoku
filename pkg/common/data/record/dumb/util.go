@@ -6,22 +6,12 @@ import (
 	"sort"
 )
 
-func matches(r record.R, filters [][]record.Entry) bool {
+func matches(r record.R, filter record.R) bool {
 	if r == nil {
 		r = record.R{}
 	}
-	for _, filter := range filters {
-		matched := len(filter) == 0
-		for _, term := range filter {
-			if r[term.Name] == term.Value {
-				matched = true
-				break
-			}
-		}
-		if !matched {
-			return false
-		}
-	}
+
+	for r
 
 	return true
 }

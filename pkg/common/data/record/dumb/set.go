@@ -8,7 +8,7 @@ import (
 var _ record.Set[int] = Set[int]{}
 
 type Set[Item any] struct {
-	filters [][]record.Entry
+	filters []record.R
 	storage *Storage[Item]
 }
 
@@ -17,10 +17,7 @@ func newSet[Item any](s *Storage[Item]) Set[Item] {
 }
 
 func (set Set[Item]) Filter(rec record.Record) record.Set[Item] {
-	for key, val := range rec {
-
-	}
-	set.filters = append(set.filters, entries)
+	set.filters = append(set.filters, rec)
 	return set
 }
 
@@ -64,15 +61,15 @@ func (set Set[Item]) Update(ctx context.Context, update, upsert record.R) error 
 	return nil
 }
 
-func (set Set[Item]) Distinct(keys ...string) record.Cursor[record.Record] {
-	return Cursor{
+func (set Set[Item]) Distinct(keys ...string) record.Cursor[Item] {
+	return Cursor[Item]{
 		set:  set,
 		keys: keys,
 	}
 }
 
-func (set Set[Item]) Cursor() record.Cursor[record.Record] {
-	return Cursor{
+func (set Set[Item]) Cursor() record.Cursor[Item] {
+	return Cursor[Item]{
 		set: set,
 	}
 }
