@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/core/system"
+	kantohttp "github.com/ischenkx/kantoku/pkg/lib/connector/api/http"
 	"github.com/ischenkx/kantoku/pkg/lib/connector/api/http/oas"
-	"github.com/ischenkx/kantoku/pkg/lib/connector/api/http/server"
 	"github.com/ischenkx/kantoku/pkg/lib/connector/cli/config"
 	"github.com/ischenkx/kantoku/pkg/lib/connector/cli/errx"
 	"github.com/labstack/echo/v4"
@@ -58,7 +58,7 @@ type httpApiService struct {
 }
 
 func (srvc httpApiService) Run(ctx context.Context) error {
-	srv := server.New(srvc.sys)
+	srv := kantohttp.NewServer(srvc.sys)
 
 	e := echo.New()
 

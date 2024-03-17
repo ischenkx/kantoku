@@ -1,4 +1,4 @@
-package server
+package kantohttp
 
 import (
 	"context"
@@ -20,7 +20,7 @@ type Server struct {
 	system system.AbstractSystem
 }
 
-func New(system system.AbstractSystem) *Server {
+func NewServer(system system.AbstractSystem) *Server {
 	return &Server{system: system}
 }
 

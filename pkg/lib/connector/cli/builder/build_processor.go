@@ -16,7 +16,7 @@ func (builder *Builder) BuildProcessor(ctx context.Context, sys system.AbstractS
 		return nil, nil, errx.UnsupportedKind(cfg.Kind())
 	}
 
-	core, err := builder.BuildServiceCore(ctx, "status", cfg)
+	core, err := builder.BuildServiceCore(ctx, "processor", cfg)
 	if err != nil {
 		return nil, nil, errx.FailedToBuild("core", err)
 	}

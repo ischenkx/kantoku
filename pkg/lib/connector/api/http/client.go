@@ -1,4 +1,4 @@
-package client
+package kantohttp
 
 import (
 	"context"
@@ -19,7 +19,7 @@ type Client struct {
 	httpClient oas.ClientWithResponsesInterface
 }
 
-func New(clientInterface oas.ClientWithResponsesInterface) *Client {
+func NewClient(clientInterface oas.ClientWithResponsesInterface) *Client {
 	return &Client{
 		httpClient: clientInterface,
 	}
