@@ -51,7 +51,7 @@ func (e Executor[T, I, O]) prepare(ctx context.Context, sys system.AbstractSyste
 	taskCtx := NewContext(ctx)
 
 	if spec, ok := task.Info["spec"]; ok {
-		// TODO
+		// TODO:
 		fmt.Print("Verifying task inputs using spec:", spec)
 	}
 
@@ -70,7 +70,7 @@ func (e Executor[T, I, O]) save(ctx *Context, sys system.AbstractSystem, task ta
 	}
 
 	if spec, ok := task.Info["spec"]; ok {
-		// TODO
+		// TODO:
 		fmt.Print("Verifying task outputs using spec:", spec)
 	}
 

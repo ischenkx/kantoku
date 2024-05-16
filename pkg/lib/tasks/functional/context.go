@@ -58,7 +58,7 @@ func (ctx *Context) verifyInput(input any, typ string) error {
 	if ctx.SpecRegistry == nil {
 		return nil
 	}
-	// TODO
+	// TODO:
 	fmt.Println("Verifying input with spec of type", typ)
 	return nil
 }
