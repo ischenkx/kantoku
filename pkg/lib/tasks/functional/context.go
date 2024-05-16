@@ -2,6 +2,7 @@ package functional
 
 import (
 	"context"
+	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/data/record"
 	"github.com/ischenkx/kantoku/pkg/common/data/record/ops"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
@@ -24,6 +25,7 @@ type Context struct {
 	context.Context
 	Scheduled     []ScheduledTask
 	FutureStorage future.Storage
+	SpecRegistry  any
 
 	spawnedLog []string // task ids
 }
@@ -37,14 +39,28 @@ func NewContext(parent context.Context) *Context {
 }
 
 // where do you get task?! - we can remove it and create empty one with reflect
-func Execute[T Task[I, O], I, O any](ctx *Context, task T, input I) O {
+func Execute[T Task[I, O], I, O any](ctx *Context, task T, input I) (O, error) {
 	out := task.EmptyOutput()
+	typ := taskType[I, O](task)
+	if err := ctx.verifyInput(input, typ); err != nil {
+		return out, err
+	}
+
 	ctx.Scheduled = append(ctx.Scheduled, ScheduledTask{
-		Type:    taskType[I, O](task),
+		Type:    typ,
 		Inputs:  ctx.addFutureStruct(input, nil),
 		Outputs: ctx.addFutureStruct(out, nil),
 	})
-	return out
+	return out, nil
+}
+
+func (ctx *Context) verifyInput(input any, typ string) error {
+	if ctx.SpecRegistry == nil {
+		return nil
+	}
+	// TODO
+	fmt.Println("Verifying input with spec of type", typ)
+	return nil
 }
 
 // doesn't care about resources!

@@ -3,6 +3,7 @@ package functional
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
 	"github.com/ischenkx/kantoku/pkg/core/system"
@@ -49,6 +50,11 @@ func (e Executor[T, I, O]) prepare(ctx context.Context, sys system.AbstractSyste
 
 	taskCtx := NewContext(ctx)
 
+	if spec, ok := task.Info["spec"]; ok {
+		// TODO
+		fmt.Print("Verifying task inputs using spec:", spec)
+	}
+
 	input, err = e.buildInput(inputResources, taskCtx.FutureStorage)
 	if err != nil {
 		return nil, input, err
@@ -61,6 +67,11 @@ func (e Executor[T, I, O]) save(ctx *Context, sys system.AbstractSystem, task ta
 	err := ctx.FutureStorage.Encode(codec.JSON[any]())
 	if err != nil {
 		return err
+	}
+
+	if spec, ok := task.Info["spec"]; ok {
+		// TODO
+		fmt.Print("Verifying task outputs using spec:", spec)
 	}
 
 	// all futures are created and added to ctx
