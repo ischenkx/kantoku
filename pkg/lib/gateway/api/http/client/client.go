@@ -9,7 +9,7 @@ import (
 	"github.com/ischenkx/kantoku/pkg/core/resource"
 	"github.com/ischenkx/kantoku/pkg/core/system"
 	"github.com/ischenkx/kantoku/pkg/core/task"
-	"github.com/ischenkx/kantoku/pkg/lib/connector/api/http/oas"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/oas"
 	"net/http"
 )
 

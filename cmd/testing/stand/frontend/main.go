@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/lib/connector/api/http/client"
-	"github.com/ischenkx/kantoku/pkg/lib/connector/api/http/oas"
-	webserver "github.com/ischenkx/kantoku/pkg/lib/connector/web/server"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/client"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/oas"
+	webserver "github.com/ischenkx/kantoku/pkg/lib/gateway/web/server"
 	"github.com/labstack/echo/v4/middleware"
 	"log"
 	"os"

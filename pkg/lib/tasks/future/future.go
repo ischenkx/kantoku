@@ -38,12 +38,12 @@ func (f Future[T]) IsFilled() bool {
 
 func Empty[T any]() Future[T] {
 	atomic.AddInt32((*int32)(&idCounter), 1)
-	return Future[T]{filled: false, id: idCounter}
+	return Future[T]{filled: false, id: fid(atomic.LoadInt32((*int32)(&idCounter)))}
 }
 
 func FromValue[T any](val T) Future[T] {
 	atomic.AddInt32((*int32)(&idCounter), 1)
-	return Future[T]{value: &val, filled: true, id: idCounter}
+	return Future[T]{value: &val, filled: true, id: fid(atomic.LoadInt32((*int32)(&idCounter)))}
 }
 
 func (f Future[T]) ParseToNew(data []byte) (Future[T], error) {
@@ -52,7 +52,7 @@ func (f Future[T]) ParseToNew(data []byte) (Future[T], error) {
 	if err != nil {
 		return Future[T]{}, err
 	}
-	atomic.AddInt32((*int32)(&idCounter), 1)
+
 	return FromValue[T](val), nil
 }
 

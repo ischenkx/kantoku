@@ -7,7 +7,7 @@ import (
 	"github.com/ischenkx/kantoku/pkg/common/data/record"
 	"github.com/ischenkx/kantoku/pkg/common/data/record/ops"
 	"github.com/ischenkx/kantoku/pkg/core/task"
-	"github.com/ischenkx/kantoku/pkg/lib/connector/api/http/oas"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/oas"
 	"github.com/samber/lo"
 	"net/http"
 )

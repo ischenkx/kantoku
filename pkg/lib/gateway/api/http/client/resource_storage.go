@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
-	"github.com/ischenkx/kantoku/pkg/lib/connector/api/http/oas"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/oas"
 	"github.com/samber/lo"
 	"net/http"
 )

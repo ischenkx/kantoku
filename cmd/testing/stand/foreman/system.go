@@ -3,8 +3,8 @@ package main
 import (
 	"context"
 	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/ischenkx/kantoku/pkg/lib/connector/cli/builder"
-	config2 "github.com/ischenkx/kantoku/pkg/lib/connector/cli/config"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/cli/builder"
+	config2 "github.com/ischenkx/kantoku/pkg/lib/gateway/cli/config"
 	"github.com/joho/godotenv"
 )
 
