@@ -1,11 +1,13 @@
 import {Refine} from "@refinedev/core";
-import {ThemedLayoutV2, ErrorComponent, RefineThemes, ThemedTitleV2} from "@refinedev/antd";
+import {ErrorComponent, RefineThemes} from "@refinedev/antd";
 import routerBindings, {NavigateToResource, UnsavedChangesNotifier} from "@refinedev/react-router-v6";
 import dataProvider from "@refinedev/simple-rest";
 import {BrowserRouter, Routes, Route, Outlet} from "react-router-dom";
 import {AntdInferencer} from "@refinedev/inferencer/antd";
 import MemoryOutlinedIcon from '@mui/icons-material/MemoryOutlined';
 import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined';
 import "@refinedev/antd/dist/reset.css";
 import {TaskShow} from "./entities/task/taskShow";
 import {TaskList} from "./entities/task/taskList";
@@ -16,6 +18,9 @@ import {ResourceShow} from "./entities/resource/resourceShow";
 import {ResourceCreate} from "./entities/resource/resourceCreate";
 import {TaskCreate} from "./entities/task/taskCreate";
 import {Sandbox} from "./entities/sandbox/sandbox";
+import Flow from "./entities/sandbox/flow";
+import {ThemedLayoutV2} from "./components/layout";
+import {ThemedTitleV2} from "./components/layout/title";
 
 const App: React.FC = () => {
     return (
@@ -23,9 +28,7 @@ const App: React.FC = () => {
             <ColorModeContextProvider>
                 <Refine
                     routerProvider={routerBindings}
-                    // dataProvider={dataProvider("http://127.0.1.1:3030")}
                     dataProvider={dataProvider("http://127.0.0.1:3030")}
-                    // dataProvider={dataProvider("http://localhost:3000")}
                     resources={[
                         {
                             name: "tasks",
@@ -34,7 +37,25 @@ const App: React.FC = () => {
                             create: "/tasks/create",
                             meta: {
                                 icon: <MemoryOutlinedIcon/>,
-                            }
+                            },
+                        },
+                        {
+                            name: "specifications",
+                            list: "/tasks/specifications",
+                            show: "/tasks/specifications/:id",
+                            create: "/tasks/specifications/create",
+                            meta: {
+                                icon: <DescriptionOutlinedIcon/>,
+                            },
+                        },
+                        {
+                            name: "types",
+                            list: "/tasks/specifications/types",
+                            show: "/tasks/specifications/types/:id",
+                            create: "/tasks/specifications/types/create",
+                            meta: {
+                                icon: <AccountTreeOutlinedIcon/>,
+                            },
                         },
                         {
                             name: "resources",
@@ -48,6 +69,10 @@ const App: React.FC = () => {
                         {
                             name: "sandbox",
                             list: "/sandbox",
+                        },
+                        {
+                            name: "flow",
+                            list: "/flow",
                         },
                     ]}
                     options={{
@@ -86,6 +111,9 @@ const App: React.FC = () => {
                             </Route>
                             <Route path="sandbox">
                                 <Route path=":context" index element={<Sandbox/>}/>
+                            </Route>
+                            <Route path="flow">
+                                <Route index element={<Flow/>}/>
                             </Route>
                             <Route path="*" element={<ErrorComponent/>}/>
                         </Route>

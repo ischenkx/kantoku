@@ -5,6 +5,29 @@ import {Form, Input, InputNumber, Select, List, Button, Space, Collapse} from "a
 import ReactJson from "react-json-view";
 import {ColorModeContext} from "../../contexts/color-mode";
 import {CloseOutlined} from "@ant-design/icons";
+import {TreeSelect} from 'antd';
+
+const treeData = [
+    {
+        value: 'http',
+        title: 'http',
+        selectable: false,
+        children: [
+            {
+                value: 'http.Do',
+                title: 'Do',
+            },
+            {
+                value: 'http.Get',
+                title: 'Get',
+            },
+            {
+                value: 'http.Post',
+                title: 'Post',
+            },
+        ]
+    },
+];
 
 export const TaskCreate: React.FC<IResourceComponentsProps> = () => {
     const {autoSaveProps, formProps, saveButtonProps, queryResult} = useForm({
@@ -23,9 +46,9 @@ export const TaskCreate: React.FC<IResourceComponentsProps> = () => {
     const [selectedDependency, setSelectedDependency] = useState([]);
 
     const taskTypeToParams = {
-        task: () => ({ id: '' }),
-        time: () => ({ time: Date.now() }),
-        resource: () => ({ id: '' }),
+        task: () => ({id: ''}),
+        time: () => ({time: Date.now()}),
+        resource: () => ({id: ''}),
     }
 
     return (
@@ -40,7 +63,15 @@ export const TaskCreate: React.FC<IResourceComponentsProps> = () => {
                         },
                     ]}
                 >
-                    <Input placeholder="e.g. 'Multiply'"/>
+                    <TreeSelect
+                        placeholder="e.g. 'Multiply'"
+                        treeData={treeData}
+                        showSearch
+                        allowClear
+                        treeExpandAction={'click'}
+                        treeLine
+                        onSelect={(...args) => console.log(args)}
+                    />
                 </Form.Item>
 
                 <Form.Item
@@ -83,7 +114,7 @@ export const TaskCreate: React.FC<IResourceComponentsProps> = () => {
                         value={selectedDependency}
                         onSelect={(value, option) => {
                             let paramsGenerator = taskTypeToParams[value]
-                            if(!paramsGenerator) paramsGenerator = () => ({})
+                            if (!paramsGenerator) paramsGenerator = () => ({})
                             setDependencies([{type: value, params: paramsGenerator()}, ...dependencies])
                             setSelectedDependency([])
                         }}
