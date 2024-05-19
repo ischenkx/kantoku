@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/client"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http"
 	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/oas"
 	webserver "github.com/ischenkx/kantoku/pkg/lib/gateway/web/server"
 	"github.com/labstack/echo/v4/middleware"
@@ -23,7 +23,7 @@ func main() {
 	}
 
 	server := webserver.Server{
-		System: client.New(rawClient),
+		System: http.New(rawClient),
 	}
 
 	e := server.Echo()

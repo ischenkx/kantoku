@@ -1,4 +1,4 @@
-package server
+package http
 
 import (
 	"context"
@@ -9,18 +9,20 @@ import (
 	"github.com/ischenkx/kantoku/pkg/core/resource"
 	"github.com/ischenkx/kantoku/pkg/core/system"
 	"github.com/ischenkx/kantoku/pkg/core/task"
-	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/converters"
 	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/oas"
+	"github.com/ischenkx/kantoku/pkg/lib/tasks/specification"
+	"github.com/ischenkx/kantoku/pkg/lib/tasks/specification/typing"
 	"github.com/samber/lo"
 )
 
 var _ oas.StrictServerInterface = (*Server)(nil)
 
 type Server struct {
-	system system.AbstractSystem
+	system         system.AbstractSystem
+	specifications *specification.Manager
 }
 
-func New(system system.AbstractSystem) *Server {
+func NewServer(system system.AbstractSystem) *Server {
 	return &Server{system: system}
 }
 
@@ -101,7 +103,7 @@ func (server *Server) PostTasksLoad(ctx context.Context, request oas.PostTasksLo
 	}
 
 	dtoTasks := lo.Map(tasks, func(t task.Task, _ int) oas.Task {
-		return converters.TaskToDto(t)
+		return TaskToDto(t)
 	})
 
 	return oas.PostTasksLoad200JSONResponse(dtoTasks), nil
@@ -269,7 +271,7 @@ func (server *Server) PostTasksFilter(ctx context.Context, request oas.PostTasks
 	}
 
 	dtos := lo.Map(tasks, func(t task.Task, _ int) oas.Task {
-		return converters.TaskToDto(t)
+		return TaskToDto(t)
 	})
 
 	return oas.PostTasksFilter200JSONResponse(dtos), nil
@@ -320,4 +322,219 @@ func instantiateFilterOperators(value any) any {
 	}
 
 	return value
+}
+
+func (server *Server) PostTasksSpecificationsCreate(ctx context.Context, request oas.PostTasksSpecificationsCreateRequestObject) (oas.PostTasksSpecificationsCreateResponseObject, error) {
+	io := specification.IO{}
+
+	// inputs
+	{
+		io.Inputs.Naming = map[int]string{}
+		for _, obj := range request.Body.Io.Inputs.Naming {
+			io.Inputs.Naming[obj.Index] = obj.Name
+		}
+
+		io.Inputs.Types = map[int]typing.Type{}
+		for _, obj := range request.Body.Io.Inputs.Types {
+			io.Inputs.Types[obj.Index] = parseType(obj.Type)
+		}
+	}
+
+	// outputs
+	{
+		io.Outputs.Naming = map[int]string{}
+		for _, obj := range request.Body.Io.Outputs.Naming {
+			io.Outputs.Naming[obj.Index] = obj.Name
+		}
+
+		io.Outputs.Types = map[int]typing.Type{}
+		for _, obj := range request.Body.Io.Outputs.Types {
+			io.Outputs.Types[obj.Index] = parseType(obj.Type)
+		}
+	}
+
+	spec := specification.Specification{
+		ID: request.Body.Id,
+		IO: io,
+		Executable: specification.Executable{
+			Type: request.Body.Executable.Type,
+			Data: request.Body.Executable.Data,
+		},
+		Meta: request.Body.Meta,
+	}
+	if err := server.specifications.Specifications().Add(ctx, spec); err != nil {
+		return oas.PostTasksSpecificationsCreate500JSONResponse{
+			Message: err.Error(),
+		}, nil
+	}
+
+	return oas.PostTasksSpecificationsCreate200Response{}, nil
+}
+
+func (server *Server) PostTasksSpecificationsGet(ctx context.Context, request oas.PostTasksSpecificationsGetRequestObject) (oas.PostTasksSpecificationsGetResponseObject, error) {
+	spec, err := server.specifications.Specifications().Get(ctx, request.Body.Id)
+	if err != nil {
+		return oas.PostTasksSpecificationsGet500JSONResponse{
+			Message: err.Error(),
+		}, nil
+	}
+
+	return oas.PostTasksSpecificationsGet200JSONResponse(specificationToModel(spec)), nil
+}
+
+func (server *Server) PostTasksSpecificationsGetAll(ctx context.Context, request oas.PostTasksSpecificationsGetAllRequestObject) (oas.PostTasksSpecificationsGetAllResponseObject, error) {
+	specs, err := server.specifications.Specifications().GetAll(ctx)
+	if err != nil {
+		return oas.PostTasksSpecificationsGetAll500JSONResponse{
+			Message: err.Error(),
+		}, nil
+	}
+
+	specModels := make([]oas.Specification, 0, len(specs))
+	for _, spec := range specs {
+		specModels = append(specModels, specificationToModel(spec))
+	}
+
+	return oas.PostTasksSpecificationsGetAll200JSONResponse(specModels), nil
+}
+
+func (server *Server) PostTasksSpecificationsRemove(ctx context.Context, request oas.PostTasksSpecificationsRemoveRequestObject) (oas.PostTasksSpecificationsRemoveResponseObject, error) {
+	if err := server.specifications.Specifications().Remove(ctx, request.Body.Id); err != nil {
+		return oas.PostTasksSpecificationsRemove500JSONResponse{
+			Message: err.Error(),
+		}, nil
+	}
+
+	return oas.PostTasksSpecificationsRemove200Response{}, nil
+}
+
+func (server *Server) PostTasksSpecificationsTypesCreate(ctx context.Context, request oas.PostTasksSpecificationsTypesCreateRequestObject) (oas.PostTasksSpecificationsTypesCreateResponseObject, error) {
+	typ := specification.TypeWithID{
+		ID:   request.Body.Id,
+		Type: parseType(request.Body.Type),
+	}
+
+	if err := server.specifications.Types().Add(ctx, typ); err != nil {
+		return oas.PostTasksSpecificationsTypesCreate500JSONResponse{
+			Message: err.Error(),
+		}, nil
+	}
+
+	return oas.PostTasksSpecificationsTypesCreate200Response{}, nil
+}
+
+func (server *Server) PostTasksSpecificationsTypesGet(ctx context.Context, request oas.PostTasksSpecificationsTypesGetRequestObject) (oas.PostTasksSpecificationsTypesGetResponseObject, error) {
+	typ, err := server.specifications.Types().Get(ctx, request.Body.Id)
+	if err != nil {
+		return oas.PostTasksSpecificationsTypesGet500JSONResponse{
+			Message: err.Error(),
+		}, nil
+	}
+
+	return oas.PostTasksSpecificationsTypesGet200JSONResponse{
+		Id:   typ.ID,
+		Type: typeToModel(typ.Type),
+	}, nil
+}
+
+func (server *Server) PostTasksSpecificationsTypesGetAll(ctx context.Context, request oas.PostTasksSpecificationsTypesGetAllRequestObject) (oas.PostTasksSpecificationsTypesGetAllResponseObject, error) {
+	types, err := server.specifications.Types().GetAll(ctx)
+	if err != nil {
+		return oas.PostTasksSpecificationsTypesGetAll500JSONResponse{
+			Message: err.Error(),
+		}, nil
+	}
+
+	typeModels := make([]oas.TypeWithID, 0, len(types))
+	for _, typ := range types {
+		typeModels = append(typeModels, oas.TypeWithID{
+			Id:   typ.ID,
+			Type: typeToModel(typ.Type),
+		})
+	}
+
+	return oas.PostTasksSpecificationsTypesGetAll200JSONResponse(typeModels), nil
+}
+
+func (server *Server) PostTasksSpecificationsTypesRemove(ctx context.Context, request oas.PostTasksSpecificationsTypesRemoveRequestObject) (oas.PostTasksSpecificationsTypesRemoveResponseObject, error) {
+	if err := server.specifications.Types().Remove(ctx, request.Body.Id); err != nil {
+		return oas.PostTasksSpecificationsTypesRemove500JSONResponse{
+			Message: err.Error(),
+		}, nil
+	}
+
+	return oas.PostTasksSpecificationsTypesRemove200Response{}, nil
+}
+
+func parseType(t oas.Type) typing.Type {
+	result := typing.Type{
+		Name:     t.Name,
+		SubTypes: map[string]typing.Type{},
+	}
+
+	for key, subType := range t.SubTypes.AdditionalProperties {
+		result.SubTypes[key] = parseType(subType)
+	}
+
+	return result
+}
+
+func typeToModel(t typing.Type) oas.Type {
+	result := oas.Type{
+		Name: t.Name,
+		SubTypes: oas.Type_SubTypes{
+			AdditionalProperties: map[string]oas.Type{},
+		},
+	}
+
+	for key, value := range t.SubTypes {
+		result.SubTypes.AdditionalProperties[key] = typeToModel(value)
+	}
+
+	return result
+}
+
+func resourceSetToModel(rs specification.ResourceSet) oas.SpecificationResourceSet {
+	var result oas.SpecificationResourceSet
+
+	type namingT struct {
+		Index int    `json:"index"`
+		Name  string `json:"name"`
+	}
+
+	type typeT struct {
+		Index int      `json:"index"`
+		Type  oas.Type `json:"type"`
+	}
+
+	for index, name := range rs.Naming {
+		result.Naming = append(result.Naming, namingT{
+			Index: index,
+			Name:  name,
+		})
+	}
+
+	for index, typ := range rs.Types {
+		result.Types = append(result.Types, typeT{
+			Index: index,
+			Type:  typeToModel(typ),
+		})
+	}
+
+	return result
+}
+
+func specificationToModel(spec specification.Specification) oas.Specification {
+	return oas.Specification{
+		Executable: oas.SpecificationExecutable{
+			Data: spec.Executable.Data,
+			Type: spec.Executable.Type,
+		},
+		Id: spec.ID,
+		Io: oas.SpecificationIO{
+			Inputs:  resourceSetToModel(spec.IO.Inputs),
+			Outputs: resourceSetToModel(spec.IO.Outputs),
+		},
+		Meta: spec.Meta,
+	}
 }

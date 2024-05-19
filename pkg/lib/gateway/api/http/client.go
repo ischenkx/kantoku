@@ -1,4 +1,4 @@
-package client
+package http
 
 import (
 	"context"
@@ -19,10 +19,18 @@ type Client struct {
 	httpClient oas.ClientWithResponsesInterface
 }
 
-func New(clientInterface oas.ClientWithResponsesInterface) *Client {
+func NewClient(clientInterface oas.ClientWithResponsesInterface) *Client {
 	return &Client{
 		httpClient: clientInterface,
 	}
+}
+
+func (client *Client) Specifications() *SpecificationStorage {
+	return &SpecificationStorage{client.httpClient}
+}
+
+func (client *Client) Types() *SpecificationStorage {
+	return &SpecificationStorage{client.httpClient}
 }
 
 func (client *Client) Tasks() record.Set[task.Task] {

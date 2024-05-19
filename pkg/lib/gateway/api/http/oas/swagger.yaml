@@ -151,6 +151,192 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /tasks/specifications/get:
+    post:
+      summary: Get specifications by id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Specification'
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/specifications/get_all:
+    post:
+      summary: Get all specifications
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Specification'
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /tasks/specifications/create:
+    post:
+      summary: Create a specification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Specification'
+
+      responses:
+        '200':
+          description: OK
+
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /tasks/specifications/remove:
+    post:
+      summary: Remove a specification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+
+      responses:
+        '200':
+          description: OK
+
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/specifications/types/get:
+    post:
+      summary: Get a type by id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TypeWithID'
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/specifications/types/get_all:
+    post:
+      summary: Get all types
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TypeWithID'
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /tasks/specifications/types/create:
+    post:
+      summary: Create a type
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TypeWithID'
+
+      responses:
+        '200':
+          description: OK
+
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /tasks/specifications/types/remove:
+    post:
+      summary: Remove a type
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+
+      responses:
+        '200':
+          description: OK
+
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /resources/allocate:
     post:
       summary: Allocates N resources
@@ -346,6 +532,97 @@ components:
           type: array
           items:
             type: string
+    SpecificationResourceSet:
+      type: object
+      properties:
+        naming:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              name:
+                type: string
+            required:
+              - index
+              - name
+        types:
+          type: array
+          items:
+            type: object
+            properties:
+              index:
+                type: integer
+              type:
+                $ref: '#/components/schemas/Type'
+            required:
+              - index
+              - type
+      required:
+        - naming
+        - types
+    SpecificationIO:
+      type: object
+      properties:
+        inputs:
+          $ref: '#/components/schemas/SpecificationResourceSet'
+        outputs:
+          $ref: '#/components/schemas/SpecificationResourceSet'
+      required:
+        - inputs
+        - outputs
+    SpecificationExecutable:
+      type: object
+      properties:
+        type:
+          type: string
+        data:
+          type: object
+      required:
+        - type
+        - data
+    Specification:
+      type: object
+      properties:
+        id:
+          type: string
+        io:
+          $ref: '#/components/schemas/SpecificationIO'
+        executable:
+          $ref: '#/components/schemas/SpecificationExecutable'
+        meta:
+          type: object
+      required:
+        - id
+        - io
+        - executable
+        - meta
+    Type:
+      type: object
+      properties:
+        name:
+          type: string
+        sub_types:
+          type: object
+          properties:
+            default:
+              $ref: '#/components/schemas/Type'
+          additionalProperties:
+            $ref: '#/components/schemas/Type'
+      required:
+        - name
+        - sub_types
+    TypeWithID:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          $ref: '#/components/schemas/Type'
+      required:
+        - id
+        - type
     Resource:
       type: object
       required:

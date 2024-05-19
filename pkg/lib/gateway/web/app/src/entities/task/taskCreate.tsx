@@ -27,6 +27,25 @@ const treeData = [
             },
         ]
     },
+    {
+        value: 'http1',
+        title: 'http1',
+        selectable: false,
+        children: [
+            {
+                value: 'http1.Do',
+                title: 'Do',
+            },
+            {
+                value: 'http1.Get',
+                title: 'Get',
+            },
+            {
+                value: 'http1.Post',
+                title: 'Post',
+            },
+        ]
+    },
 ];
 
 export const TaskCreate: React.FC<IResourceComponentsProps> = () => {

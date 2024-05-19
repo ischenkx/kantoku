@@ -1,4 +1,4 @@
-package converters
+package http
 
 import (
 	"github.com/ischenkx/kantoku/pkg/core/task"
