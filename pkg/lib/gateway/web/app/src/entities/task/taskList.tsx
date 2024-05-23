@@ -89,6 +89,10 @@ const Filter: React.FC<{ formProps: FormProps, filters: CrudFilters }> = ({formP
                             value: "received",
                         },
                         {
+                            label: "finished",
+                            value: "finished",
+                        },
+                        {
                             label: "unknown",
                             value: "unknown",
                         },

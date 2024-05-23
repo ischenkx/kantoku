@@ -21,6 +21,7 @@ import {Sandbox} from "./entities/sandbox/sandbox";
 import Flow from "./entities/sandbox/flow";
 import {ThemedLayoutV2} from "./components/layout";
 import {ThemedTitleV2} from "./components/layout/title";
+import {ProviderRouter} from "./providers";
 
 const App: React.FC = () => {
     return (
@@ -28,7 +29,7 @@ const App: React.FC = () => {
             <ColorModeContextProvider>
                 <Refine
                     routerProvider={routerBindings}
-                    dataProvider={dataProvider("http://127.0.0.1:3030")}
+                    dataProvider={ProviderRouter}
                     resources={[
                         {
                             name: "tasks",
@@ -43,7 +44,6 @@ const App: React.FC = () => {
                             name: "specifications",
                             list: "/tasks/specifications",
                             show: "/tasks/specifications/:id",
-                            create: "/tasks/specifications/create",
                             meta: {
                                 icon: <DescriptionOutlinedIcon/>,
                             },
@@ -52,7 +52,6 @@ const App: React.FC = () => {
                             name: "types",
                             list: "/tasks/specifications/types",
                             show: "/tasks/specifications/types/:id",
-                            create: "/tasks/specifications/types/create",
                             meta: {
                                 icon: <AccountTreeOutlinedIcon/>,
                             },
@@ -105,6 +104,11 @@ const App: React.FC = () => {
                                 <Route path="create" element={<TaskCreate/>}/>
                             </Route>
                             <Route path="resources">
+                                <Route index element={<ResourceList/>}/>
+                                <Route path="show/:id" element={<ResourceShow/>}/>
+                                <Route path="create" element={<ResourceCreate/>}/>
+                            </Route>
+                            <Route path="specifications">
                                 <Route index element={<ResourceList/>}/>
                                 <Route path="show/:id" element={<ResourceShow/>}/>
                                 <Route path="create" element={<ResourceCreate/>}/>

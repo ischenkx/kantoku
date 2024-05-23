@@ -1,4 +1,4 @@
-package main
+package builder
 
 import (
 	"context"
@@ -8,17 +8,25 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func NewSystem(ctx context.Context) *system.System {
+func NewSystem(ctx context.Context) system.AbstractSystem {
+	bldr, cfg := NewBuilder(ctx)
+	sys, err := bldr.BuildSystem(ctx, cfg.System)
+	if err != nil {
+		panic(err)
+	}
+	return sys
+}
+
+func NewBuilder(ctx context.Context) (builder.Builder, config2.Config) {
 	if err := godotenv.Load("local/host.env"); err != nil {
 		panic(err)
 	}
 
 	cfg, err := config2.FromFile("local/config.yaml")
-
-	myBuilder := builder.Builder{}
-	sys, err := myBuilder.BuildSystem(ctx, cfg.System)
 	if err != nil {
 		panic(err)
 	}
-	return &sys
+
+	myBuilder := builder.Builder{}
+	return myBuilder, cfg
 }
