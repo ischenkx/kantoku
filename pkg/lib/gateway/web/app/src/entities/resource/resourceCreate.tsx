@@ -34,7 +34,6 @@ export const ResourceCreate: React.FC<IResourceComponentsProps> = () => {
 
 
                     onFinish(data).then((result) => {
-                        result.data ||= []
                         return go({
                             to: {
                                 resource: "resources", // resource name or identifier
@@ -45,7 +44,7 @@ export const ResourceCreate: React.FC<IResourceComponentsProps> = () => {
                                     {
                                         field: "id",
                                         operator: "in",
-                                        value: result.data.map(record => record.id),
+                                        value: result.data?? [],
                                     },
                                 ],
                             },

@@ -78,8 +78,6 @@ export const TaskShow: React.FC<IResourceComponentsProps> = () => {
 
     const { mode } = useContext(ColorModeContext);
 
-    console.log('record:', record)
-
     return (
         <Show isLoading={isLoading}>
             <Title level={5}>ID</Title>

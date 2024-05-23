@@ -58,13 +58,14 @@ type httpApiService struct {
 }
 
 func (srvc httpApiService) Run(ctx context.Context) error {
-	srv := http.New(srvc.sys)
+	srv := http.NewServer(srvc.sys)
 
 	e := echo.New()
 
 	if srvc.loggerEnabled {
 		e.Use(middleware.Logger())
 	}
+	e.Use(middleware.CORS())
 
 	oas.RegisterHandlers(e, oas.NewStrictHandler(srv, nil))
 
