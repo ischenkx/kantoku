@@ -5,10 +5,10 @@ import (
 	"github.com/ischenkx/kantoku/pkg/common/data/record"
 	"github.com/ischenkx/kantoku/pkg/common/data/record/ops"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
-	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/simple/manager"
+	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/manager"
 	"github.com/ischenkx/kantoku/pkg/core/system"
 	"github.com/ischenkx/kantoku/pkg/core/task"
-	"github.com/ischenkx/kantoku/pkg/lib/tasks/future"
+	future2 "github.com/ischenkx/kantoku/pkg/lib/tasks/functional/future"
 	"github.com/samber/lo"
 	"log"
 	"reflect"
@@ -16,14 +16,14 @@ import (
 
 type ScheduledTask struct {
 	Type    string
-	Inputs  []future.AbstractFuture
-	Outputs []future.AbstractFuture
+	Inputs  []future2.AbstractFuture
+	Outputs []future2.AbstractFuture
 }
 
 type Context struct {
 	context.Context
 	Scheduled     []ScheduledTask
-	FutureStorage future.Storage
+	FutureStorage future2.Storage
 
 	spawnedLog []string // task ids
 }
@@ -32,12 +32,12 @@ func NewContext(parent context.Context) *Context {
 	return &Context{
 		Context:       parent,
 		Scheduled:     make([]ScheduledTask, 0),
-		FutureStorage: future.NewStorage(),
+		FutureStorage: future2.NewStorage(),
 	}
 }
 
 // where do you get task?! - we can remove it and create empty one with reflect
-func Execute[T Task[I, O], I, O any](ctx *Context, task T, input I) O {
+func Execute[T AbstractTask[I, O], I, O any](ctx *Context, task T, input I) O {
 	out := task.EmptyOutput()
 	ctx.Scheduled = append(ctx.Scheduled, ScheduledTask{
 		Type:    taskType[I, O](task),
@@ -48,7 +48,7 @@ func Execute[T Task[I, O], I, O any](ctx *Context, task T, input I) O {
 }
 
 // doesn't care about resources!
-func (ctx *Context) addFutureStruct(obj any, linkTo []resource.ID) []future.AbstractFuture {
+func (ctx *Context) addFutureStruct(obj any, linkTo []resource.ID) []future2.AbstractFuture {
 	arr := futureStructToArr(obj)
 	for i, f := range arr {
 		ctx.FutureStorage.AddFuture(f)
@@ -63,7 +63,7 @@ func (ctx *Context) addFutureStruct(obj any, linkTo []resource.ID) []future.Abst
 func (ctx *Context) spawn(sys system.AbstractSystem) error {
 	// sort in reverse top-sort order to ensure minimal possible execution while rollback is possible
 	for _, t := range ctx.Scheduled {
-		fut2res := func(fut future.AbstractFuture, _ int) resource.ID {
+		fut2res := func(fut future2.AbstractFuture, _ int) resource.ID {
 			return ctx.FutureStorage.GetResource(fut).ID
 		}
 
@@ -109,15 +109,15 @@ func (ctx *Context) rollback(sys system.AbstractSystem, err error) {
 	}
 }
 
-func futureStructToArr(obj any) []future.AbstractFuture {
+func futureStructToArr(obj any) []future2.AbstractFuture {
 	v := reflect.ValueOf(obj)
-	arr := make([]future.AbstractFuture, v.NumField())
+	arr := make([]future2.AbstractFuture, v.NumField())
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
 		//fmt.Printf("%s: %v\n", v.Type().Field(i).Type, field.Interface())
 
 		if field.Kind() == reflect.Struct {
-			x, ok := field.Interface().(future.AbstractFuture)
+			x, ok := field.Interface().(future2.AbstractFuture)
 			if !ok {
 				panic("your struct is still shit")
 			}

@@ -1,9 +1,7 @@
 import React from "react";
 import {IResourceComponentsProps, BaseRecord, CrudFilters, getDefaultFilter} from "@refinedev/core";
-import {useTable, List, EditButton, ShowButton, TagField, TextField, CreateButton} from "@refinedev/antd";
-import {Table, Space, FormProps, Form, Select, Button, DatePicker, Col, Card, Row} from "antd";
-
-const {RangePicker} = DatePicker;
+import {useTable, List, ShowButton, TagField, TextField, CreateButton} from "@refinedev/antd";
+import {Table, Space, FormProps, Form, Select, Button, Col, Card, Row} from "antd";
 
 export const Status: React.FC<{ value: string }> = ({value}) => {
     value = value || 'unknown'
@@ -67,9 +65,7 @@ export const ResourceList: React.FC<IResourceComponentsProps> = () => {
         },
         onSearch: (params) => {
             const filters: CrudFilters = [];
-            let {ids} = params;
-
-            console.log('ids', ids)
+            const {ids} = params;
 
             filters.push(
                 {
@@ -103,8 +99,6 @@ export const ResourceList: React.FC<IResourceComponentsProps> = () => {
                             ...tableProps.pagination,
                             position: ["bottomCenter"],
                             size: "small",
-
-
                         }}
                     >
                         <Table.Column
@@ -130,11 +124,6 @@ export const ResourceList: React.FC<IResourceComponentsProps> = () => {
                             dataIndex="actions"
                             render={(_, record: BaseRecord) => (
                                 <Space>
-                                    {/*<EditButton*/}
-                                    {/*    hideText*/}
-                                    {/*    size="small"*/}
-                                    {/*    recordItemId={record.id}*/}
-                                    {/*/>*/}
                                     <ShowButton
                                         hideText
                                         size="small"
@@ -147,6 +136,5 @@ export const ResourceList: React.FC<IResourceComponentsProps> = () => {
                 </List>
             </Col>
         </Row>
-
     );
 };

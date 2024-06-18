@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Stand" type="CompoundRunConfigurationType">
+    <toRun name="front" type="CompoundRunConfigurationType" />
+    <toRun name="Stand Environment" type="docker-deploy" />
+    <toRun name="Discovery Service" type="GoApplicationRunConfiguration" />
+    <toRun name="HTTP API Service" type="GoApplicationRunConfiguration" />
+    <toRun name="Processor V2 Service" type="GoApplicationRunConfiguration" />
+    <toRun name="Scheduler Service" type="GoApplicationRunConfiguration" />
+    <toRun name="Status Service" type="GoApplicationRunConfiguration" />
+    <method v="2" />
+  </configuration>
+</component>

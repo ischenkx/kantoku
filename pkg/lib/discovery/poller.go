@@ -7,7 +7,6 @@ import (
 	"github.com/ischenkx/kantoku/pkg/common/data/uid"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
-	"github.com/ischenkx/kantoku/pkg/common/transport/queue"
 	"github.com/ischenkx/kantoku/pkg/core/event"
 	"golang.org/x/sync/errgroup"
 	"log/slog"
@@ -80,7 +79,7 @@ func (poller *Poller) collectResponses(ctx context.Context) error {
 		return fmt.Errorf("failed to consume responses: %w", err)
 	}
 
-	queue.Processor[event.Event]{
+	broker.Processor[event.Event]{
 		Handler: func(ctx context.Context, ev event.Event) error {
 			response, err := poller.ResponseCodec.Decode(ev.Data)
 			if err != nil {

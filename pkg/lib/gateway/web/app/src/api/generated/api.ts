@@ -187,6 +187,31 @@ export interface Specification {
 /**
  * 
  * @export
+ * @interface SpecificationBasedTaskParameters
+ */
+export interface SpecificationBasedTaskParameters {
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof SpecificationBasedTaskParameters
+     */
+    'parameters': Array<string>;
+    /**
+     * 
+     * @type {string}
+     * @memberof SpecificationBasedTaskParameters
+     */
+    'specification': string;
+    /**
+     * 
+     * @type {object}
+     * @memberof SpecificationBasedTaskParameters
+     */
+    'info': object;
+}
+/**
+ * 
+ * @export
  * @interface SpecificationExecutable
  */
 export interface SpecificationExecutable {
@@ -313,6 +338,31 @@ export interface Task {
 /**
  * 
  * @export
+ * @interface TaskParameters
+ */
+export interface TaskParameters {
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof TaskParameters
+     */
+    'inputs': Array<string>;
+    /**
+     * 
+     * @type {Array<string>}
+     * @memberof TaskParameters
+     */
+    'outputs': Array<string>;
+    /**
+     * 
+     * @type {object}
+     * @memberof TaskParameters
+     */
+    'info': object;
+}
+/**
+ * 
+ * @export
  * @interface TaskSpawnResponse
  */
 export interface TaskSpawnResponse {
@@ -322,31 +372,6 @@ export interface TaskSpawnResponse {
      * @memberof TaskSpawnResponse
      */
     'id': string;
-}
-/**
- * 
- * @export
- * @interface TaskSpecification
- */
-export interface TaskSpecification {
-    /**
-     * 
-     * @type {Array<string>}
-     * @memberof TaskSpecification
-     */
-    'inputs': Array<string>;
-    /**
-     * 
-     * @type {Array<string>}
-     * @memberof TaskSpecification
-     */
-    'outputs': Array<string>;
-    /**
-     * 
-     * @type {object}
-     * @memberof TaskSpecification
-     */
-    'info': object;
 }
 /**
  * 
@@ -720,14 +745,50 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
-         * @summary Spawn a new task
-         * @param {TaskSpecification} taskSpecification The specification of a task to be spawned
+         * @summary Spawn a new task from specification
+         * @param {SpecificationBasedTaskParameters} specificationBasedTaskParameters The specification of a task to be spawned
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        tasksSpawnPost: async (taskSpecification: TaskSpecification, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'taskSpecification' is not null or undefined
-            assertParamExists('tasksSpawnPost', 'taskSpecification', taskSpecification)
+        tasksSpawnFromSpecPost: async (specificationBasedTaskParameters: SpecificationBasedTaskParameters, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'specificationBasedTaskParameters' is not null or undefined
+            assertParamExists('tasksSpawnFromSpecPost', 'specificationBasedTaskParameters', specificationBasedTaskParameters)
+            const localVarPath = `/tasks/spawn_from_spec`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(specificationBasedTaskParameters, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Spawn a new task
+         * @param {TaskParameters} taskParameters The specification of a task to be spawned
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksSpawnPost: async (taskParameters: TaskParameters, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'taskParameters' is not null or undefined
+            assertParamExists('tasksSpawnPost', 'taskParameters', taskParameters)
             const localVarPath = `/tasks/spawn`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -747,7 +808,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(taskSpecification, localVarRequestOptions, configuration)
+            localVarRequestOptions.data = serializeDataIfNeeded(taskParameters, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -1155,13 +1216,24 @@ export const DefaultApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
-         * @summary Spawn a new task
-         * @param {TaskSpecification} taskSpecification The specification of a task to be spawned
+         * @summary Spawn a new task from specification
+         * @param {SpecificationBasedTaskParameters} specificationBasedTaskParameters The specification of a task to be spawned
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async tasksSpawnPost(taskSpecification: TaskSpecification, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<TaskSpawnResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksSpawnPost(taskSpecification, options);
+        async tasksSpawnFromSpecPost(specificationBasedTaskParameters: SpecificationBasedTaskParameters, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<TaskSpawnResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksSpawnFromSpecPost(specificationBasedTaskParameters, options);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
+        },
+        /**
+         * 
+         * @summary Spawn a new task
+         * @param {TaskParameters} taskParameters The specification of a task to be spawned
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async tasksSpawnPost(taskParameters: TaskParameters, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<TaskSpawnResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksSpawnPost(taskParameters, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -1343,13 +1415,23 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
-         * @summary Spawn a new task
-         * @param {TaskSpecification} taskSpecification The specification of a task to be spawned
+         * @summary Spawn a new task from specification
+         * @param {SpecificationBasedTaskParameters} specificationBasedTaskParameters The specification of a task to be spawned
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        tasksSpawnPost(taskSpecification: TaskSpecification, options?: any): AxiosPromise<TaskSpawnResponse> {
-            return localVarFp.tasksSpawnPost(taskSpecification, options).then((request) => request(axios, basePath));
+        tasksSpawnFromSpecPost(specificationBasedTaskParameters: SpecificationBasedTaskParameters, options?: any): AxiosPromise<TaskSpawnResponse> {
+            return localVarFp.tasksSpawnFromSpecPost(specificationBasedTaskParameters, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Spawn a new task
+         * @param {TaskParameters} taskParameters The specification of a task to be spawned
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksSpawnPost(taskParameters: TaskParameters, options?: any): AxiosPromise<TaskSpawnResponse> {
+            return localVarFp.tasksSpawnPost(taskParameters, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -1535,14 +1617,26 @@ export class DefaultApi extends BaseAPI {
 
     /**
      * 
-     * @summary Spawn a new task
-     * @param {TaskSpecification} taskSpecification The specification of a task to be spawned
+     * @summary Spawn a new task from specification
+     * @param {SpecificationBasedTaskParameters} specificationBasedTaskParameters The specification of a task to be spawned
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
-    public tasksSpawnPost(taskSpecification: TaskSpecification, options?: AxiosRequestConfig) {
-        return DefaultApiFp(this.configuration).tasksSpawnPost(taskSpecification, options).then((request) => request(this.axios, this.basePath));
+    public tasksSpawnFromSpecPost(specificationBasedTaskParameters: SpecificationBasedTaskParameters, options?: AxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).tasksSpawnFromSpecPost(specificationBasedTaskParameters, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Spawn a new task
+     * @param {TaskParameters} taskParameters The specification of a task to be spawned
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApi
+     */
+    public tasksSpawnPost(taskParameters: TaskParameters, options?: AxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).tasksSpawnPost(taskParameters, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

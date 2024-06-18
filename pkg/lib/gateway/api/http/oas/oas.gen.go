@@ -73,6 +73,13 @@ type Specification struct {
 	Meta       map[string]interface{}  `json:"meta"`
 }
 
+// SpecificationBasedTaskParameters defines model for SpecificationBasedTaskParameters.
+type SpecificationBasedTaskParameters struct {
+	Info          TaskInfo `json:"info"`
+	Parameters    []string `json:"parameters"`
+	Specification string   `json:"specification"`
+}
+
 // SpecificationExecutable defines model for SpecificationExecutable.
 type SpecificationExecutable struct {
 	Data map[string]interface{} `json:"data"`
@@ -108,16 +115,16 @@ type Task struct {
 // TaskInfo defines model for TaskInfo.
 type TaskInfo = map[string]interface{}
 
-// TaskSpawnResponse defines model for TaskSpawnResponse.
-type TaskSpawnResponse struct {
-	Id string `json:"id"`
-}
-
-// TaskSpecification defines model for TaskSpecification.
-type TaskSpecification struct {
+// TaskParameters defines model for TaskParameters.
+type TaskParameters struct {
 	Info    TaskInfo `json:"info"`
 	Inputs  []string `json:"inputs"`
 	Outputs []string `json:"outputs"`
+}
+
+// TaskSpawnResponse defines model for TaskSpawnResponse.
+type TaskSpawnResponse struct {
+	Id string `json:"id"`
 }
 
 // Type defines model for Type.
@@ -213,7 +220,10 @@ type PostTasksFilterJSONRequestBody PostTasksFilterJSONBody
 type PostTasksLoadJSONRequestBody = PostTasksLoadJSONBody
 
 // PostTasksSpawnJSONRequestBody defines body for PostTasksSpawn for application/json ContentType.
-type PostTasksSpawnJSONRequestBody = TaskSpecification
+type PostTasksSpawnJSONRequestBody = TaskParameters
+
+// PostTasksSpawnFromSpecJSONRequestBody defines body for PostTasksSpawnFromSpec for application/json ContentType.
+type PostTasksSpawnFromSpecJSONRequestBody = SpecificationBasedTaskParameters
 
 // PostTasksSpecificationsCreateJSONRequestBody defines body for PostTasksSpecificationsCreate for application/json ContentType.
 type PostTasksSpecificationsCreateJSONRequestBody = Specification
@@ -414,6 +424,11 @@ type ClientInterface interface {
 	PostTasksSpawnWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	PostTasksSpawn(ctx context.Context, body PostTasksSpawnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	// PostTasksSpawnFromSpecWithBody request with any body
+	PostTasksSpawnFromSpecWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
+
+	PostTasksSpawnFromSpec(ctx context.Context, body PostTasksSpawnFromSpecJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error)
 
 	// PostTasksSpecificationsCreateWithBody request with any body
 	PostTasksSpecificationsCreateWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error)
@@ -627,6 +642,30 @@ func (c *Client) PostTasksSpawnWithBody(ctx context.Context, contentType string,
 
 func (c *Client) PostTasksSpawn(ctx context.Context, body PostTasksSpawnJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
 	req, err := NewPostTasksSpawnRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTasksSpawnFromSpecWithBody(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTasksSpawnFromSpecRequestWithBody(c.Server, contentType, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	if err := c.applyEditors(ctx, req, reqEditors); err != nil {
+		return nil, err
+	}
+	return c.Client.Do(req)
+}
+
+func (c *Client) PostTasksSpawnFromSpec(ctx context.Context, body PostTasksSpawnFromSpecJSONRequestBody, reqEditors ...RequestEditorFn) (*http.Response, error) {
+	req, err := NewPostTasksSpawnFromSpecRequest(c.Server, body)
 	if err != nil {
 		return nil, err
 	}
@@ -1154,6 +1193,46 @@ func NewPostTasksSpawnRequestWithBody(server string, contentType string, body io
 	return req, nil
 }
 
+// NewPostTasksSpawnFromSpecRequest calls the generic PostTasksSpawnFromSpec builder with application/json body
+func NewPostTasksSpawnFromSpecRequest(server string, body PostTasksSpawnFromSpecJSONRequestBody) (*http.Request, error) {
+	var bodyReader io.Reader
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+	return NewPostTasksSpawnFromSpecRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewPostTasksSpawnFromSpecRequestWithBody generates requests for PostTasksSpawnFromSpec with any type of body
+func NewPostTasksSpawnFromSpecRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	serverURL, err := url.Parse(server)
+	if err != nil {
+		return nil, err
+	}
+
+	operationPath := fmt.Sprintf("/tasks/spawn_from_spec")
+	if operationPath[0] == '/' {
+		operationPath = "." + operationPath
+	}
+
+	queryURL, err := serverURL.Parse(operationPath)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", queryURL.String(), body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+
+	return req, nil
+}
+
 // NewPostTasksSpecificationsCreateRequest calls the generic PostTasksSpecificationsCreate builder with application/json body
 func NewPostTasksSpecificationsCreateRequest(server string, body PostTasksSpecificationsCreateJSONRequestBody) (*http.Request, error) {
 	var bodyReader io.Reader
@@ -1569,6 +1648,11 @@ type ClientWithResponsesInterface interface {
 
 	PostTasksSpawnWithResponse(ctx context.Context, body PostTasksSpawnJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTasksSpawnResponse, error)
 
+	// PostTasksSpawnFromSpecWithBodyWithResponse request with any body
+	PostTasksSpawnFromSpecWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTasksSpawnFromSpecResponse, error)
+
+	PostTasksSpawnFromSpecWithResponse(ctx context.Context, body PostTasksSpawnFromSpecJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTasksSpawnFromSpecResponse, error)
+
 	// PostTasksSpecificationsCreateWithBodyWithResponse request with any body
 	PostTasksSpecificationsCreateWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTasksSpecificationsCreateResponse, error)
 
@@ -1789,6 +1873,29 @@ func (r PostTasksSpawnResponse) Status() string {
 
 // StatusCode returns HTTPResponse.StatusCode
 func (r PostTasksSpawnResponse) StatusCode() int {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.StatusCode
+	}
+	return 0
+}
+
+type PostTasksSpawnFromSpecResponse struct {
+	Body         []byte
+	HTTPResponse *http.Response
+	JSON200      *TaskSpawnResponse
+	JSON500      *Error
+}
+
+// Status returns HTTPResponse.Status
+func (r PostTasksSpawnFromSpecResponse) Status() string {
+	if r.HTTPResponse != nil {
+		return r.HTTPResponse.Status
+	}
+	return http.StatusText(0)
+}
+
+// StatusCode returns HTTPResponse.StatusCode
+func (r PostTasksSpawnFromSpecResponse) StatusCode() int {
 	if r.HTTPResponse != nil {
 		return r.HTTPResponse.StatusCode
 	}
@@ -2124,6 +2231,23 @@ func (c *ClientWithResponses) PostTasksSpawnWithResponse(ctx context.Context, bo
 		return nil, err
 	}
 	return ParsePostTasksSpawnResponse(rsp)
+}
+
+// PostTasksSpawnFromSpecWithBodyWithResponse request with arbitrary body returning *PostTasksSpawnFromSpecResponse
+func (c *ClientWithResponses) PostTasksSpawnFromSpecWithBodyWithResponse(ctx context.Context, contentType string, body io.Reader, reqEditors ...RequestEditorFn) (*PostTasksSpawnFromSpecResponse, error) {
+	rsp, err := c.PostTasksSpawnFromSpecWithBody(ctx, contentType, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTasksSpawnFromSpecResponse(rsp)
+}
+
+func (c *ClientWithResponses) PostTasksSpawnFromSpecWithResponse(ctx context.Context, body PostTasksSpawnFromSpecJSONRequestBody, reqEditors ...RequestEditorFn) (*PostTasksSpawnFromSpecResponse, error) {
+	rsp, err := c.PostTasksSpawnFromSpec(ctx, body, reqEditors...)
+	if err != nil {
+		return nil, err
+	}
+	return ParsePostTasksSpawnFromSpecResponse(rsp)
 }
 
 // PostTasksSpecificationsCreateWithBodyWithResponse request with arbitrary body returning *PostTasksSpecificationsCreateResponse
@@ -2527,6 +2651,39 @@ func ParsePostTasksSpawnResponse(rsp *http.Response) (*PostTasksSpawnResponse, e
 	return response, nil
 }
 
+// ParsePostTasksSpawnFromSpecResponse parses an HTTP response from a PostTasksSpawnFromSpecWithResponse call
+func ParsePostTasksSpawnFromSpecResponse(rsp *http.Response) (*PostTasksSpawnFromSpecResponse, error) {
+	bodyBytes, err := io.ReadAll(rsp.Body)
+	defer func() { _ = rsp.Body.Close() }()
+	if err != nil {
+		return nil, err
+	}
+
+	response := &PostTasksSpawnFromSpecResponse{
+		Body:         bodyBytes,
+		HTTPResponse: rsp,
+	}
+
+	switch {
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
+		var dest TaskSpawnResponse
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON200 = &dest
+
+	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 500:
+		var dest Error
+		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
+			return nil, err
+		}
+		response.JSON500 = &dest
+
+	}
+
+	return response, nil
+}
+
 // ParsePostTasksSpecificationsCreateResponse parses an HTTP response from a PostTasksSpecificationsCreateWithResponse call
 func ParsePostTasksSpecificationsCreateResponse(rsp *http.Response) (*PostTasksSpecificationsCreateResponse, error) {
 	bodyBytes, err := io.ReadAll(rsp.Body)
@@ -2822,6 +2979,9 @@ type ServerInterface interface {
 	// Spawn a new task
 	// (POST /tasks/spawn)
 	PostTasksSpawn(ctx echo.Context) error
+	// Spawn a new task from specification
+	// (POST /tasks/spawn_from_spec)
+	PostTasksSpawnFromSpec(ctx echo.Context) error
 	// Create a specification
 	// (POST /tasks/specifications/create)
 	PostTasksSpecificationsCreate(ctx echo.Context) error
@@ -2934,6 +3094,15 @@ func (w *ServerInterfaceWrapper) PostTasksSpawn(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.PostTasksSpawn(ctx)
+	return err
+}
+
+// PostTasksSpawnFromSpec converts echo context to params.
+func (w *ServerInterfaceWrapper) PostTasksSpawnFromSpec(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PostTasksSpawnFromSpec(ctx)
 	return err
 }
 
@@ -3054,6 +3223,7 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.POST(baseURL+"/tasks/filter", wrapper.PostTasksFilter)
 	router.POST(baseURL+"/tasks/load", wrapper.PostTasksLoad)
 	router.POST(baseURL+"/tasks/spawn", wrapper.PostTasksSpawn)
+	router.POST(baseURL+"/tasks/spawn_from_spec", wrapper.PostTasksSpawnFromSpec)
 	router.POST(baseURL+"/tasks/specifications/create", wrapper.PostTasksSpecificationsCreate)
 	router.POST(baseURL+"/tasks/specifications/get", wrapper.PostTasksSpecificationsGet)
 	router.POST(baseURL+"/tasks/specifications/get_all", wrapper.PostTasksSpecificationsGetAll)
@@ -3268,6 +3438,32 @@ func (response PostTasksSpawn200JSONResponse) VisitPostTasksSpawnResponse(w http
 type PostTasksSpawn500JSONResponse Error
 
 func (response PostTasksSpawn500JSONResponse) VisitPostTasksSpawnResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(500)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostTasksSpawnFromSpecRequestObject struct {
+	Body *PostTasksSpawnFromSpecJSONRequestBody
+}
+
+type PostTasksSpawnFromSpecResponseObject interface {
+	VisitPostTasksSpawnFromSpecResponse(w http.ResponseWriter) error
+}
+
+type PostTasksSpawnFromSpec200JSONResponse TaskSpawnResponse
+
+func (response PostTasksSpawnFromSpec200JSONResponse) VisitPostTasksSpawnFromSpecResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type PostTasksSpawnFromSpec500JSONResponse Error
+
+func (response PostTasksSpawnFromSpec500JSONResponse) VisitPostTasksSpawnFromSpecResponse(w http.ResponseWriter) error {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(500)
 
@@ -3528,6 +3724,9 @@ type StrictServerInterface interface {
 	// Spawn a new task
 	// (POST /tasks/spawn)
 	PostTasksSpawn(ctx context.Context, request PostTasksSpawnRequestObject) (PostTasksSpawnResponseObject, error)
+	// Spawn a new task from specification
+	// (POST /tasks/spawn_from_spec)
+	PostTasksSpawnFromSpec(ctx context.Context, request PostTasksSpawnFromSpecRequestObject) (PostTasksSpawnFromSpecResponseObject, error)
 	// Create a specification
 	// (POST /tasks/specifications/create)
 	PostTasksSpecificationsCreate(ctx context.Context, request PostTasksSpecificationsCreateRequestObject) (PostTasksSpecificationsCreateResponseObject, error)
@@ -3797,6 +3996,35 @@ func (sh *strictHandler) PostTasksSpawn(ctx echo.Context) error {
 	return nil
 }
 
+// PostTasksSpawnFromSpec operation middleware
+func (sh *strictHandler) PostTasksSpawnFromSpec(ctx echo.Context) error {
+	var request PostTasksSpawnFromSpecRequestObject
+
+	var body PostTasksSpawnFromSpecJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.PostTasksSpawnFromSpec(ctx.Request().Context(), request.(PostTasksSpawnFromSpecRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "PostTasksSpawnFromSpec")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(PostTasksSpawnFromSpecResponseObject); ok {
+		return validResponse.VisitPostTasksSpawnFromSpecResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
 // PostTasksSpecificationsCreate operation middleware
 func (sh *strictHandler) PostTasksSpecificationsCreate(ctx echo.Context) error {
 	var request PostTasksSpecificationsCreateRequestObject
@@ -4049,30 +4277,31 @@ func (sh *strictHandler) PostTasksUpdate(ctx echo.Context) error {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

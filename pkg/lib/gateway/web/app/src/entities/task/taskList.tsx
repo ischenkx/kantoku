@@ -7,24 +7,38 @@ import dayjs from "dayjs";
 
 const {RangePicker} = DatePicker;
 
-const Status: React.FC<{ value: string }> = ({value}) => {
-    value = value || 'unknown'
-    let color;
-    switch (value) {
-        case "ok":
-            color = "green";
-            break;
-        case "failed":
-            color = "red";
-            break;
+export const TaskStatus: React.FC<{ status: string, subStatus: string }> = ({status, subStatus}) => {
+    status = status || 'unknown'
+    let color, value;
+    switch (status) {
+        case "finished":
+            switch (subStatus) {
+                case "ok":
+                    color = "green";
+                    value = "ok";
+                    break;
+                case "failed":
+                    color = "red";
+                    value = "failed";
+                    break;
+                default:
+                    color = undefined;
+                    value = "finished";
+                    break
+            }
+            break
+
         case "ready":
             color = "blue";
+            value = "ready";
             break;
         case "received":
             color = "blue";
+            value = "received";
             break;
         case "unknown":
             color = "yellow";
+            value = "unknown";
             break;
     }
     return <TagField value={value} color={color}/>
@@ -32,13 +46,13 @@ const Status: React.FC<{ value: string }> = ({value}) => {
 
 const Filter: React.FC<{ formProps: FormProps, filters: CrudFilters }> = ({formProps, filters}) => {
     const updatedAt = useMemo(() => {
-        const start = getDefaultFilter("info.updatedAt", filters, "gte");
-        const end = getDefaultFilter("info.updatedAt", filters, "lte");
+        const start = getDefaultFilter("info.updated_at", filters, "gte");
+        const end = getDefaultFilter("info.updated_at", filters, "lte");
 
-        const startFrom = dayjs(start);
-        const endAt = dayjs(end);
+        const startFrom = start ? dayjs(start) : undefined;
+        const endAt = end ? dayjs(end) : undefined;
 
-        if (start && end) {
+        if (start || end) {
             return [startFrom, endAt];
         }
         return undefined;
@@ -69,17 +83,17 @@ const Filter: React.FC<{ formProps: FormProps, filters: CrudFilters }> = ({formP
                 <Select
                     mode="multiple"
                     allowClear
-                    tagRender={({value}) => <Status value={value}/>}
+                    tagRender={({value}) => <TaskStatus status={value} subStatus={''}/>}
                     // dropdownRender={option => <Status value={option.props.label}/>}
                     options={[
-                        {
-                            label: "ok",
-                            value: "ok",
-                        },
-                        {
-                            label: "failed",
-                            value: "failed",
-                        },
+                        // {
+                        //     label: "ok",
+                        //     value: "ok",
+                        // },
+                        // {
+                        //     label: "failed",
+                        //     value: "failed",
+                        // },
                         {
                             label: "ready",
                             value: "ready",
@@ -101,7 +115,7 @@ const Filter: React.FC<{ formProps: FormProps, filters: CrudFilters }> = ({formP
                 />
             </Form.Item>
             <Form.Item label="Updated At" name="updatedAt">
-                <RangePicker format="DD/MM/YYYY hh:mm A" showTime={{use12Hours: false}}/>
+                <RangePicker format="DD/MM/YYYY hh:mm A" showTime={{use12Hours: false}} allowEmpty={[true, true]}/>
             </Form.Item>
             <Form.Item>
                 <Button htmlType="submit" type="primary">
@@ -161,7 +175,6 @@ export const TaskList: React.FC<IResourceComponentsProps> = () => {
                 }
             )
 
-            console.log('filters:', filters)
 
             return filters;
         }
@@ -198,10 +211,22 @@ export const TaskList: React.FC<IResourceComponentsProps> = () => {
                                 )
                             }
                         />
+                        <Table.Column
+                            title="Specification"
+                            render={(_, record: BaseRecord) =>
+                                <span>
+                                    {record.info?.type ? record.info?.type : '-' }
+                                </span>
+                            }
+                        />
+
 
                         <Table.Column
                             title="Status"
-                            render={(_, record: BaseRecord) => <Status value={record.info?.status}/>}
+                            render={(_, record: BaseRecord) => <TaskStatus
+                                status={record.info?.status}
+                                subStatus={record.info?.sub_status}/>
+                            }
                         />
 
                         <Table.Column
@@ -213,7 +238,9 @@ export const TaskList: React.FC<IResourceComponentsProps> = () => {
                                         hideText
                                         size="small"
                                         recordItemId={record.id}
-                                    />
+                                    >
+                                        Show
+                                    </ShowButton>
                                 </Space>
                             )}
                         />

@@ -8,7 +8,6 @@ import (
 	"github.com/ischenkx/kantoku/pkg/common/data/record/ops"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
-	"github.com/ischenkx/kantoku/pkg/common/transport/queue"
 	"github.com/ischenkx/kantoku/pkg/core/event"
 	"github.com/ischenkx/kantoku/pkg/core/services/executor"
 	"github.com/ischenkx/kantoku/pkg/core/task"
@@ -46,7 +45,7 @@ func (srvc *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to consumer events: %w", err)
 	}
 
-	queue.Processor[event.Event]{
+	broker.Processor[event.Event]{
 		Handler: func(ctx context.Context, ev event.Event) error {
 			if err := srvc.processEvent(ctx, ev); err != nil {
 				return err
@@ -159,7 +158,7 @@ func (srvc *Service) saveResultData(ctx context.Context, result executor.Result)
 	err := srvc.System.
 		Tasks().
 		Filter(record.R{"id": result.TaskID}).
-		Update(ctx, record.R{"info": record.R{"result": result.Data}}, nil)
+		Update(ctx, record.R{"info": record.R{"result": string(result.Data)}}, nil)
 	if err != nil {
 		return fmt.Errorf("failed to update records: %w", err)
 	}

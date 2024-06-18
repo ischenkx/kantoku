@@ -22,6 +22,7 @@ import Flow from "./entities/sandbox/flow";
 import {ThemedLayoutV2} from "./components/layout";
 import {ThemedTitleV2} from "./components/layout/title";
 import {ProviderRouter} from "./providers";
+import {SpecificationList} from "./entities/specification/specificationList";
 
 const App: React.FC = () => {
     return (
@@ -33,27 +34,13 @@ const App: React.FC = () => {
                     resources={[
                         {
                             name: "tasks",
+                            key: 'tasks',
+                            identifier: 'tasks',
                             list: "/tasks",
                             show: "/tasks/show/:id",
                             create: "/tasks/create",
                             meta: {
                                 icon: <MemoryOutlinedIcon/>,
-                            },
-                        },
-                        {
-                            name: "specifications",
-                            list: "/tasks/specifications",
-                            show: "/tasks/specifications/:id",
-                            meta: {
-                                icon: <DescriptionOutlinedIcon/>,
-                            },
-                        },
-                        {
-                            name: "types",
-                            list: "/tasks/specifications/types",
-                            show: "/tasks/specifications/types/:id",
-                            meta: {
-                                icon: <AccountTreeOutlinedIcon/>,
                             },
                         },
                         {
@@ -66,8 +53,12 @@ const App: React.FC = () => {
                             }
                         },
                         {
-                            name: "sandbox",
-                            list: "/sandbox",
+                            name: "specifications",
+                            list: "/specifications",
+                            show: "/specifications/:id",
+                            meta: {
+                                icon: <DescriptionOutlinedIcon/>,
+                            },
                         },
                         {
                             name: "flow",
@@ -109,9 +100,9 @@ const App: React.FC = () => {
                                 <Route path="create" element={<ResourceCreate/>}/>
                             </Route>
                             <Route path="specifications">
-                                <Route index element={<ResourceList/>}/>
-                                <Route path="show/:id" element={<ResourceShow/>}/>
-                                <Route path="create" element={<ResourceCreate/>}/>
+                                <Route index element={<SpecificationList/>}/>
+                                <Route path=":id" element={<ResourceShow/>}/>
+                                {/*<Route path="create" element={<ResourceCreate/>}/>*/}
                             </Route>
                             <Route path="sandbox">
                                 <Route path=":context" index element={<Sandbox/>}/>

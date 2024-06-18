@@ -1,8 +1,7 @@
 import React from "react";
-import {IResourceComponentsProps, useGo, useNavigation} from "@refinedev/core";
+import {IResourceComponentsProps, useGo} from "@refinedev/core";
 import {Create, useForm} from "@refinedev/antd";
 import {Form, InputNumber} from "antd";
-import {useNavigate} from "react-router-dom";
 
 
 export const ResourceCreate: React.FC<IResourceComponentsProps> = () => {
@@ -18,7 +17,10 @@ export const ResourceCreate: React.FC<IResourceComponentsProps> = () => {
         },
     });
 
-    const {formProps, onFinish, queryResult} = formData
+    const {
+        formProps,
+        onFinish,
+    } = formData
 
     const go = useGo();
 
@@ -28,10 +30,9 @@ export const ResourceCreate: React.FC<IResourceComponentsProps> = () => {
                 onClick() {
                     console.log('amount:', formProps.form?.getFieldValue('amount') || 1)
 
-                    let data = {
+                    const data = {
                         amount: formProps.form?.getFieldValue('amount') || 1,
                     }
-
 
                     onFinish(data).then((result) => {
                         return go({
@@ -44,7 +45,7 @@ export const ResourceCreate: React.FC<IResourceComponentsProps> = () => {
                                     {
                                         field: "id",
                                         operator: "in",
-                                        value: result.data?? [],
+                                        value: result?.data ?? [],
                                     },
                                 ],
                             },

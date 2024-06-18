@@ -28,6 +28,7 @@ export const ResourceProvider: DataProvider = {
 
     getOne: async ({resource, id}: { resource: string; id: string }) => {
         const {data: resources} = await API.resourcesLoadPost([id]);
+        console.log('loading:', resources)
         return {
             data: resources[0],
         };

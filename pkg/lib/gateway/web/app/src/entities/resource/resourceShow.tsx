@@ -27,11 +27,16 @@ export const ResourceShow: React.FC<IResourceComponentsProps> = () => {
             return undefined
         }
         try {
-            return JSON.parse(record.value);
+            const parsed = JSON.parse(record.value);
+            return {
+                data: parsed
+            }
         } catch {
             return undefined;
         }
     })()
+
+    console.log('vaj', valueAsJson)
 
     return (
         <Show isLoading={isLoading}>
@@ -43,7 +48,8 @@ export const ResourceShow: React.FC<IResourceComponentsProps> = () => {
             {record?.status === 'ready' && valueAsJson !== undefined ?
                 <ReactJson
                     src={valueAsJson}
-                    name={'data'}
+                    name={null}
+                    // name={'data'}
                     theme={mode === 'light' ? 'summerfruit:inverted' : 'summerfruit'}
                     collapseStringsAfterLength={80}
                 />
@@ -67,15 +73,13 @@ export const ResourceShow: React.FC<IResourceComponentsProps> = () => {
                     if (!record) return
                     if (!record.id) return
 
-                    let response = mutate({
+                    mutate({
                         resource: 'resources',
                         id: record.id,
                         values: {
                             value: resolvedData
                         }
                     })
-
-                    console.log(response)
                 }}
             >
                 Resolve

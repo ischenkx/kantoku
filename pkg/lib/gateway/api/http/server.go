@@ -10,9 +10,11 @@ import (
 	"github.com/ischenkx/kantoku/pkg/core/system"
 	"github.com/ischenkx/kantoku/pkg/core/task"
 	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/oas"
+	"github.com/ischenkx/kantoku/pkg/lib/tasks"
 	"github.com/ischenkx/kantoku/pkg/lib/tasks/specification"
 	"github.com/ischenkx/kantoku/pkg/lib/tasks/specification/typing"
 	"github.com/samber/lo"
+	"log/slog"
 )
 
 var _ oas.StrictServerInterface = (*Server)(nil)
@@ -22,8 +24,11 @@ type Server struct {
 	specifications *specification.Manager
 }
 
-func NewServer(system system.AbstractSystem) *Server {
-	return &Server{system: system}
+func NewServer(system system.AbstractSystem, specifications *specification.Manager) *Server {
+	return &Server{
+		system:         system,
+		specifications: specifications,
+	}
 }
 
 func (server *Server) PostResourcesAllocate(ctx context.Context, request oas.PostResourcesAllocateRequestObject) (oas.PostResourcesAllocateResponseObject, error) {
@@ -122,6 +127,107 @@ func (server *Server) PostTasksSpawn(ctx context.Context, request oas.PostTasksS
 	}
 
 	return oas.PostTasksSpawn200JSONResponse{Id: spawnedTask.ID}, nil
+}
+
+func (server *Server) PostTasksSpawnFromSpec(ctx context.Context, request oas.PostTasksSpawnFromSpecRequestObject) (oas.PostTasksSpawnFromSpecResponseObject, error) {
+
+	type txParams struct {
+		Inputs  []string
+		Outputs []string
+		Id      string
+	}
+
+	spec, err := server.specifications.Specifications().Get(ctx, request.Body.Specification)
+	if err != nil {
+		return oas.PostTasksSpawnFromSpec500JSONResponse{
+			Message: fmt.Sprintf("failed to load specification: %s", err),
+		}, nil
+	}
+
+	if len(request.Body.Parameters) != len(spec.IO.Inputs.Types) {
+		return oas.PostTasksSpawnFromSpec500JSONResponse{
+			Message: fmt.Sprintf("incorrect amount of input parameters: %d (expected %d)", len(request.Body.Parameters), len(spec.IO.Inputs.Types)),
+		}, nil
+	}
+
+	tx := lo.NewTransaction[txParams]().
+		Then(
+			func(params txParams) (txParams, error) {
+				// resource allocation
+				inputAmounts := len(spec.IO.Inputs.Types)
+				outputAmounts := len(spec.IO.Outputs.Types)
+				totalResources := inputAmounts + outputAmounts
+				resources, err := server.system.Resources().Alloc(ctx, totalResources)
+				if err != nil {
+					return params, fmt.Errorf("failed to allocate resources: %s", err)
+				}
+				params.Inputs = resources[:inputAmounts]
+				params.Outputs = resources[inputAmounts:]
+
+				return params, nil
+			},
+			func(params txParams) txParams {
+				err := server.system.Resources().Dealloc(ctx, append(params.Inputs, params.Outputs...))
+				if err != nil {
+					slog.Error("failed to dealloc resources", slog.String("error", err.Error()))
+				}
+				return params
+			},
+		).
+		Then(
+			func(params txParams) (txParams, error) {
+				initializedResources := make([]resource.Resource, 0, len(params.Inputs))
+				for index := 0; index < len(params.Inputs); index++ {
+					param := request.Body.Parameters[index]
+					resourceId := params.Inputs[index]
+					initializedResources = append(initializedResources, resource.Resource{
+						Data: []byte(param),
+						ID:   resourceId,
+					})
+				}
+
+				err := server.system.Resources().Init(ctx, initializedResources)
+				if err != nil {
+					return params, fmt.Errorf("failed to initialize resources: %s", err)
+				}
+
+				return params, nil
+			},
+			func(params txParams) txParams {
+				return params
+			},
+		).
+		Then(
+			func(params txParams) (txParams, error) {
+				t, err := server.system.Spawn(ctx, task.New(
+					task.WithInputs(params.Inputs...),
+					task.WithOutputs(params.Outputs...),
+					task.WithInfo(request.Body.Info),
+					task.WithProperty("type", request.Body.Specification),
+					tasks.DependOnInputs(),
+				))
+				if err != nil {
+					return params, fmt.Errorf("failed to spawn a new task: %s", err)
+				}
+
+				params.Id = t.ID
+
+				return params, nil
+			},
+			func(params txParams) txParams {
+				return params
+			},
+		)
+
+	result, err := tx.Process(txParams{})
+
+	if err != nil {
+		return oas.PostTasksSpawnFromSpec500JSONResponse{
+			Message: fmt.Sprintf("failed to spawn a new task: %s", err),
+		}, nil
+	}
+
+	return oas.PostTasksSpawnFromSpec200JSONResponse{Id: result.Id}, nil
 }
 
 func (server *Server) PostTasksCount(ctx context.Context, request oas.PostTasksCountRequestObject) (oas.PostTasksCountResponseObject, error) {

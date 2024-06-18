@@ -6,6 +6,29 @@ info:
 servers:
   - url: https://kantoku.api.server:3000
 paths:
+  /tasks/spawn_from_spec:
+    post:
+      summary: Spawn a new task from specification
+      requestBody:
+        description: The specification of a task to be spawned
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpecificationBasedTaskParameters'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskSpawnResponse'
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /tasks/spawn:
     post:
       summary: Spawn a new task
@@ -15,7 +38,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TaskSpecification'
+              $ref: '#/components/schemas/TaskParameters'
       responses:
         '200':
           description: OK
@@ -452,7 +475,22 @@ components:
       properties:
         id:
           type: string
-    TaskSpecification:
+    SpecificationBasedTaskParameters:
+      type: object
+      required:
+        - parameters
+        - specification
+        - info
+      properties:
+        parameters:
+          type: array
+          items:
+            type: string
+        specification:
+          type: string
+        info:
+          $ref: '#/components/schemas/TaskInfo'
+    TaskParameters:
       type: object
       required:
         - inputs

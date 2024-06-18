@@ -53,6 +53,21 @@ func Array(item Type) Type {
 	return Type{Name: "array", SubTypes: map[string]Type{"item": item}}
 }
 
+// Equivalent to []byte
+func Binary() Type {
+	return Type{Name: "binary"}
+}
+
+// Equivalent to time.Duration
+func Duration() Type {
+	return Type{Name: "duration"}
+}
+
+// Equivalent to time.Time
+func TimeStamp() Type {
+	return Type{Name: "timestamp"}
+}
+
 func Ref(name string) Type {
 	return Type{
 		Name: "ref",

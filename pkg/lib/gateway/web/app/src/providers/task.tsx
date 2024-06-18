@@ -3,7 +3,6 @@ import {AxiosInstance} from "axios";
 import {
     DefaultApi,
     TasksFilterPostRequest,
-    TaskSpecification,
     Configuration
 } from "../api/generated";
 import {API, ConvertFilter} from "./common"; // Update the import path based on your file structure
@@ -17,6 +16,8 @@ export const TaskProvider: DataProvider = {
                     } = {}
     ) => {
         const {current = 1, pageSize = 10} = pagination ?? {};
+
+        console.log(filters)
 
         const query: TasksFilterPostRequest = {
             filter: ConvertFilter(filters?? []),
@@ -45,16 +46,19 @@ export const TaskProvider: DataProvider = {
         };
     },
 
-    create: async (resource: string, {variables}: {
-        variables: { inputs: string[]; outputs: string[]; info: Record<string, any> }
+    create: async ({resource, variables}: {
+        resource: string,
+        variables: { specification: string, parameters: any, info: any }
     }) => {
-        const taskSpecification: TaskSpecification = {
-            inputs: variables.inputs,
-            outputs: variables.outputs,
+        const taskSpecification =  {
+            specification: variables.specification,
+            parameters: variables.parameters,
             info: variables.info,
         };
 
-        const {data: taskSpawnResponse} = await API.tasksSpawnPost(taskSpecification);
+        console.log('Spawning!', resource, variables, taskSpecification)
+
+        const {data: taskSpawnResponse} = await API.tasksSpawnFromSpecPost(taskSpecification);
 
         return {
             data: {id: taskSpawnResponse.id},

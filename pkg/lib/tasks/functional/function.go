@@ -1,8 +1,9 @@
 package functional
 
 import (
+	"errors"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/lib/tasks/future"
+	"github.com/ischenkx/kantoku/pkg/lib/tasks/functional/future"
 	"log"
 	"reflect"
 )
@@ -21,10 +22,28 @@ ok, getting generic types is kinda hard, so i'll add methods to return type
 https://github.com/golang/go/issues/54393
 */
 
-type Task[Input, Output any] interface {
+type AbstractTask[Input, Output any] interface {
 	EmptyOutput() Output
 	Call(*Context, Input) (Output, error)
 	InputType() reflect.Type
+}
+
+type Task[Input, Output any] struct {
+	ID string
+}
+
+func (task Task[Input, Output]) EmptyOutput() Output {
+	var zero Output
+	return zero
+}
+
+func (task Task[Input, Output]) InputType() reflect.Type {
+	var zero Input
+	return reflect.TypeOf(zero)
+}
+
+func (task Task[Input, Output]) Call(context *Context, input Input) (Output, error) {
+	return task.EmptyOutput(), errors.New("not callable")
 }
 
 type ExampleInput struct {
@@ -38,7 +57,7 @@ type ExampleOutput struct {
 
 type ExampleTask struct{}
 
-var _ Task[ExampleInput, ExampleOutput] = &ExampleTask{}
+var _ AbstractTask[ExampleInput, ExampleOutput] = &ExampleTask{}
 
 func (wt ExampleTask) Call(ctx *Context, input ExampleInput) (ExampleOutput, error) {
 	log.Println(input.a)

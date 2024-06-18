@@ -3,24 +3,28 @@ package functional
 import (
 	"context"
 	"errors"
+	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
 	"github.com/ischenkx/kantoku/pkg/core/system"
 	"github.com/ischenkx/kantoku/pkg/core/task"
-	"github.com/ischenkx/kantoku/pkg/lib/tasks/future"
+	future2 "github.com/ischenkx/kantoku/pkg/lib/tasks/functional/future"
 	"reflect"
 )
 
-type Executor[T Task[I, O], I, O any] struct {
+type Executor[T AbstractTask[I, O], I, O any] struct {
 	task T
 }
 
-func NewExecutor[T Task[I, O], I, O any](t T) Executor[T, I, O] {
+func NewExecutor[T AbstractTask[I, O], I, O any](t T) Executor[T, I, O] {
 	return Executor[T, I, O]{task: t}
 }
 
 func (e Executor[T, I, O]) Execute(ctx context.Context, sys system.AbstractSystem, task task.Task) error {
 	taskCtx, input, err := e.prepare(ctx, sys, task)
+	if err != nil {
+		return fmt.Errorf("failed to prepare task: %w", err)
+	}
 
 	out, err := e.task.Call(taskCtx, input)
 	if err != nil {
@@ -85,7 +89,7 @@ func (e Executor[T, I, O]) save(ctx *Context, sys system.AbstractSystem, task ta
 }
 
 // can replace any in return value to 'I', but it's hard to return empty value this way
-func (e Executor[T, I, O]) buildInput(resources []resource.Resource, storage future.Storage) (I, error) {
+func (e Executor[T, I, O]) buildInput(resources []resource.Resource, storage future2.Storage) (I, error) {
 	structType := e.task.InputType()
 	structValue := reflect.New(structType).Elem()
 	structInterface, ok := structValue.Interface().(I)
@@ -111,7 +115,7 @@ func (e Executor[T, I, O]) buildInput(resources []resource.Resource, storage fut
 		}
 
 		// save resource to storage so they won't be copied
-		fut, ok := structValue.Field(i).Interface().(future.AbstractFuture)
+		fut, ok := structValue.Field(i).Interface().(future2.AbstractFuture)
 		if !ok {
 			return structInterface, errors.New("cannot convert field to future")
 		}
@@ -147,7 +151,7 @@ func parseField(data []byte, field reflect.Value) error {
 	return nil
 }
 
-func taskType[I, O any](task Task[I, O]) string {
+func taskType[I, O any](task AbstractTask[I, O]) string {
 	typ := reflect.ValueOf(task).Type()
 	return typ.PkgPath() + "." + typ.Name()
 }

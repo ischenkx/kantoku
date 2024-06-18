@@ -33,6 +33,7 @@ export const ProviderRouter: DataProvider = {
     },
 
     create: async (params) => {
+        console.log('CREATING', params)
         switch (params.resource) {
             case "tasks":
                 return TaskProvider.create(params);

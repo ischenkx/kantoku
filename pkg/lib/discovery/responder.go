@@ -6,10 +6,23 @@ import (
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
-	"github.com/ischenkx/kantoku/pkg/common/transport/queue"
 	"github.com/ischenkx/kantoku/pkg/core/event"
 	"log/slog"
 )
+
+const (
+	RequestsTopic  = "discovery:request"
+	ResponsesTopic = "discovery:response"
+)
+
+type Request struct {
+	ID string
+}
+
+type Response struct {
+	RequestID   string
+	ServiceInfo ServiceInfo
+}
 
 type Responder[Service service.Service] struct {
 	Service       Service
@@ -32,7 +45,7 @@ func (responder *Responder[Service]) Run(ctx context.Context) error {
 
 	//responder.Service.Logger().Info("starting a responder")
 
-	queue.Processor[event.Event]{
+	broker.Processor[event.Event]{
 		Handler: func(ctx context.Context, ev event.Event) error {
 			request, err := responder.RequestCodec.Decode(ev.Data)
 			if err != nil {

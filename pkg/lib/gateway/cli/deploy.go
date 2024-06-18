@@ -2,10 +2,12 @@ package cli
 
 import (
 	"context"
+	"github.com/ischenkx/kantoku/pkg/common/logging/prefixed"
 	"github.com/ischenkx/kantoku/pkg/common/service"
-	"github.com/ischenkx/kantoku/pkg/lib/gateway/cli/builder"
-	config2 "github.com/ischenkx/kantoku/pkg/lib/gateway/cli/config"
+	"github.com/ischenkx/kantoku/pkg/lib/platform"
 	"github.com/spf13/cobra"
+	"log/slog"
+	"os"
 )
 
 type deployFlags struct {
@@ -51,11 +53,21 @@ func NewDeploy() *cobra.Command {
 				flags.serviceDiscovery = false
 			}
 
-			var cfg config2.Config
+			var cfg platform.Config
+
+			logger := slog.New(
+				prefixed.NewHandler(
+					slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{}),
+					&prefixed.HandlerOptions{
+						PrefixKeys:      nil,
+						PrefixFormatter: nil,
+					},
+				),
+			)
 
 			if flags.config != "" {
 				var err error
-				cfg, err = config2.FromFile(flags.config)
+				cfg, err = platform.FromFile(flags.config)
 				if err != nil {
 					cmd.PrintErrln("failed to parse config from file:", err)
 					return
@@ -68,73 +80,79 @@ func NewDeploy() *cobra.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			b := &builder.Builder{}
-
-			cmd.Println("building system")
-			sys, err := b.BuildSystem(ctx, cfg.System)
+			cmd.Println("building: system")
+			sys, err := platform.BuildSystem(ctx, logger, cfg.Core.System)
 			if err != nil {
 				cmd.PrintErrln("failed to create a system instance from config:", err)
+				return
+			}
+
+			cmd.Println("building: system")
+			specifications, err := platform.BuildSpecifications(ctx, cfg.Core.Specifications)
+			if err != nil {
+				cmd.PrintErrln("failed to build a specifications manager:", err)
 				return
 			}
 
 			var deployer service.Deployer
 
 			if flags.scheduler {
-				cmd.Println("building scheduler")
-				srvc, mws, err := b.BuildScheduler(ctx, sys, cfg.Services.Scheduler)
+				cmd.Println("building: scheduler")
+				deployment, err := platform.BuildSchedulerDeployment(ctx, sys, logger, cfg.Services.Scheduler)
 				if err != nil {
 					cmd.PrintErrln(err)
 					return
 				}
 
-				deployer.Add(srvc, mws...)
+				deployer.Add(deployment.Service, deployment.Middlewares...)
 			}
 
 			if flags.processor {
-				cmd.Println("building processor")
-				srvc, mws, err := b.BuildProcessor(ctx, sys, cfg.Services.Processor)
+				cmd.Println("building: processor")
+				// TODO: add processor!
+				deployment, err := platform.BuildProcessorDeployment(ctx, sys, nil, logger, cfg.Services.Processor)
 				if err != nil {
 					cmd.PrintErrln(err)
 					return
 				}
 
-				deployer.Add(srvc, mws...)
+				deployer.Add(deployment.Service, deployment.Middlewares...)
 			}
 
 			if flags.status {
-				cmd.Println("building status")
+				cmd.Println("building: status")
 
-				srvc, mws, err := b.BuildStatus(ctx, sys, cfg.Services.Status)
+				deployment, err := platform.BuildStatusDeployment(ctx, sys, logger, cfg.Services.Status)
 				if err != nil {
 					cmd.PrintErrln(err)
 					return
 				}
 
-				deployer.Add(srvc, mws...)
+				deployer.Add(deployment.Service, deployment.Middlewares...)
 			}
 
 			if flags.api {
-				cmd.Println("building api")
+				cmd.Println("building: api")
 
-				srvc, mws, err := b.BuildHttpApi(ctx, sys, cfg.Services.HttpServer)
+				deployment, err := platform.BuildHttpApiDeployment(ctx, sys, specifications, logger, cfg.Services.HttpApi)
 				if err != nil {
 					cmd.PrintErrln(err)
 					return
 				}
 
-				deployer.Add(srvc, mws...)
+				deployer.Add(deployment.Service, deployment.Middlewares...)
 			}
 
 			if flags.serviceDiscovery {
 				cmd.Println("building service discovery")
 
-				srvc, mws, err := b.BuildDiscovery(ctx, sys, cfg.Services.Discovery)
+				deployemnt, err := platform.BuildDiscoveryDeployment(ctx, sys, logger, cfg.Services.Discovery)
 				if err != nil {
 					cmd.PrintErrln(err)
 					return
 				}
 
-				deployer.Add(srvc, mws...)
+				deployer.Add(deployemnt.Service, deployemnt.Middlewares...)
 			}
 
 			cmd.Println("deploying...")

@@ -3,12 +3,13 @@ package cli
 import (
 	"context"
 	"github.com/ischenkx/kantoku/pkg/common/data/uid"
+	"github.com/ischenkx/kantoku/pkg/common/logging/prefixed"
 	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
-	"github.com/ischenkx/kantoku/pkg/common/transport/queue"
 	"github.com/ischenkx/kantoku/pkg/core/event"
-	"github.com/ischenkx/kantoku/pkg/lib/gateway/cli/builder"
-	config2 "github.com/ischenkx/kantoku/pkg/lib/gateway/cli/config"
+	"github.com/ischenkx/kantoku/pkg/lib/platform"
 	"github.com/spf13/cobra"
+	"log/slog"
+	"os"
 	"strings"
 )
 
@@ -32,11 +33,21 @@ func NewEvents() *cobra.Command {
 				return
 			}
 
-			var cfg config2.Config
+			logger := slog.New(
+				prefixed.NewHandler(
+					slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{}),
+					&prefixed.HandlerOptions{
+						PrefixKeys:      nil,
+						PrefixFormatter: nil,
+					},
+				),
+			)
+
+			var cfg platform.Config
 
 			if sendFlags.config != "" {
 				var err error
-				cfg, err = config2.FromFile(sendFlags.config)
+				cfg, err = platform.FromFile(sendFlags.config)
 				if err != nil {
 					cmd.PrintErrln("failed to parse config from file:", err)
 					return
@@ -49,8 +60,7 @@ func NewEvents() *cobra.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			b := &builder.Builder{}
-			events, err := b.BuildEvents(ctx, cfg.System.Events)
+			events, err := platform.BuildEvents(ctx, logger, cfg.Core.System.Events)
 			if err != nil {
 				cmd.PrintErrln("failed to create events:", err)
 				return
@@ -87,11 +97,21 @@ func NewEvents() *cobra.Command {
 				return
 			}
 
-			var cfg config2.Config
+			logger := slog.New(
+				prefixed.NewHandler(
+					slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{}),
+					&prefixed.HandlerOptions{
+						PrefixKeys:      nil,
+						PrefixFormatter: nil,
+					},
+				),
+			)
+
+			var cfg platform.Config
 
 			if consumeFlags.config != "" {
 				var err error
-				cfg, err = config2.FromFile(consumeFlags.config)
+				cfg, err = platform.FromFile(consumeFlags.config)
 				if err != nil {
 					cmd.PrintErrln("failed to parse config from file:", err)
 					return
@@ -104,8 +124,7 @@ func NewEvents() *cobra.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			b := &builder.Builder{}
-			events, err := b.BuildEvents(ctx, cfg.System.Events)
+			events, err := platform.BuildEvents(ctx, logger, cfg.Core.System.Events)
 			if err != nil {
 				cmd.PrintErrln("failed to create events:", err)
 				return
@@ -123,7 +142,7 @@ func NewEvents() *cobra.Command {
 			cmd.Println("Group:", consumeFlags.group)
 			cmd.Println("Events:", strings.Join(consumeFlags.names, ", "))
 
-			queue.Processor[event.Event]{
+			broker.Processor[event.Event]{
 				Handler: func(ctx context.Context, ev event.Event) error {
 					cmd.Printf("id='%s' event='%s' data='%s'\n", ev.ID, ev.Topic, string(ev.Data))
 					return nil

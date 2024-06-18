@@ -1,0 +1,83 @@
+core:
+  specifications:
+    storage:
+      kind: postgres
+      uri: $SPECIFICATIONS_POSTGRES_URI
+      options:
+        specifications_table: specifications
+        types_table: specification_types
+    types:
+      storage:
+  system:
+    tasks:
+      storage:
+        kind: mongo
+        uri: $TASKS_MONGO_URI
+        options:
+          db: $TASKS_DB
+          collection: $TASKS_COLLECTION
+
+    resources:
+      storage:
+        kind: redis
+        uri: $RESOURCES_REDIS_URI
+        options:
+          key_prefix: resource
+
+    events:
+      broker:
+        kind: nats
+        uri: $EVENTS_NATS_URI
+services:
+  scheduler:
+    $:
+      discovery:
+        enabled: true
+    task_to_group:
+      kind: redis
+      uri: $SCHEDULER_TASK_TO_GROUP_REDIS_URI
+    dependencies:
+      kind: postgres:batched
+      poller:
+        interval: 300ms
+        batch_size: 1024
+      postgres:
+        uri: $SCHEDULER_DEPENDENCIES_POSTGRES_URI
+    resolvers:
+      - kind: resource
+        data:
+          storage:
+            kind: mongo
+            uri: $SCHEDULER_RESOURCE_RESOLVER_MONGO_URI
+            options:
+              db: $SCHEDULER_RESOURCE_RESOLVER_DB
+              collection: $SCHEDULER_RESOURCE_RESOLVER_COLLECTION
+            poll_timeout: 1000ms
+
+  discovery:
+    $:
+      name: discovery
+      discovery:
+        enabled: true
+    polling_interval: 5s
+    hub:
+      kind: consul
+      addr: $DISCOVERY_CONSUL_ADDR
+  http_api:
+    $:
+      discovery:
+        enabled: true
+        info:
+          port: $HTTP_API_PORT
+          addr: $HTTP_API_ADDR
+    port: $HTTP_API_PORT
+    logger_enabled: true
+  status:
+    $:
+      discovery:
+        enabled: true
+  processor:
+    kind: math
+    $:
+      discovery:
+        enabled: true

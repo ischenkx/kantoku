@@ -6,7 +6,6 @@ import (
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
-	"github.com/ischenkx/kantoku/pkg/common/transport/queue"
 	"github.com/ischenkx/kantoku/pkg/core/event"
 	"github.com/ischenkx/kantoku/pkg/core/system"
 	"github.com/ischenkx/kantoku/pkg/core/system/events"
@@ -43,8 +42,8 @@ func (controller *executionController) start(ctx context.Context) error {
 	return nil
 }
 
-func (controller *executionController) processCancellationEvents(ctx context.Context, cancellationEvents <-chan queue.Message[event.Event]) {
-	queue.Processor[event.Event]{
+func (controller *executionController) processCancellationEvents(ctx context.Context, cancellationEvents <-chan broker.Message[event.Event]) {
+	broker.Processor[event.Event]{
 		Handler: func(ctx context.Context, ev event.Event) error {
 			taskId := string(ev.Data)
 			controller.cancel(ctx, taskId)

@@ -2,7 +2,6 @@ package broker
 
 import (
 	"context"
-	"github.com/ischenkx/kantoku/pkg/common/transport/queue"
 )
 
 type TopicsInfo struct {
@@ -11,7 +10,7 @@ type TopicsInfo struct {
 }
 
 type Consumer[Item any] interface {
-	Consume(ctx context.Context, info TopicsInfo) (<-chan queue.Message[Item], error)
+	Consume(ctx context.Context, info TopicsInfo) (<-chan Message[Item], error)
 }
 
 type Publisher[Item any] interface {

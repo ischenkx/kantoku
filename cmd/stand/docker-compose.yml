@@ -1,0 +1,50 @@
+name: kantoku
+services:
+  consul:
+    image: hashicorp/consul:latest
+    container_name: kantoku-testing-consul
+    ports:
+      - "8500:8500"  # UI and HTTP API
+      - "8600:8600/udp"  # DNS interface
+    command: "agent -dev -client=0.0.0.0"
+  mongodb:
+    image: mongo
+    container_name: kantoku-testing-mongodb
+    ports:
+      - "27018:27017"
+    volumes:
+      - kantoku-testing-mongodb:/data/db
+  redis:
+    image: redis
+    container_name: kantoku-testing-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - kantoku-testing-redis:/data
+  postgres:
+    image: postgres
+    container_name: kantoku-testing-postgres
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5440:5432"
+    volumes:
+      - kantoku-testing-postgres:/var/lib/postgresql/data
+  nats:
+    image: nats:latest
+    container_name: nats-server
+    ports:
+      - "4222:4222"
+      - "6222:6222"
+      - "8222:8222"
+    command: [ "--jetstream" ]
+    volumes:
+      - kantoku-testing-nats:/nats/data
+    restart: always
+volumes:
+  kantoku-testing-mongodb:
+  kantoku-testing-redis:
+  kantoku-testing-postgres:
+  kantoku-testing-nats:
