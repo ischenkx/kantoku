@@ -1070,7 +1070,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
 };
 
 /**
- * DefaultApi - functional programming interface
+ * DefaultApi - fn_d programming interface
  * @export
  */
 export const DefaultApiFp = function(configuration?: Configuration) {

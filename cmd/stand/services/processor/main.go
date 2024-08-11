@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"github.com/ischenkx/kantoku/cmd/stand/math_executor"
 	"github.com/ischenkx/kantoku/cmd/stand/utils"
+	"github.com/ischenkx/kantoku/local/deprecated/math_executor"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/lib/platform"
 	"log"

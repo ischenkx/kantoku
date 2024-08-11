@@ -2,14 +2,13 @@ package system
 
 import (
 	"context"
-	"github.com/ischenkx/kantoku/pkg/common/data/record"
 	"github.com/ischenkx/kantoku/pkg/core/event"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
 	"github.com/ischenkx/kantoku/pkg/core/task"
 )
 
 type AbstractSystem interface {
-	Tasks() record.Set[task.Task]
+	Tasks() task.Storage
 	Resources() resource.Storage
 	Events() *event.Broker
 

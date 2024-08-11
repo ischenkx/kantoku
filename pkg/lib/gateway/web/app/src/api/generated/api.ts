@@ -24,6 +24,13 @@ import { BASE_PATH, COLLECTION_FORMATS, RequestArgs, BaseAPI, RequiredError } fr
 /**
  * 
  * @export
+ * @interface AnyValue
+ */
+export interface AnyValue {
+}
+/**
+ * 
+ * @export
  * @interface InfoCursor
  */
 export interface InfoCursor {
@@ -376,59 +383,142 @@ export interface TaskSpawnResponse {
 /**
  * 
  * @export
- * @interface TasksFilterPostRequest
+ * @interface TaskStorageCommand
  */
-export interface TasksFilterPostRequest {
+export interface TaskStorageCommand {
     /**
      * 
-     * @type {object}
-     * @memberof TasksFilterPostRequest
+     * @type {string}
+     * @memberof TaskStorageCommand
      */
-    'filter'?: object;
+    'operation': string;
     /**
      * 
-     * @type {InfoCursor}
-     * @memberof TasksFilterPostRequest
+     * @type {Array<TaskStorageCommandParam>}
+     * @memberof TaskStorageCommand
      */
-    'cursor'?: InfoCursor;
+    'params': Array<TaskStorageCommandParam>;
+    /**
+     * 
+     * @type {{ [key: string]: any; }}
+     * @memberof TaskStorageCommand
+     */
+    'meta': { [key: string]: any; };
 }
 /**
  * 
  * @export
- * @interface TasksSpecificationsGetPostRequest
+ * @interface TaskStorageCommandParam
  */
-export interface TasksSpecificationsGetPostRequest {
+export interface TaskStorageCommandParam {
     /**
      * 
      * @type {string}
-     * @memberof TasksSpecificationsGetPostRequest
+     * @memberof TaskStorageCommandParam
+     */
+    'name': string;
+    /**
+     * 
+     * @type {AnyValue}
+     * @memberof TaskStorageCommandParam
+     */
+    'value': AnyValue;
+}
+/**
+ * 
+ * @export
+ * @interface TaskStorageSettings
+ */
+export interface TaskStorageSettings {
+    /**
+     * 
+     * @type {string}
+     * @memberof TaskStorageSettings
+     */
+    'type': string;
+    /**
+     * 
+     * @type {{ [key: string]: any; }}
+     * @memberof TaskStorageSettings
+     */
+    'meta': { [key: string]: any; };
+}
+/**
+ * 
+ * @export
+ * @interface TasksRestartPostRequest
+ */
+export interface TasksRestartPostRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof TasksRestartPostRequest
      */
     'id': string;
 }
 /**
  * 
  * @export
- * @interface TasksUpdatePostRequest
+ * @interface TasksStorageGetWithPropertiesPostRequest
  */
-export interface TasksUpdatePostRequest {
+export interface TasksStorageGetWithPropertiesPostRequest {
     /**
      * 
-     * @type {object}
-     * @memberof TasksUpdatePostRequest
+     * @type {{ [key: string]: Array<AnyValue>; }}
+     * @memberof TasksStorageGetWithPropertiesPostRequest
      */
-    'filter': object;
+    'properties_to_values': { [key: string]: Array<AnyValue>; };
+}
+/**
+ * 
+ * @export
+ * @interface TasksStorageUpdateByIdsPostRequest
+ */
+export interface TasksStorageUpdateByIdsPostRequest {
     /**
      * 
-     * @type {object}
-     * @memberof TasksUpdatePostRequest
+     * @type {Array<string>}
+     * @memberof TasksStorageUpdateByIdsPostRequest
      */
-    'update': object;
+    'ids': Array<string>;
     /**
      * 
-     * @type {object}
-     * @memberof TasksUpdatePostRequest
+     * @type {{ [key: string]: any; }}
+     * @memberof TasksStorageUpdateByIdsPostRequest
      */
-    'upsert'?: object;
+    'properties': { [key: string]: any; };
+}
+/**
+ * 
+ * @export
+ * @interface TasksStorageUpdateWithPropertiesPost200Response
+ */
+export interface TasksStorageUpdateWithPropertiesPost200Response {
+    /**
+     * 
+     * @type {number}
+     * @memberof TasksStorageUpdateWithPropertiesPost200Response
+     */
+    'modified': number;
+}
+/**
+ * 
+ * @export
+ * @interface TasksStorageUpdateWithPropertiesPostRequest
+ */
+export interface TasksStorageUpdateWithPropertiesPostRequest {
+    /**
+     * 
+     * @type {{ [key: string]: Array<AnyValue>; }}
+     * @memberof TasksStorageUpdateWithPropertiesPostRequest
+     */
+    'properties_to_values': { [key: string]: Array<AnyValue>; };
+    /**
+     * 
+     * @type {{ [key: string]: any; }}
+     * @memberof TasksStorageUpdateWithPropertiesPostRequest
+     */
+    'new_properties': { [key: string]: any; };
 }
 /**
  * 
@@ -637,78 +727,6 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
-         * @summary Count records using a filter
-         * @param {TasksFilterPostRequest} tasksFilterPostRequest A query
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        tasksCountPost: async (tasksFilterPostRequest: TasksFilterPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'tasksFilterPostRequest' is not null or undefined
-            assertParamExists('tasksCountPost', 'tasksFilterPostRequest', tasksFilterPostRequest)
-            const localVarPath = `/tasks/count`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            localVarHeaderParameter['Content-Type'] = 'application/json';
-
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(tasksFilterPostRequest, localVarRequestOptions, configuration)
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * 
-         * @summary Load records using a filter
-         * @param {TasksFilterPostRequest} tasksFilterPostRequest A query
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        tasksFilterPost: async (tasksFilterPostRequest: TasksFilterPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'tasksFilterPostRequest' is not null or undefined
-            assertParamExists('tasksFilterPost', 'tasksFilterPostRequest', tasksFilterPostRequest)
-            const localVarPath = `/tasks/filter`;
-            // use dummy base URL string because the URL constructor only accepts absolute URLs.
-            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
-            let baseOptions;
-            if (configuration) {
-                baseOptions = configuration.baseOptions;
-            }
-
-            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
-            const localVarHeaderParameter = {} as any;
-            const localVarQueryParameter = {} as any;
-
-
-    
-            localVarHeaderParameter['Content-Type'] = 'application/json';
-
-            setSearchParams(localVarUrlObj, localVarQueryParameter);
-            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
-            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(tasksFilterPostRequest, localVarRequestOptions, configuration)
-
-            return {
-                url: toPathString(localVarUrlObj),
-                options: localVarRequestOptions,
-            };
-        },
-        /**
-         * 
          * @summary Load a set of tasks
          * @param {Array<string>} requestBody A list of task identifiers
          * @param {*} [options] Override http request option.
@@ -737,6 +755,42 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
             localVarRequestOptions.data = serializeDataIfNeeded(requestBody, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Restart a failed task
+         * @param {TasksRestartPostRequest} tasksRestartPostRequest A task id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksRestartPost: async (tasksRestartPostRequest: TasksRestartPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'tasksRestartPostRequest' is not null or undefined
+            assertParamExists('tasksRestartPost', 'tasksRestartPostRequest', tasksRestartPostRequest)
+            const localVarPath = `/tasks/restart`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(tasksRestartPostRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -884,13 +938,13 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
         /**
          * 
          * @summary Get specifications by id
-         * @param {TasksSpecificationsGetPostRequest} tasksSpecificationsGetPostRequest 
+         * @param {TasksRestartPostRequest} tasksRestartPostRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        tasksSpecificationsGetPost: async (tasksSpecificationsGetPostRequest: TasksSpecificationsGetPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'tasksSpecificationsGetPostRequest' is not null or undefined
-            assertParamExists('tasksSpecificationsGetPost', 'tasksSpecificationsGetPostRequest', tasksSpecificationsGetPostRequest)
+        tasksSpecificationsGetPost: async (tasksRestartPostRequest: TasksRestartPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'tasksRestartPostRequest' is not null or undefined
+            assertParamExists('tasksSpecificationsGetPost', 'tasksRestartPostRequest', tasksRestartPostRequest)
             const localVarPath = `/tasks/specifications/get`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -910,7 +964,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(tasksSpecificationsGetPostRequest, localVarRequestOptions, configuration)
+            localVarRequestOptions.data = serializeDataIfNeeded(tasksRestartPostRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -920,13 +974,13 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
         /**
          * 
          * @summary Remove a specification
-         * @param {TasksSpecificationsGetPostRequest} tasksSpecificationsGetPostRequest 
+         * @param {TasksRestartPostRequest} tasksRestartPostRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        tasksSpecificationsRemovePost: async (tasksSpecificationsGetPostRequest: TasksSpecificationsGetPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'tasksSpecificationsGetPostRequest' is not null or undefined
-            assertParamExists('tasksSpecificationsRemovePost', 'tasksSpecificationsGetPostRequest', tasksSpecificationsGetPostRequest)
+        tasksSpecificationsRemovePost: async (tasksRestartPostRequest: TasksRestartPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'tasksRestartPostRequest' is not null or undefined
+            assertParamExists('tasksSpecificationsRemovePost', 'tasksRestartPostRequest', tasksRestartPostRequest)
             const localVarPath = `/tasks/specifications/remove`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -946,7 +1000,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(tasksSpecificationsGetPostRequest, localVarRequestOptions, configuration)
+            localVarRequestOptions.data = serializeDataIfNeeded(tasksRestartPostRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -1022,13 +1076,13 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
         /**
          * 
          * @summary Get a type by id
-         * @param {TasksSpecificationsGetPostRequest} tasksSpecificationsGetPostRequest 
+         * @param {TasksRestartPostRequest} tasksRestartPostRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        tasksSpecificationsTypesGetPost: async (tasksSpecificationsGetPostRequest: TasksSpecificationsGetPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'tasksSpecificationsGetPostRequest' is not null or undefined
-            assertParamExists('tasksSpecificationsTypesGetPost', 'tasksSpecificationsGetPostRequest', tasksSpecificationsGetPostRequest)
+        tasksSpecificationsTypesGetPost: async (tasksRestartPostRequest: TasksRestartPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'tasksRestartPostRequest' is not null or undefined
+            assertParamExists('tasksSpecificationsTypesGetPost', 'tasksRestartPostRequest', tasksRestartPostRequest)
             const localVarPath = `/tasks/specifications/types/get`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -1048,7 +1102,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(tasksSpecificationsGetPostRequest, localVarRequestOptions, configuration)
+            localVarRequestOptions.data = serializeDataIfNeeded(tasksRestartPostRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -1058,13 +1112,13 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
         /**
          * 
          * @summary Remove a type
-         * @param {TasksSpecificationsGetPostRequest} tasksSpecificationsGetPostRequest 
+         * @param {TasksRestartPostRequest} tasksRestartPostRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        tasksSpecificationsTypesRemovePost: async (tasksSpecificationsGetPostRequest: TasksSpecificationsGetPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'tasksSpecificationsGetPostRequest' is not null or undefined
-            assertParamExists('tasksSpecificationsTypesRemovePost', 'tasksSpecificationsGetPostRequest', tasksSpecificationsGetPostRequest)
+        tasksSpecificationsTypesRemovePost: async (tasksRestartPostRequest: TasksRestartPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'tasksRestartPostRequest' is not null or undefined
+            assertParamExists('tasksSpecificationsTypesRemovePost', 'tasksRestartPostRequest', tasksRestartPostRequest)
             const localVarPath = `/tasks/specifications/types/remove`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -1084,7 +1138,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(tasksSpecificationsGetPostRequest, localVarRequestOptions, configuration)
+            localVarRequestOptions.data = serializeDataIfNeeded(tasksRestartPostRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -1093,15 +1147,15 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
         },
         /**
          * 
-         * @summary Update a record
-         * @param {TasksUpdatePostRequest} tasksUpdatePostRequest 
+         * @summary Delete tasks with the given ids
+         * @param {Array<string>} requestBody An array of task ids to delete
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        tasksUpdatePost: async (tasksUpdatePostRequest: TasksUpdatePostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
-            // verify required parameter 'tasksUpdatePostRequest' is not null or undefined
-            assertParamExists('tasksUpdatePost', 'tasksUpdatePostRequest', tasksUpdatePostRequest)
-            const localVarPath = `/tasks/update`;
+        tasksStorageDeletePost: async (requestBody: Array<string>, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'requestBody' is not null or undefined
+            assertParamExists('tasksStorageDeletePost', 'requestBody', requestBody)
+            const localVarPath = `/tasks/storage/delete`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -1120,7 +1174,253 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(tasksUpdatePostRequest, localVarRequestOptions, configuration)
+            localVarRequestOptions.data = serializeDataIfNeeded(requestBody, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Execute a command in the task storage
+         * @param {TaskStorageCommand} taskStorageCommand A command
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksStorageExecPost: async (taskStorageCommand: TaskStorageCommand, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'taskStorageCommand' is not null or undefined
+            assertParamExists('tasksStorageExecPost', 'taskStorageCommand', taskStorageCommand)
+            const localVarPath = `/tasks/storage/exec`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(taskStorageCommand, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Get a list of tasks by their ids
+         * @param {Array<string>} requestBody An array of ids
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksStorageGetByIdsPost: async (requestBody: Array<string>, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'requestBody' is not null or undefined
+            assertParamExists('tasksStorageGetByIdsPost', 'requestBody', requestBody)
+            const localVarPath = `/tasks/storage/get_by_ids`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(requestBody, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Get tasks with provided properties
+         * @param {TasksStorageGetWithPropertiesPostRequest} tasksStorageGetWithPropertiesPostRequest properties
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksStorageGetWithPropertiesPost: async (tasksStorageGetWithPropertiesPostRequest: TasksStorageGetWithPropertiesPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'tasksStorageGetWithPropertiesPostRequest' is not null or undefined
+            assertParamExists('tasksStorageGetWithPropertiesPost', 'tasksStorageGetWithPropertiesPostRequest', tasksStorageGetWithPropertiesPostRequest)
+            const localVarPath = `/tasks/storage/get_with_properties`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(tasksStorageGetWithPropertiesPostRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Insert tasks in the database
+         * @param {Array<Task>} task An array of tasks to insert
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksStorageInsertPost: async (task: Array<Task>, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'task' is not null or undefined
+            assertParamExists('tasksStorageInsertPost', 'task', task)
+            const localVarPath = `/tasks/storage/insert`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(task, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Get storage settings
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksStorageSettingsPost: async (options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/tasks/storage/settings`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Update task properties by ids
+         * @param {TasksStorageUpdateByIdsPostRequest} tasksStorageUpdateByIdsPostRequest Update info
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksStorageUpdateByIdsPost: async (tasksStorageUpdateByIdsPostRequest: TasksStorageUpdateByIdsPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'tasksStorageUpdateByIdsPostRequest' is not null or undefined
+            assertParamExists('tasksStorageUpdateByIdsPost', 'tasksStorageUpdateByIdsPostRequest', tasksStorageUpdateByIdsPostRequest)
+            const localVarPath = `/tasks/storage/update_by_ids`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(tasksStorageUpdateByIdsPostRequest, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
+         * @summary Update tasks with provided properties
+         * @param {TasksStorageUpdateWithPropertiesPostRequest} tasksStorageUpdateWithPropertiesPostRequest properties
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksStorageUpdateWithPropertiesPost: async (tasksStorageUpdateWithPropertiesPostRequest: TasksStorageUpdateWithPropertiesPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'tasksStorageUpdateWithPropertiesPostRequest' is not null or undefined
+            assertParamExists('tasksStorageUpdateWithPropertiesPost', 'tasksStorageUpdateWithPropertiesPostRequest', tasksStorageUpdateWithPropertiesPostRequest)
+            const localVarPath = `/tasks/storage/update_with_properties`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(tasksStorageUpdateWithPropertiesPostRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -1183,28 +1483,6 @@ export const DefaultApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
-         * @summary Count records using a filter
-         * @param {TasksFilterPostRequest} tasksFilterPostRequest A query
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async tasksCountPost(tasksFilterPostRequest: TasksFilterPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<number>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksCountPost(tasksFilterPostRequest, options);
-            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
-        },
-        /**
-         * 
-         * @summary Load records using a filter
-         * @param {TasksFilterPostRequest} tasksFilterPostRequest A query
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        async tasksFilterPost(tasksFilterPostRequest: TasksFilterPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Task>>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksFilterPost(tasksFilterPostRequest, options);
-            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
-        },
-        /**
-         * 
          * @summary Load a set of tasks
          * @param {Array<string>} requestBody A list of task identifiers
          * @param {*} [options] Override http request option.
@@ -1212,6 +1490,17 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          */
         async tasksLoadPost(requestBody: Array<string>, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Task>>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.tasksLoadPost(requestBody, options);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
+        },
+        /**
+         * 
+         * @summary Restart a failed task
+         * @param {TasksRestartPostRequest} tasksRestartPostRequest A task id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async tasksRestartPost(tasksRestartPostRequest: TasksRestartPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<TasksRestartPostRequest>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksRestartPost(tasksRestartPostRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -1260,23 +1549,23 @@ export const DefaultApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary Get specifications by id
-         * @param {TasksSpecificationsGetPostRequest} tasksSpecificationsGetPostRequest 
+         * @param {TasksRestartPostRequest} tasksRestartPostRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async tasksSpecificationsGetPost(tasksSpecificationsGetPostRequest: TasksSpecificationsGetPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Specification>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksSpecificationsGetPost(tasksSpecificationsGetPostRequest, options);
+        async tasksSpecificationsGetPost(tasksRestartPostRequest: TasksRestartPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Specification>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksSpecificationsGetPost(tasksRestartPostRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
          * 
          * @summary Remove a specification
-         * @param {TasksSpecificationsGetPostRequest} tasksSpecificationsGetPostRequest 
+         * @param {TasksRestartPostRequest} tasksRestartPostRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async tasksSpecificationsRemovePost(tasksSpecificationsGetPostRequest: TasksSpecificationsGetPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksSpecificationsRemovePost(tasksSpecificationsGetPostRequest, options);
+        async tasksSpecificationsRemovePost(tasksRestartPostRequest: TasksRestartPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksSpecificationsRemovePost(tasksRestartPostRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
@@ -1303,34 +1592,110 @@ export const DefaultApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary Get a type by id
-         * @param {TasksSpecificationsGetPostRequest} tasksSpecificationsGetPostRequest 
+         * @param {TasksRestartPostRequest} tasksRestartPostRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async tasksSpecificationsTypesGetPost(tasksSpecificationsGetPostRequest: TasksSpecificationsGetPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<TypeWithID>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksSpecificationsTypesGetPost(tasksSpecificationsGetPostRequest, options);
+        async tasksSpecificationsTypesGetPost(tasksRestartPostRequest: TasksRestartPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<TypeWithID>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksSpecificationsTypesGetPost(tasksRestartPostRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
          * 
          * @summary Remove a type
-         * @param {TasksSpecificationsGetPostRequest} tasksSpecificationsGetPostRequest 
+         * @param {TasksRestartPostRequest} tasksRestartPostRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async tasksSpecificationsTypesRemovePost(tasksSpecificationsGetPostRequest: TasksSpecificationsGetPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksSpecificationsTypesRemovePost(tasksSpecificationsGetPostRequest, options);
+        async tasksSpecificationsTypesRemovePost(tasksRestartPostRequest: TasksRestartPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksSpecificationsTypesRemovePost(tasksRestartPostRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
         /**
          * 
-         * @summary Update a record
-         * @param {TasksUpdatePostRequest} tasksUpdatePostRequest 
+         * @summary Delete tasks with the given ids
+         * @param {Array<string>} requestBody An array of task ids to delete
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async tasksUpdatePost(tasksUpdatePostRequest: TasksUpdatePostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<object>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksUpdatePost(tasksUpdatePostRequest, options);
+        async tasksStorageDeletePost(requestBody: Array<string>, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksStorageDeletePost(requestBody, options);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
+        },
+        /**
+         * 
+         * @summary Execute a command in the task storage
+         * @param {TaskStorageCommand} taskStorageCommand A command
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async tasksStorageExecPost(taskStorageCommand: TaskStorageCommand, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<{ [key: string]: any; }>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksStorageExecPost(taskStorageCommand, options);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
+        },
+        /**
+         * 
+         * @summary Get a list of tasks by their ids
+         * @param {Array<string>} requestBody An array of ids
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async tasksStorageGetByIdsPost(requestBody: Array<string>, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Task>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksStorageGetByIdsPost(requestBody, options);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
+        },
+        /**
+         * 
+         * @summary Get tasks with provided properties
+         * @param {TasksStorageGetWithPropertiesPostRequest} tasksStorageGetWithPropertiesPostRequest properties
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async tasksStorageGetWithPropertiesPost(tasksStorageGetWithPropertiesPostRequest: TasksStorageGetWithPropertiesPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Task>>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksStorageGetWithPropertiesPost(tasksStorageGetWithPropertiesPostRequest, options);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
+        },
+        /**
+         * 
+         * @summary Insert tasks in the database
+         * @param {Array<Task>} task An array of tasks to insert
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async tasksStorageInsertPost(task: Array<Task>, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksStorageInsertPost(task, options);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
+        },
+        /**
+         * 
+         * @summary Get storage settings
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async tasksStorageSettingsPost(options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<TaskStorageSettings>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksStorageSettingsPost(options);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
+        },
+        /**
+         * 
+         * @summary Update task properties by ids
+         * @param {TasksStorageUpdateByIdsPostRequest} tasksStorageUpdateByIdsPostRequest Update info
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async tasksStorageUpdateByIdsPost(tasksStorageUpdateByIdsPostRequest: TasksStorageUpdateByIdsPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksStorageUpdateByIdsPost(tasksStorageUpdateByIdsPostRequest, options);
+            return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
+        },
+        /**
+         * 
+         * @summary Update tasks with provided properties
+         * @param {TasksStorageUpdateWithPropertiesPostRequest} tasksStorageUpdateWithPropertiesPostRequest properties
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async tasksStorageUpdateWithPropertiesPost(tasksStorageUpdateWithPropertiesPostRequest: TasksStorageUpdateWithPropertiesPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<TasksStorageUpdateWithPropertiesPost200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.tasksStorageUpdateWithPropertiesPost(tasksStorageUpdateWithPropertiesPostRequest, options);
             return createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration);
         },
     }
@@ -1385,26 +1750,6 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
         },
         /**
          * 
-         * @summary Count records using a filter
-         * @param {TasksFilterPostRequest} tasksFilterPostRequest A query
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        tasksCountPost(tasksFilterPostRequest: TasksFilterPostRequest, options?: any): AxiosPromise<number> {
-            return localVarFp.tasksCountPost(tasksFilterPostRequest, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
-         * @summary Load records using a filter
-         * @param {TasksFilterPostRequest} tasksFilterPostRequest A query
-         * @param {*} [options] Override http request option.
-         * @throws {RequiredError}
-         */
-        tasksFilterPost(tasksFilterPostRequest: TasksFilterPostRequest, options?: any): AxiosPromise<Array<Task>> {
-            return localVarFp.tasksFilterPost(tasksFilterPostRequest, options).then((request) => request(axios, basePath));
-        },
-        /**
-         * 
          * @summary Load a set of tasks
          * @param {Array<string>} requestBody A list of task identifiers
          * @param {*} [options] Override http request option.
@@ -1412,6 +1757,16 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          */
         tasksLoadPost(requestBody: Array<string>, options?: any): AxiosPromise<Array<Task>> {
             return localVarFp.tasksLoadPost(requestBody, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Restart a failed task
+         * @param {TasksRestartPostRequest} tasksRestartPostRequest A task id
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksRestartPost(tasksRestartPostRequest: TasksRestartPostRequest, options?: any): AxiosPromise<TasksRestartPostRequest> {
+            return localVarFp.tasksRestartPost(tasksRestartPostRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -1455,22 +1810,22 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
         /**
          * 
          * @summary Get specifications by id
-         * @param {TasksSpecificationsGetPostRequest} tasksSpecificationsGetPostRequest 
+         * @param {TasksRestartPostRequest} tasksRestartPostRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        tasksSpecificationsGetPost(tasksSpecificationsGetPostRequest: TasksSpecificationsGetPostRequest, options?: any): AxiosPromise<Specification> {
-            return localVarFp.tasksSpecificationsGetPost(tasksSpecificationsGetPostRequest, options).then((request) => request(axios, basePath));
+        tasksSpecificationsGetPost(tasksRestartPostRequest: TasksRestartPostRequest, options?: any): AxiosPromise<Specification> {
+            return localVarFp.tasksSpecificationsGetPost(tasksRestartPostRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
          * @summary Remove a specification
-         * @param {TasksSpecificationsGetPostRequest} tasksSpecificationsGetPostRequest 
+         * @param {TasksRestartPostRequest} tasksRestartPostRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        tasksSpecificationsRemovePost(tasksSpecificationsGetPostRequest: TasksSpecificationsGetPostRequest, options?: any): AxiosPromise<void> {
-            return localVarFp.tasksSpecificationsRemovePost(tasksSpecificationsGetPostRequest, options).then((request) => request(axios, basePath));
+        tasksSpecificationsRemovePost(tasksRestartPostRequest: TasksRestartPostRequest, options?: any): AxiosPromise<void> {
+            return localVarFp.tasksSpecificationsRemovePost(tasksRestartPostRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
@@ -1494,32 +1849,101 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
         /**
          * 
          * @summary Get a type by id
-         * @param {TasksSpecificationsGetPostRequest} tasksSpecificationsGetPostRequest 
+         * @param {TasksRestartPostRequest} tasksRestartPostRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        tasksSpecificationsTypesGetPost(tasksSpecificationsGetPostRequest: TasksSpecificationsGetPostRequest, options?: any): AxiosPromise<TypeWithID> {
-            return localVarFp.tasksSpecificationsTypesGetPost(tasksSpecificationsGetPostRequest, options).then((request) => request(axios, basePath));
+        tasksSpecificationsTypesGetPost(tasksRestartPostRequest: TasksRestartPostRequest, options?: any): AxiosPromise<TypeWithID> {
+            return localVarFp.tasksSpecificationsTypesGetPost(tasksRestartPostRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
          * @summary Remove a type
-         * @param {TasksSpecificationsGetPostRequest} tasksSpecificationsGetPostRequest 
+         * @param {TasksRestartPostRequest} tasksRestartPostRequest 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        tasksSpecificationsTypesRemovePost(tasksSpecificationsGetPostRequest: TasksSpecificationsGetPostRequest, options?: any): AxiosPromise<void> {
-            return localVarFp.tasksSpecificationsTypesRemovePost(tasksSpecificationsGetPostRequest, options).then((request) => request(axios, basePath));
+        tasksSpecificationsTypesRemovePost(tasksRestartPostRequest: TasksRestartPostRequest, options?: any): AxiosPromise<void> {
+            return localVarFp.tasksSpecificationsTypesRemovePost(tasksRestartPostRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * 
-         * @summary Update a record
-         * @param {TasksUpdatePostRequest} tasksUpdatePostRequest 
+         * @summary Delete tasks with the given ids
+         * @param {Array<string>} requestBody An array of task ids to delete
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        tasksUpdatePost(tasksUpdatePostRequest: TasksUpdatePostRequest, options?: any): AxiosPromise<object> {
-            return localVarFp.tasksUpdatePost(tasksUpdatePostRequest, options).then((request) => request(axios, basePath));
+        tasksStorageDeletePost(requestBody: Array<string>, options?: any): AxiosPromise<void> {
+            return localVarFp.tasksStorageDeletePost(requestBody, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Execute a command in the task storage
+         * @param {TaskStorageCommand} taskStorageCommand A command
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksStorageExecPost(taskStorageCommand: TaskStorageCommand, options?: any): AxiosPromise<Array<{ [key: string]: any; }>> {
+            return localVarFp.tasksStorageExecPost(taskStorageCommand, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Get a list of tasks by their ids
+         * @param {Array<string>} requestBody An array of ids
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksStorageGetByIdsPost(requestBody: Array<string>, options?: any): AxiosPromise<Array<Task>> {
+            return localVarFp.tasksStorageGetByIdsPost(requestBody, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Get tasks with provided properties
+         * @param {TasksStorageGetWithPropertiesPostRequest} tasksStorageGetWithPropertiesPostRequest properties
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksStorageGetWithPropertiesPost(tasksStorageGetWithPropertiesPostRequest: TasksStorageGetWithPropertiesPostRequest, options?: any): AxiosPromise<Array<Task>> {
+            return localVarFp.tasksStorageGetWithPropertiesPost(tasksStorageGetWithPropertiesPostRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Insert tasks in the database
+         * @param {Array<Task>} task An array of tasks to insert
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksStorageInsertPost(task: Array<Task>, options?: any): AxiosPromise<void> {
+            return localVarFp.tasksStorageInsertPost(task, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Get storage settings
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksStorageSettingsPost(options?: any): AxiosPromise<TaskStorageSettings> {
+            return localVarFp.tasksStorageSettingsPost(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Update task properties by ids
+         * @param {TasksStorageUpdateByIdsPostRequest} tasksStorageUpdateByIdsPostRequest Update info
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksStorageUpdateByIdsPost(tasksStorageUpdateByIdsPostRequest: TasksStorageUpdateByIdsPostRequest, options?: any): AxiosPromise<void> {
+            return localVarFp.tasksStorageUpdateByIdsPost(tasksStorageUpdateByIdsPostRequest, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
+         * @summary Update tasks with provided properties
+         * @param {TasksStorageUpdateWithPropertiesPostRequest} tasksStorageUpdateWithPropertiesPostRequest properties
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        tasksStorageUpdateWithPropertiesPost(tasksStorageUpdateWithPropertiesPostRequest: TasksStorageUpdateWithPropertiesPostRequest, options?: any): AxiosPromise<TasksStorageUpdateWithPropertiesPost200Response> {
+            return localVarFp.tasksStorageUpdateWithPropertiesPost(tasksStorageUpdateWithPropertiesPostRequest, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -1581,30 +2005,6 @@ export class DefaultApi extends BaseAPI {
 
     /**
      * 
-     * @summary Count records using a filter
-     * @param {TasksFilterPostRequest} tasksFilterPostRequest A query
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof DefaultApi
-     */
-    public tasksCountPost(tasksFilterPostRequest: TasksFilterPostRequest, options?: AxiosRequestConfig) {
-        return DefaultApiFp(this.configuration).tasksCountPost(tasksFilterPostRequest, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
-     * @summary Load records using a filter
-     * @param {TasksFilterPostRequest} tasksFilterPostRequest A query
-     * @param {*} [options] Override http request option.
-     * @throws {RequiredError}
-     * @memberof DefaultApi
-     */
-    public tasksFilterPost(tasksFilterPostRequest: TasksFilterPostRequest, options?: AxiosRequestConfig) {
-        return DefaultApiFp(this.configuration).tasksFilterPost(tasksFilterPostRequest, options).then((request) => request(this.axios, this.basePath));
-    }
-
-    /**
-     * 
      * @summary Load a set of tasks
      * @param {Array<string>} requestBody A list of task identifiers
      * @param {*} [options] Override http request option.
@@ -1613,6 +2013,18 @@ export class DefaultApi extends BaseAPI {
      */
     public tasksLoadPost(requestBody: Array<string>, options?: AxiosRequestConfig) {
         return DefaultApiFp(this.configuration).tasksLoadPost(requestBody, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Restart a failed task
+     * @param {TasksRestartPostRequest} tasksRestartPostRequest A task id
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApi
+     */
+    public tasksRestartPost(tasksRestartPostRequest: TasksRestartPostRequest, options?: AxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).tasksRestartPost(tasksRestartPostRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -1665,25 +2077,25 @@ export class DefaultApi extends BaseAPI {
     /**
      * 
      * @summary Get specifications by id
-     * @param {TasksSpecificationsGetPostRequest} tasksSpecificationsGetPostRequest 
+     * @param {TasksRestartPostRequest} tasksRestartPostRequest 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
-    public tasksSpecificationsGetPost(tasksSpecificationsGetPostRequest: TasksSpecificationsGetPostRequest, options?: AxiosRequestConfig) {
-        return DefaultApiFp(this.configuration).tasksSpecificationsGetPost(tasksSpecificationsGetPostRequest, options).then((request) => request(this.axios, this.basePath));
+    public tasksSpecificationsGetPost(tasksRestartPostRequest: TasksRestartPostRequest, options?: AxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).tasksSpecificationsGetPost(tasksRestartPostRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * 
      * @summary Remove a specification
-     * @param {TasksSpecificationsGetPostRequest} tasksSpecificationsGetPostRequest 
+     * @param {TasksRestartPostRequest} tasksRestartPostRequest 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
-    public tasksSpecificationsRemovePost(tasksSpecificationsGetPostRequest: TasksSpecificationsGetPostRequest, options?: AxiosRequestConfig) {
-        return DefaultApiFp(this.configuration).tasksSpecificationsRemovePost(tasksSpecificationsGetPostRequest, options).then((request) => request(this.axios, this.basePath));
+    public tasksSpecificationsRemovePost(tasksRestartPostRequest: TasksRestartPostRequest, options?: AxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).tasksSpecificationsRemovePost(tasksRestartPostRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -1712,37 +2124,120 @@ export class DefaultApi extends BaseAPI {
     /**
      * 
      * @summary Get a type by id
-     * @param {TasksSpecificationsGetPostRequest} tasksSpecificationsGetPostRequest 
+     * @param {TasksRestartPostRequest} tasksRestartPostRequest 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
-    public tasksSpecificationsTypesGetPost(tasksSpecificationsGetPostRequest: TasksSpecificationsGetPostRequest, options?: AxiosRequestConfig) {
-        return DefaultApiFp(this.configuration).tasksSpecificationsTypesGetPost(tasksSpecificationsGetPostRequest, options).then((request) => request(this.axios, this.basePath));
+    public tasksSpecificationsTypesGetPost(tasksRestartPostRequest: TasksRestartPostRequest, options?: AxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).tasksSpecificationsTypesGetPost(tasksRestartPostRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * 
      * @summary Remove a type
-     * @param {TasksSpecificationsGetPostRequest} tasksSpecificationsGetPostRequest 
+     * @param {TasksRestartPostRequest} tasksRestartPostRequest 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
-    public tasksSpecificationsTypesRemovePost(tasksSpecificationsGetPostRequest: TasksSpecificationsGetPostRequest, options?: AxiosRequestConfig) {
-        return DefaultApiFp(this.configuration).tasksSpecificationsTypesRemovePost(tasksSpecificationsGetPostRequest, options).then((request) => request(this.axios, this.basePath));
+    public tasksSpecificationsTypesRemovePost(tasksRestartPostRequest: TasksRestartPostRequest, options?: AxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).tasksSpecificationsTypesRemovePost(tasksRestartPostRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
      * 
-     * @summary Update a record
-     * @param {TasksUpdatePostRequest} tasksUpdatePostRequest 
+     * @summary Delete tasks with the given ids
+     * @param {Array<string>} requestBody An array of task ids to delete
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
-    public tasksUpdatePost(tasksUpdatePostRequest: TasksUpdatePostRequest, options?: AxiosRequestConfig) {
-        return DefaultApiFp(this.configuration).tasksUpdatePost(tasksUpdatePostRequest, options).then((request) => request(this.axios, this.basePath));
+    public tasksStorageDeletePost(requestBody: Array<string>, options?: AxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).tasksStorageDeletePost(requestBody, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Execute a command in the task storage
+     * @param {TaskStorageCommand} taskStorageCommand A command
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApi
+     */
+    public tasksStorageExecPost(taskStorageCommand: TaskStorageCommand, options?: AxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).tasksStorageExecPost(taskStorageCommand, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Get a list of tasks by their ids
+     * @param {Array<string>} requestBody An array of ids
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApi
+     */
+    public tasksStorageGetByIdsPost(requestBody: Array<string>, options?: AxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).tasksStorageGetByIdsPost(requestBody, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Get tasks with provided properties
+     * @param {TasksStorageGetWithPropertiesPostRequest} tasksStorageGetWithPropertiesPostRequest properties
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApi
+     */
+    public tasksStorageGetWithPropertiesPost(tasksStorageGetWithPropertiesPostRequest: TasksStorageGetWithPropertiesPostRequest, options?: AxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).tasksStorageGetWithPropertiesPost(tasksStorageGetWithPropertiesPostRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Insert tasks in the database
+     * @param {Array<Task>} task An array of tasks to insert
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApi
+     */
+    public tasksStorageInsertPost(task: Array<Task>, options?: AxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).tasksStorageInsertPost(task, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Get storage settings
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApi
+     */
+    public tasksStorageSettingsPost(options?: AxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).tasksStorageSettingsPost(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Update task properties by ids
+     * @param {TasksStorageUpdateByIdsPostRequest} tasksStorageUpdateByIdsPostRequest Update info
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApi
+     */
+    public tasksStorageUpdateByIdsPost(tasksStorageUpdateByIdsPostRequest: TasksStorageUpdateByIdsPostRequest, options?: AxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).tasksStorageUpdateByIdsPost(tasksStorageUpdateByIdsPostRequest, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @summary Update tasks with provided properties
+     * @param {TasksStorageUpdateWithPropertiesPostRequest} tasksStorageUpdateWithPropertiesPostRequest properties
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof DefaultApi
+     */
+    public tasksStorageUpdateWithPropertiesPost(tasksStorageUpdateWithPropertiesPostRequest: TasksStorageUpdateWithPropertiesPostRequest, options?: AxiosRequestConfig) {
+        return DefaultApiFp(this.configuration).tasksStorageUpdateWithPropertiesPost(tasksStorageUpdateWithPropertiesPostRequest, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

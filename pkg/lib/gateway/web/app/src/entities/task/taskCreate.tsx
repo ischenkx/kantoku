@@ -1,60 +1,15 @@
-import React, {useContext, useState} from "react";
-import {
-    BaseRecord,
-    IResourceComponentsProps,
-    useGetToPath,
-    useGo,
-    useList,
-    useNavigation,
-    useResource
-} from "@refinedev/core";
-import {Create, SaveButton, useForm} from "@refinedev/antd";
-import {Form, notification, Spin, Typography} from "antd";
-import ReactJson from "react-json-view";
-import {ColorModeContext} from "../../contexts/color-mode";
-import {TreeSelect} from 'antd';
-import DynamicForm from "../utils/dynamicForm/DynamicForm";
-import {Link} from "react-router-dom";
+import React, {useContext, useState} from 'react'
+import {BaseRecord, HttpError, IResourceComponentsProps, useGo, useList} from '@refinedev/core'
+import {Create, SaveButton, useForm} from '@refinedev/antd'
+import {Form, notification, Spin, theme, TreeSelect, Typography} from 'antd'
+import ReactJson, {InteractionProps} from 'react-json-view'
+import {ColorModeContext} from '../../contexts/color-mode'
+import DynamicForm, {Settings as TypeSettings} from '../utils/dynamicForm/DynamicForm'
+import {Link} from 'react-router-dom'
+import {buildSpecificationTree, convertTreeToAntdTree} from '../utils/specs/tree'
+import {Specification, Type} from '../utils/specs/specification'
 
-const {Text} = Typography;
-
-function buildSpecificationTree(specifications) {
-    const newTree = (path: string, spec: any) => ({value: {path, spec}, children: {}})
-    let tree = newTree('', null)
-
-    for (const spec of specifications) {
-        const path = spec.id.split('.').filter(part => !!part)
-        let currentNode = tree
-        let currentPath = ''
-        for (const part of path) {
-            if (currentPath.length > 0) currentPath += '.'
-            currentPath += part
-
-            if (!currentNode.children[part]) currentNode.children[part] = newTree(currentPath, null)
-
-            currentNode = currentNode.children[part]
-        }
-
-        currentNode.value.spec = spec
-    }
-
-
-    const convertTreeToAntdTree = (tree) => {
-        return Object.keys(tree).map(key => {
-            const subTree = tree[key]
-
-            return {
-                value: subTree.value.path,
-                __spec: subTree.value.spec,
-                title: key,
-                selectable: Object.keys(subTree.children).length === 0,
-                children: convertTreeToAntdTree(subTree.children)
-            }
-        })
-    }
-
-    return convertTreeToAntdTree(tree.children)
-}
+const {Text} = Typography
 
 type JsonFormProps = {
     value?: number;
@@ -62,31 +17,37 @@ type JsonFormProps = {
     mode?: any
 };
 
-const JsonForm: React.FC<JsonFormProps> = ({value, onChange, mode}) => {
+type CreationFormValues = {
+    parameters: Record<number, any> | string[]
+    specification: string
+    info: any
+}
+
+const JsonForm: React.FC<JsonFormProps> = ({onChange, mode}) => {
     const [state, setState] = useState({})
 
-    const change = (action) => {
+    const change = (action: InteractionProps) => {
         setState(action.updated_src)
         if (typeof onChange === 'function') {
-            onChange(action.updated_src);
+            onChange(action.updated_src)
         }
 
         return true
     }
 
-    return <ReactJson src={state}
-                      name={false}
-
-                      onEdit={change}
-                      onAdd={change}
-                      onDelete={change}
-                      style={{background: 'transparent'}}
-                      theme={mode === 'light' ? 'summerfruit:inverted' : 'summerfruit'}
+    return <ReactJson
+        src={state}
+        name={false}
+        onEdit={change}
+        onAdd={change}
+        onDelete={change}
+        style={{background: 'transparent'}}
+        theme={mode === 'light' ? 'summerfruit:inverted' : 'summerfruit'}
     />
 }
 
-const typeToSchema = (_type) => {
-    switch (_type.name) {
+const typeToSettings = (typ: Type): TypeSettings => {
+    switch (typ.name) {
         case 'string':
             return {
                 type: 'string',
@@ -102,11 +63,12 @@ const typeToSchema = (_type) => {
         //         'type': 'string',
         //     }
         case 'struct':
-            let props = {}
-            for (const key in _type.sub_types) {
-                const value = _type.sub_types[key]
+            // eslint-disable-next-line no-case-declarations
+            const props: Record<string, any> = {}
+            for (const key in typ.sub_types) {
+                const value = typ.sub_types[key]
                 props[key] = {
-                    ...typeToSchema(value),
+                    ...typeToSettings(value),
                     label: key,
                 }
             }
@@ -118,144 +80,135 @@ const typeToSchema = (_type) => {
         case 'array':
             return {
                 type: 'array',
-                items: typeToSchema(_type.sub_types.item),
+                items: typeToSettings(typ.sub_types.item),
             }
     }
+
+    return {}
 }
 
-const generateParametersSchema = (spec) => {
+const generateParametersSettings = (spec: Specification) => {
     const {inputs} = spec.io
 
-    const schema = {
+    const settings: TypeSettings = {
         type: 'object',
         label: 'Parameters',
-        properties: {}
     }
 
-    let naming = {}, types = {}
+    const naming: Record<number, string> = {}, types: Record<number, Type> = {}
 
-    for (const entry of inputs.naming) {
+    for (const entry of (inputs.naming || [])) {
         naming[entry.index] = entry.name
     }
 
-    for (const entry of inputs.types) {
+    for (const entry of (inputs.types || [])) {
         types[entry.index] = entry.type
     }
 
-    for (const index in inputs.naming) {
+    settings.properties = {}
+    for (const index in (inputs.naming || [])) {
         const name = naming[index]
         const _type = types[index]
-        schema.properties[index] = {
-            ...typeToSchema(_type),
+        settings.properties[index] = {
+            ...typeToSettings(_type),
             label: name,
         }
     }
 
-    return schema
+    return settings
 }
 
 export const TaskCreate: React.FC<IResourceComponentsProps> = () => {
-    const getToPath = useGetToPath();
-    const go = useGo();
-
-    const {select} = useResource();
-    const [api, contextHolder] = notification.useNotification();
+    const go = useGo()
+    const [notifications, notificationsContextHolder] = notification.useNotification()
+    const {mode} = useContext(ColorModeContext)
+    const {token: themeToken} = theme.useToken()
 
     const {
         form,
         formProps,
-        saveButtonProps,
         onFinish
-    } = useForm({
+    } = useForm<BaseRecord, HttpError, CreationFormValues>({
         resource: 'tasks',
         action: 'create',
         redirect: false,
         onMutationSuccess(data) {
-
-            console.log(select('tasks'))
+            console.log(`created a new task: ${data.data.id}`)
 
             const url = go({
                 to: {
-                    resource: "tasks", // resource name or identifier
-                    action: "show",
-                    id: data.data.id,
+                    resource: 'tasks', // resource name or identifier
+                    action: 'show',
+                    id: data.data.id || '',
                 },
-
-                // query: {
-                //     filters: [
-                //         {
-                //             field: "id",
-                //             operator: "in",
-                //             value: [data.data.id],
-                //         },
-                //     ],
-                // },
-                type: "path",
+                type: 'path',
             })
-            console.log('created:', data, url)
 
-            api.info({
+            notifications.info({
                 message: `Successfully created`,
                 description: <>
                     <Text copyable>{data.data.id}</Text>
                     <br/>
-                    <Link to={url}>View</Link>
+                    <Link to={url || ''}>View</Link>
                 </>,
                 placement: 'bottomLeft',
                 duration: 30,
-            });
+            })
         },
         onMutationError(err) {
-            console.log('failed to create:', err)
+            console.log(`failed to create a new task: ${err}`)
         }
-    });
-
-    const {mode} = useContext(ColorModeContext);
+    })
 
     const {
         data: specifications,
         isLoading: areSpecificationsLoading,
         error: specificationsLoadingError
     } =
-        useList({
+        useList<Specification>({
             resource: 'specifications',
         })
 
-    const [currentSpecification, setCurrentSpecification] = React.useState(null)
+    const [currentSpecification, setCurrentSpecification]
+        = React.useState<Specification | null>(null)
 
     if (areSpecificationsLoading) {
         return <Spin/>
     }
 
     if (specificationsLoadingError) {
-        return <div>failed to load specs: {specificationsLoadingError}</div>
+        return <>failed to load specs: {specificationsLoadingError}</>
     }
 
     const specificationTree = buildSpecificationTree(specifications.data)
-    const handleSubmit = async (values) => {
-        let amountOfParameters = Object.keys(values.params || {}).length
-        let parameters = []
+    const antdTree = convertTreeToAntdTree(specificationTree.children)
+
+    const handleSubmit = async (values: CreationFormValues) => {
+        const rawParams = (values.parameters || {}) as Record<number, any>
+
+        const amountOfParameters = Object.keys(rawParams).length
+        const parameters: string[] = []
 
         for (let i = 0; i < amountOfParameters; i++) {
-            parameters.push(JSON.stringify(values.params[i]))
+            parameters.push(JSON.stringify(rawParams[i]))
         }
 
         await onFinish({
             specification: values.specification,
             parameters: parameters,
             info: values.info,
-        });
-    };
+        })
+    }
 
     return (
         <>
-            {contextHolder}
+            {notificationsContextHolder}
             <Create
                 title={'New Task'}
                 footerButtons={({saveButtonProps}) => (
                     <SaveButton
                         {...saveButtonProps}
-                        type="primary"
+                        type='primary'
                         style={{marginRight: 8}}
                         icon={null}
                         onClick={
@@ -268,15 +221,16 @@ export const TaskCreate: React.FC<IResourceComponentsProps> = () => {
                     </SaveButton>
                 )}
             >
-                <Form {...formProps} layout="vertical" onFinish={handleSubmit} onSubmitCapture={
-                    () => {
-                        console.log('Submitted!')
-                    }
-
-                }>
+                <Form
+                    {...formProps}
+                    layout='vertical'
+                    onFinish={handleSubmit}
+                    onSubmitCapture={() => {
+                        console.log('submitted')
+                    }}>
                     <Form.Item
-                        label="Type"
-                        name="specification"
+                        label='Type'
+                        name='specification'
                         rules={[
                             {
                                 required: true,
@@ -284,8 +238,8 @@ export const TaskCreate: React.FC<IResourceComponentsProps> = () => {
                         ]}
                     >
                         <TreeSelect
-                            placeholder="Select task type"
-                            treeData={specificationTree}
+                            placeholder='Select task type'
+                            treeData={antdTree}
                             showSearch
                             allowClear
                             treeExpandAction={'click'}
@@ -297,26 +251,30 @@ export const TaskCreate: React.FC<IResourceComponentsProps> = () => {
                     {
                         currentSpecification === null ?
                             <span>
-                            Please select specification to fill parameters
-                            <br/>
-                            <br/>
-                        </span> :
-                            <DynamicForm
-                                path={['params']}
-                                schema={generateParametersSchema(currentSpecification)}
-                            />
+                                Please select specification to fill parameters
+                                <br/>
+                                <br/>
+                            </span> :
+                            (
+                                (currentSpecification.io.inputs.naming || []).length > 0 ?
+                                    (<DynamicForm
+                                        path={['parameters']}
+                                        settings={generateParametersSettings(currentSpecification)}
+                                        themeToken={themeToken}
+                                    />) :
+                                    // <div>No parameters</div>
+                                    null
+                            )
                     }
 
-
                     <Form.Item
-                        label="Meta Info"
-                        name="info"
+                        label='Meta Info'
+                        name='info'
                     >
                         <JsonForm mode={mode}/>
                     </Form.Item>
                 </Form>
             </Create>
         </>
-
-    );
-};
+    )
+}

@@ -86,6 +86,9 @@ func (storage *Storage) Alloc(ctx context.Context, amount int) ([]resource.ID, e
 }
 
 func (storage *Storage) Init(ctx context.Context, resources []resource.Resource) error {
+	if len(resources) == 0 {
+		return nil
+	}
 	resourceIDs := lo.Map(resources, func(res resource.Resource, _ int) string {
 		return res.ID
 	})
@@ -146,6 +149,9 @@ func (storage *Storage) Init(ctx context.Context, resources []resource.Resource)
 }
 
 func (storage *Storage) Dealloc(ctx context.Context, ids []resource.ID) error {
+	if len(ids) == 0 {
+		return nil
+	}
 	return storage.client.
 		Del(ctx, lo.Map(ids, func(id string, _ int) string {
 			return storage.globalResourceID(id)

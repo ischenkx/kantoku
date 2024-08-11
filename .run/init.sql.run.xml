@@ -1,8 +1,0 @@
-<component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="init.sql" type="DatabaseScript" editBeforeRun="true" nameIsGenerated="true">
-    <script-file value="$PROJECT_DIR$/pkg/lib/impl/data/dependency/postgres/batched/migrations/init.sql" />
-    <script-mode>FILE</script-mode>
-    <data-source id="07376e92-2450-4776-93e6-3cf6d26fc3e2" />
-    <method v="2" />
-  </configuration>
-</component>

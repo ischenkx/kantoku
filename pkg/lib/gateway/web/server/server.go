@@ -359,15 +359,15 @@ func (server *Server) getTask(c echo.Context) error {
 }
 
 func (server *Server) createTask(c echo.Context) error {
-	return c.JSON(http.StatusCreated, "Task created")
+	return c.JSON(http.StatusCreated, "Function created")
 }
 
 func (server *Server) updateTask(c echo.Context) error {
 	id := c.Param("id")
-	return c.JSON(http.StatusOK, fmt.Sprintf("Task updated with ID %s", id))
+	return c.JSON(http.StatusOK, fmt.Sprintf("Function updated with ID %s", id))
 }
 
 func (server *Server) deleteTask(c echo.Context) error {
 	id := c.Param("id")
-	return c.JSON(http.StatusOK, fmt.Sprintf("Task deleted with ID %s", id))
+	return c.JSON(http.StatusOK, fmt.Sprintf("Function deleted with ID %s", id))
 }

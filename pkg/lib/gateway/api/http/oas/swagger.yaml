@@ -52,7 +52,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
+  /tasks/restart:
+    post:
+      summary: Restart a failed task
+      requestBody:
+        description: A task id
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+              properties:
+                id:
+                  type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - id
+                properties:
+                  id:
+                    type: string
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /tasks/load:
     post:
       summary: Load a set of tasks
@@ -80,22 +112,102 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  /tasks/filter:
+  /tasks/storage/settings:
     post:
-      summary: Load records using a filter
+      summary: Get storage settings
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskStorageSettings'
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /tasks/storage/exec:
+    post:
+      summary: Execute a command in the task storage
       requestBody:
-        description: A query
+        description: A command
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                filter:
-                  $ref: '#/components/schemas/InfoFilter'
-                cursor:
-                  $ref: '#/components/schemas/InfoCursor'
+              $ref: '#/components/schemas/TaskStorageCommand'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /tasks/storage/insert:
+    post:
+      summary: Insert tasks in the database
+      requestBody:
+        description: An array of tasks to insert
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/Task'
+      responses:
+        '200':
+          description: OK
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /tasks/storage/delete:
+    post:
+      summary: Delete tasks with the given ids
+      requestBody:
+        description: An array of task ids to delete
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
+      responses:
+        '200':
+          description: OK
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /tasks/storage/get_by_ids:
+    post:
+      summary: Get a list of tasks by their ids
+      requestBody:
+        description: An array of ids
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                type: string
       responses:
         '200':
           description: OK
@@ -111,55 +223,96 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
-  /tasks/count:
+  /tasks/storage/update_by_ids:
     post:
-      summary: Count records using a filter
+      summary: Update task properties by ids
       requestBody:
-        description: A query
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                filter:
-                  $ref: '#/components/schemas/InfoFilter'
-                cursor:
-                  $ref: '#/components/schemas/InfoCursor'
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                type: integer
-        '500':
-          description: Failure
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /tasks/update:
-    post:
-      summary: Update a record
-      requestBody:
+        description: Update info
         required: true
         content:
           application/json:
             schema:
               type: object
               required:
-                - filter
-                - update
+                - ids
+                - properties
               properties:
-                filter:
-                  $ref: '#/components/schemas/InfoFilter'
-                update:
-                  $ref: '#/components/schemas/TaskInfo'
-                upsert:
-                  $ref: '#/components/schemas/TaskInfo'
+                ids:
+                  type: array
+                  items:
+                    type: string
+                properties:
+                  type: object
+                  additionalProperties: true
+
+      responses:
+        '200':
+          description: OK
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /tasks/storage/get_with_properties:
+    post:
+      summary: Get tasks with provided properties
+      requestBody:
+        description: properties
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - properties_to_values
+              properties:
+                properties_to_values:
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AnyValue'
+
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+        '500':
+          description: Failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /tasks/storage/update_with_properties:
+    post:
+      summary: Update tasks with provided properties
+      requestBody:
+        description: properties
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - properties_to_values
+                - new_properties
+              properties:
+                properties_to_values:
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AnyValue'
+                new_properties:
+                  type: object
+                  additionalProperties: true
+
       responses:
         '200':
           description: OK
@@ -167,13 +320,17 @@ paths:
             application/json:
               schema:
                 type: object
+                required:
+                  - modified
+                properties:
+                  modified:
+                    type: integer
         '500':
           description: Failure
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /tasks/specifications/get:
     post:
       summary: Get specifications by id
@@ -201,7 +358,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /tasks/specifications/get_all:
     post:
       summary: Get all specifications
@@ -266,7 +422,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /tasks/specifications/types/get:
     post:
       summary: Get a type by id
@@ -294,7 +449,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /tasks/specifications/types/get_all:
     post:
       summary: Get all types
@@ -359,7 +513,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /resources/allocate:
     post:
       summary: Allocates N resources
@@ -384,7 +537,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /resources/deallocate:
     post:
       summary: Deallocate resources
@@ -410,7 +562,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /resources/initialize:
     post:
       summary: Initialize resources
@@ -437,7 +588,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /resources/load:
     post:
       summary: Load resources
@@ -468,6 +618,43 @@ paths:
 
 components:
   schemas:
+    AnyValue:
+      anyOf:
+        - type: string
+        - type: number
+        - type: integer
+        - type: boolean
+        - type: array
+          items: { }
+        - type: object
+      x-go-type: any
+    TaskStorageCommand:
+      type: object
+      required:
+        - operation
+        - params
+        - meta
+      properties:
+        operation:
+          type: string
+        params:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskStorageCommandParam'
+        meta:
+          type: object
+          additionalProperties: true
+    TaskStorageSettings:
+      type: object
+      required:
+        - type
+        - meta
+      properties:
+        type:
+          type: string
+        meta:
+          type: object
+          additionalProperties: true
     TaskSpawnResponse:
       type: object
       required:
@@ -529,6 +716,16 @@ components:
           type: string
     TaskInfo:
       type: object
+    TaskStorageCommandParam:
+      type: object
+      required:
+        - name
+        - value
+      properties:
+        name:
+          type: string
+        value:
+          $ref: '#/components/schemas/AnyValue'
     InfoFilter:
       type: object
     RecordMask:

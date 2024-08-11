@@ -3,8 +3,6 @@ package http
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/common/data/record"
-	recutil "github.com/ischenkx/kantoku/pkg/common/data/record/util"
 	"github.com/ischenkx/kantoku/pkg/core/event"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
 	"github.com/ischenkx/kantoku/pkg/core/system"
@@ -33,8 +31,8 @@ func (client *Client) Types() *SpecificationStorage {
 	return &SpecificationStorage{client.httpClient}
 }
 
-func (client *Client) Tasks() record.Set[task.Task] {
-	return recordStorage{httpClient: client.httpClient}
+func (client *Client) Tasks() task.Storage {
+	return taskStorage{client.httpClient}
 }
 
 func (client *Client) Resources() resource.Storage {
@@ -68,17 +66,14 @@ func (client *Client) Spawn(ctx context.Context, t task.Task) (task.Task, error)
 }
 
 func (client *Client) Task(ctx context.Context, id string) (task.Task, error) {
-	t, err := recutil.Single(
-		ctx,
-		client.
-			Tasks().
-			Filter(record.R{"id": id}).
-			Cursor().
-			Iter(),
-	)
+	ts, err := client.Tasks().ByIDs(ctx, []string{id})
 	if err != nil {
-		return task.Task{}, err
+		return task.Task{}, nil
 	}
 
-	return t, nil
+	if len(ts) == 0 {
+		return task.Task{}, fmt.Errorf("not found")
+	}
+
+	return ts[0], nil
 }

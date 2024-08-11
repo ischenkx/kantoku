@@ -3,22 +3,16 @@ package task
 import (
 	"errors"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/common/data/record"
 	"github.com/mitchellh/mapstructure"
 )
 
 type Codec struct{}
 
-func (c Codec) Encode(task Task) (record.R, error) {
-	return record.R{
-		"id":      task.ID,
-		"inputs":  task.Inputs,
-		"outputs": task.Outputs,
-		"info":    task.Info,
-	}, nil
+func (c Codec) Encode(task Task) (map[string]any, error) {
+	return task.AsDoc(), nil
 }
 
-func (c Codec) Decode(rec record.R) (Task, error) {
+func (c Codec) Decode(rec map[string]any) (Task, error) {
 	if rec == nil {
 		return Task{}, errors.New("record is nil")
 	}

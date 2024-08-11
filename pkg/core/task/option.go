@@ -1,7 +1,6 @@
 package task
 
 import (
-	"github.com/ischenkx/kantoku/pkg/common/data/record"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
 )
 
@@ -31,10 +30,10 @@ func WithProperty(key string, value any) Option {
 	}
 }
 
-func WithInfo(info record.R) Option {
+func WithInfo(info map[string]any) Option {
 	return func(t *Task) {
 		if info == nil {
-			info = record.R{}
+			info = make(map[string]any)
 		}
 		t.Info = info
 	}

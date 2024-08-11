@@ -1,0 +1,14 @@
+.ant-table-fixed {
+    table-layout: fixed;
+}
+
+.ant-table-tbody > tr > td {
+    /*word-wrap: break-word;*/
+    /*word-break: break-all;*/
+    white-space: pre-wrap;
+    text-overflow: ellipsis
+}
+
+.ant-table-body > table {
+    width: 100%;
+}

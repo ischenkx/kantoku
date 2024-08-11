@@ -44,7 +44,7 @@ func (s *PostgresBinaryStorage) GetAll(ctx context.Context) ([][]byte, error) {
 }
 
 func (s *PostgresBinaryStorage) Add(ctx context.Context, id string, data []byte) error {
-	query := fmt.Sprintf("INSERT INTO %s (id, data) VALUES ($1, $2)", s.Table)
+	query := fmt.Sprintf("INSERT INTO %s (id, data) VALUES ($1, $2) ON CONFLICT (id) DO UPDATE SET data = excluded.data", s.Table)
 	_, err := s.DB.Exec(ctx, query, id, data)
 	return err
 }

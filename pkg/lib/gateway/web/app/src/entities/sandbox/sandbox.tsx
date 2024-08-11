@@ -1,39 +1,33 @@
-import React, {useCallback, useEffect, useState} from "react";
-import {
-    IResourceComponentsProps,
-    BaseRecord,
-    CrudFilters,
-    getDefaultFilter,
-    useNavigation,
-    useParsed, useMany, useDataProvider, useList
-} from "@refinedev/core";
-import CytoscapeComponent from 'react-cytoscapejs';
+import React, {useEffect} from 'react'
+import {IResourceComponentsProps, useDataProvider, useParsed} from '@refinedev/core'
+import CytoscapeComponent from 'react-cytoscapejs'
 
-import cytoscape from 'cytoscape';
-import dagre from 'cytoscape-dagre';
-import cose_bilknet from 'cytoscape-cose-bilkent';
-import cise from 'cytoscape-cise';
-import cola from 'cytoscape-cola';
-import fcose from 'cytoscape-fcose';
+import cytoscape from 'cytoscape'
+import dagre from 'cytoscape-dagre'
+import cose_bilknet from 'cytoscape-cose-bilkent'
+import cise from 'cytoscape-cise'
+import cola from 'cytoscape-cola'
+import fcose from 'cytoscape-fcose'
 // import elk from 'cytoscape-elk';
 
-cytoscape.use( dagre );
-cytoscape.use( cose_bilknet );
-cytoscape.use( cise );
-cytoscape.use( cola );
-cytoscape.use( fcose );
+cytoscape.use(dagre)
+cytoscape.use(cose_bilknet)
+cytoscape.use(cise)
+cytoscape.use(cola)
+cytoscape.use(fcose)
+
 // cytoscape.use( elk );
 
 function getRandomColor() {
     // Generate random values for red, green, and blue components
-    const red = Math.floor(Math.random() * 256);
-    const green = Math.floor(Math.random() * 256);
-    const blue = Math.floor(Math.random() * 256);
+    const red = Math.floor(Math.random() * 256)
+    const green = Math.floor(Math.random() * 256)
+    const blue = Math.floor(Math.random() * 256)
 
     // Create a CSS-formatted color string
-    const color = `rgb(${red}, ${green}, ${blue})`;
+    const color = `rgb(${red}, ${green}, ${blue})`
 
-    return color;
+    return color
 }
 
 export const Sandbox: React.FC<IResourceComponentsProps> = () => {
@@ -154,12 +148,12 @@ export const Sandbox: React.FC<IResourceComponentsProps> = () => {
                         console.log('updating...')
                     }
                 )
-        }, 1000);
+        }, 1000)
         return () => {
             console.log('clearing...')
-            clearInterval(interval);
-        };
-    }, []);
+            clearInterval(interval)
+        }
+    }, [])
 
     const layoutOptions = [
         'cose',
@@ -177,20 +171,20 @@ export const Sandbox: React.FC<IResourceComponentsProps> = () => {
         'avsdf',
         'preset',
         'circle',
-    ];
+    ]
 
     const handleLayoutChange = (event) => {
-        const selectedValue = event.target.value;
+        const selectedValue = event.target.value
 
-        if(_cy) _cy.makeLayout({name: selectedValue}).run()
-    };
+        if (_cy) _cy.makeLayout({name: selectedValue}).run()
+    }
 
     return (
         <>
             <div>
-                <label htmlFor="layoutSelector">Select Layout:</label>
+                <label htmlFor='layoutSelector'>Select Layout:</label>
                 <select
-                    id="layoutSelector"
+                    id='layoutSelector'
                     onChange={handleLayoutChange}
                 >
                     {layoutOptions.map((layout) => (
@@ -213,4 +207,4 @@ export const Sandbox: React.FC<IResourceComponentsProps> = () => {
         </>
 
     )
-};
+}

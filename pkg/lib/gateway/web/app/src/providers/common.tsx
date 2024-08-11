@@ -9,8 +9,8 @@ interface ConvertedFilter<T> {
     };
 }
 
-function ConvertFilter<T>(filters: Record<string, T>[]): ConvertedFilter<T> {
-    const convertedFilter: ConvertedFilter<T> = {};
+function filtersToMongoFilter(filters) {
+    const result: { $and: any[] } = {$and: []}
 
     for (const filter of filters) {
         const {field, operator, value} = filter;
@@ -19,32 +19,33 @@ function ConvertFilter<T>(filters: Record<string, T>[]): ConvertedFilter<T> {
         }
         let convertedValue = value;
         if (typeof value === 'string' && !isNaN(Date.parse(value))) {
-            convertedValue = Math.round((new Date(value)).getTime()/1000) as unknown as T;
+            convertedValue = Math.round((new Date(value)).getTime() / 1000) as unknown as T;
         }
 
-        if (!convertedFilter[field]) {
-            convertedFilter[field] = {
-                Type: operator,
-                Data: convertedValue,
-            };
-        } else {
-            let previous = convertedFilter[field];
-            convertedFilter[field] = {
-                Type: 'and',
-                Data: [
-                    previous,
-                    {
-                        Type: operator,
-                        Data: convertedValue,
-                    }
-                ]
+        result.$and.push({
+            [field]: {
+                [operatorToMqlOperator(operator)]: convertedValue,
             }
-        }
-
-
+        })
     }
 
-    return convertedFilter;
+    if (result.$and.length === 0) delete result['$and'];
+
+    return result;
 }
 
-export {API, ConvertFilter}
+function operatorToMqlOperator(operator) {
+    switch (operator) {
+        case "lte":
+            return "$lte"
+        case "gte":
+            return "$gte"
+        case "in":
+            return "$in"
+        default:
+            console.log('unknown operator:', operator)
+            return ""
+    }
+}
+
+export {API, filtersToMongoFilter, operatorToMqlOperator}

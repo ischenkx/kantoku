@@ -1,202 +1,176 @@
-import React, {useState, useMemo} from "react";
-import {IResourceComponentsProps, useList} from "@refinedev/core";
-import {Tree, Card, Layout, Spin, Descriptions, Typography, TreeSelect, Input} from 'antd';
+import React, {ChangeEvent, ChangeEventHandler, ReactNode, useMemo, useState} from 'react'
+import {IResourceComponentsProps, OpenNotificationParams, useList} from '@refinedev/core'
+import {Card, Descriptions, Input, Layout, Spin, Tree, Typography} from 'antd'
 import './style.css'
+import {AntdTree, buildSpecificationTree, convertTreeToAntdTree} from '../utils/specs/tree'
+import {Specification} from '../utils/specs/specification'
+import {EventDataNode} from 'antd/lib/tree'
+import {Key as TableKey} from 'antd/es/table/interface'
 
-const {TreeNode} = Tree;
-const {Content, Sider} = Layout;
-const {Text} = Typography;
-const {Search} = Input;
+const {Content} = Layout
+const {Text} = Typography
+const {Search} = Input
 
-function buildSpecificationTree(specifications) {
-    const newTree = (path: string, spec: any) => ({value: {path, spec}, children: {}})
-    let tree = newTree('', null)
-
-    for (const spec of specifications) {
-        const path = spec.id.split('.').filter(part => !!part)
-        let currentNode = tree
-        let currentPath = ''
-        for (const part of path) {
-            if (currentPath.length > 0) currentPath += '.'
-            currentPath += part
-
-            if (!currentNode.children[part]) currentNode.children[part] = newTree(currentPath, null)
-
-            currentNode = currentNode.children[part]
-        }
-
-        currentNode.value.spec = spec
-    }
-
-
-    const convertTreeToAntdTree = (tree) => {
-        return Object.keys(tree).map(key => {
-            const subTree = tree[key]
-
-            return {
-                value: subTree.value.path,
-                key: subTree.value.path,
-                __spec: subTree.value.spec,
-                title: key,
-                selectable: Object.keys(subTree.children).length === 0,
-                children: convertTreeToAntdTree(subTree.children)
-            }
-        })
-    }
-
-    return convertTreeToAntdTree(tree.children)
+type SearchResult = {
+    key: string,
+    title: string,
 }
 
-const getParentKey = (key, tree) => {
-    let parentKey;
+const getParentKey = (key: string, tree: AntdTree[]): string => {
+    let parentKey = ''
     for (let i = 0; i < tree.length; i++) {
-        const node = tree[i];
+        const node = tree[i]
         if (node.children) {
             if (node.children.some(item => item.value === key)) {
-                parentKey = node.value;
+                parentKey = node.value
             } else if (getParentKey(key, node.children)) {
-                parentKey = getParentKey(key, node.children);
+                parentKey = getParentKey(key, node.children)
             }
         }
     }
-    return parentKey;
-};
+    return parentKey
+}
 
-const generateList = (data, dataList = []) => {
+const generateList = (data: AntdTree[], dataList: SearchResult[] = []) => {
     for (let i = 0; i < data.length; i++) {
-        const node = data[i];
-        const {value} = node;
-        dataList.push({key: value, title: value});
+        const node = data[i]
+        const {value} = node
+        dataList.push({key: value, title: value})
         if (node.children) {
-            generateList(node.children, dataList);
+            generateList(node.children, dataList)
         }
     }
-    return dataList;
-};
+    return dataList
+}
 
 export const SpecificationList: React.FC<IResourceComponentsProps> = () => {
-    const [selectedSpecification, setSelectedSpecification] = useState(null);
-    const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([]);
-    const [searchValue, setSearchValue] = useState('');
-    const [autoExpandParent, setAutoExpandParent] = useState(true);
-    const [specificationTree, setSpecificationTree] = useState([]);
+    const [selectedSpecification, setSelectedSpecification] = useState<Specification | null>(null)
+    const [expandedKeys, setExpandedKeys] = useState<React.Key[]>([])
+    const [searchValue, setSearchValue] = useState('')
+    const [autoExpandParent, setAutoExpandParent] = useState(true)
+    const [specificationTree, setSpecificationTree] = useState<AntdTree[]>([])
 
     const onExpand = (newExpandedKeys: React.Key[]) => {
-        setExpandedKeys(newExpandedKeys);
-        setAutoExpandParent(false);
-    };
+        setExpandedKeys(newExpandedKeys)
+        setAutoExpandParent(false)
+    }
 
-    const onTreeSelect = (selectedKeys, info) => {
+    const onTreeSelect = (_: TableKey[], info: { node: EventDataNode<AntdTree> }) => {
         let value = info.node.__spec
-        if (value == selectedSpecification) value = null;
+        if (value == selectedSpecification) value = null
+        if (!value) return
 
-        setSelectedSpecification(value);
-    };
+        setSelectedSpecification(value)
+    }
 
-    const onSearchChange = (e) => {
-        const {value} = e.target;
-        const dataList = generateList(specificationTree);
-        console.log(dataList, value, expandedKeys, autoExpandParent, treeData)
-        const newExpandedKeys = dataList
+    const onSearchChange: ChangeEventHandler<HTMLInputElement> = (event: ChangeEvent<HTMLInputElement>) => {
+        const {value} = event.target
+        const dataList = generateList(specificationTree)
+
+        console.log('search change:', value, dataList)
+
+        const newExpandedKeys: string[] = dataList
             .map(item => {
                 if (item.title.indexOf(value) > -1 && value.length > 0) {
-                    return getParentKey(item.key, specificationTree);
+                    return getParentKey(item.key, specificationTree)
                 }
-                return null;
+                return ''
             })
-            .filter((item, i, self) => item && self.indexOf(item) === i);
-        setExpandedKeys(newExpandedKeys);
-        setSearchValue(value);
-        setAutoExpandParent(true);
-    };
+            .filter((item, i, self) => {
+                return item && self.indexOf(item) === i
+            })
+
+        setExpandedKeys(newExpandedKeys)
+        setSearchValue(value)
+        setAutoExpandParent(true)
+    }
 
     const {
-        data: specifications,
         isLoading: areSpecificationsLoading,
-        error: specificationsLoadingError
-    } =
-        useList({
-            resource: 'specifications',
-            successNotification(response) {
-                setSpecificationTree(buildSpecificationTree(response.data))
-            }
-        })
+        error: specificationsLoadingError,
+    } = useList<Specification>({
+        resource: 'specifications',
+        successNotification(response): (false | OpenNotificationParams) {
+            if (!response) return false
+
+            const specs: Specification[] = response.data
+            const tree = buildSpecificationTree(specs)
+            const antdTree = convertTreeToAntdTree(tree.children)
+            setSpecificationTree(antdTree)
+
+            return false
+        }
+    })
 
     const treeData = useMemo(() => {
-        const loop = (data) =>
-            data.map(item => {
-                const strTitle = item.title;
-                const index = strTitle.indexOf(searchValue);
+        const loop = (tree: AntdTree[]): AntdTree[] => tree.map(item => {
+            let strTitle = ''
+            if (typeof item.title === 'string') {
+                strTitle = item.title
+            } else {
+                strTitle = item.title.key || ''
+            }
+            const index = strTitle.indexOf(searchValue)
 
-                // const beforeStr = strTitle.substring(0, index);
-                // const afterStr = strTitle.slice(index + searchValue.length);
-                const title =
-                    (index > -1 && searchValue.length > 0) ? (
-                        <span className="site-tree-search-value">{strTitle}</span>
+            // TODO: refactor this code
+            // const beforeStr = strTitle.substring(0, index);
+            // const afterStr = strTitle.slice(index + searchValue.length);
 
-                    ) : (
-                        <span>{strTitle}</span>
-                    );
-                if (item.children) {
-                    return {...item, title, children: loop(item.children)};
-                }
+            let title: ReactNode
+            if (index > -1 && searchValue.length > 0) {
+                title = <span className='site-tree-search-value'>{strTitle}</span>
+            } else {
+                title = <span>{strTitle}</span>
+            }
 
-                return {
-                    ...item,
-                    title,
-                };
-            });
+            if (item.children) {
+                return {...item, title, children: loop(item.children)}
+            }
 
-        return loop(specificationTree);
-    }, [searchValue, specificationTree]);
+            return {...item, title}
+        })
+
+        return loop(specificationTree)
+    }, [searchValue, specificationTree])
 
     if (areSpecificationsLoading) {
         return <Spin/>
     }
 
     if (specificationsLoadingError) {
-        return <div>Failed to load specifications: {specificationsLoadingError}</div>
+        return <>Failed to load specifications: {specificationsLoadingError}</>
     }
 
 
-    return (
-        <Layout>
-            <Content style={{display: 'flex'}}>
-                <div style={{width: '300px', padding: '16px'}}>
-                    <Search style={{marginBottom: 8}} placeholder="Search" onChange={onSearchChange}/>
-                    <Tree
-                        onSelect={onTreeSelect}
-                        treeData={treeData}
-                        expandedKeys={expandedKeys}
-                        onExpand={onExpand}
-                        autoExpandParent={autoExpandParent}
-                        showLine
-                        style={{padding: 10}}
-                    />
-                </div>
-                <div style={{flex: 1, padding: '16px'}}>
-                    {selectedSpecification ? (
-                        <Card title={<Text copyable>{selectedSpecification.id}</Text>}>
-                            <Descriptions
-                                layout={'horizontal'}
-                                column={1}
-                                // bordered={true}
-                            >
-                                {
-                                    selectedSpecification.executable.type &&
-                                    <Descriptions.Item
-                                        label={'Executable Type'}>{selectedSpecification.executable.type}</Descriptions.Item>
-                                }
+    return (<Layout>
+        <Content style={{display: 'flex'}}>
+            <div style={{width: '300px', padding: '16px'}}>
+                <Search style={{marginBottom: 8}} placeholder='Search' onChange={onSearchChange}/>
+                <Tree
+                    onSelect={onTreeSelect}
+                    treeData={treeData}
+                    expandedKeys={expandedKeys}
+                    onExpand={onExpand}
+                    autoExpandParent={autoExpandParent}
+                    showLine
+                    style={{padding: 10}}
+                />
+            </div>
+            <div style={{flex: 1, padding: '16px'}}>
+                {selectedSpecification ? (<Card title={<Text copyable>{selectedSpecification.id}</Text>}>
+                    <Descriptions
+                        layout={'horizontal'}
+                        column={1}
+                        // bordered={true}
+                    >
+                        {selectedSpecification?.executable?.type && <Descriptions.Item
+                            label={'Executable Type'}>{selectedSpecification?.executable.type}</Descriptions.Item>}
 
-                            </Descriptions>
-                        </Card>
-                    ) : (
-                        <Card title="Select a specification">
-                            <p>Nothing</p>
-                        </Card>
-                    )}
-                </div>
-            </Content>
-        </Layout>
-    );
+                    </Descriptions>
+                </Card>) : (<Card title='Select a specification'>
+                    <p>Nothing</p>
+                </Card>)}
+            </div>
+        </Content>
+    </Layout>)
 }

@@ -5,6 +5,7 @@ import {Form, InputNumber} from "antd";
 
 
 export const ResourceCreate: React.FC<IResourceComponentsProps> = () => {
+    const go = useGo();
     const formData = useForm({
         resource: 'resources',
         action: 'create',
@@ -17,27 +18,22 @@ export const ResourceCreate: React.FC<IResourceComponentsProps> = () => {
         },
     });
 
-    const {
-        formProps,
-        onFinish,
-    } = formData
-
-    const go = useGo();
-
+    const {formProps, onFinish,} = formData
     return (
         <Create saveButtonProps={
             {
                 onClick() {
-                    console.log('amount:', formProps.form?.getFieldValue('amount') || 1)
+                    // preparing a new allocation request
+                    const amount = formProps.form?.getFieldValue('amount') || 1
+                    console.log(`allocating ${amount} resources`)
 
-                    const data = {
-                        amount: formProps.form?.getFieldValue('amount') || 1,
-                    }
+                    const data = {amount}
 
-                    onFinish(data).then((result) => {
+                    // sending the request and redirecting to the resources page
+                    onFinish(data).then(result => {
                         return go({
                             to: {
-                                resource: "resources", // resource name or identifier
+                                resource: "resources",
                                 action: "list",
                             },
                             query: {

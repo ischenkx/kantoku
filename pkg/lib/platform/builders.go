@@ -6,8 +6,7 @@ import (
 	"github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
 	capi "github.com/hashicorp/consul/api"
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
-	"github.com/ischenkx/kantoku/pkg/common/data/record"
-	mongorec "github.com/ischenkx/kantoku/pkg/common/data/record/mongo"
+	"github.com/ischenkx/kantoku/pkg/common/data/storage"
 	"github.com/ischenkx/kantoku/pkg/common/data/uid"
 	"github.com/ischenkx/kantoku/pkg/common/dependency"
 	batched2 "github.com/ischenkx/kantoku/pkg/common/dependency/postgres/batched"
@@ -42,7 +41,7 @@ import (
 )
 
 func BuildSystem(ctx context.Context, logger *slog.Logger, config SystemConfig) (*system.System, error) {
-	tasks, err := BuildTasks(ctx, config.Tasks)
+	tasks, err := BuildTasks(ctx, logger, config.Tasks)
 	if err != nil {
 		return nil, errx.FailedToBuild("tasks", err)
 	}
@@ -65,8 +64,8 @@ func BuildSystem(ctx context.Context, logger *slog.Logger, config SystemConfig) 
 	}, nil
 }
 
-func BuildTasks(ctx context.Context, config TasksConfig) (record.Storage[task.Task], error) {
-	storage, err := BuildTasksStorage(ctx, config.Storage)
+func BuildTasks(ctx context.Context, logger *slog.Logger, config TasksConfig) (task.Storage, error) {
+	storage, err := BuildTasksStorage(ctx, logger, config.Storage)
 	if err != nil {
 		return nil, errx.FailedToBuild("tasks_storage", err)
 	}
@@ -74,7 +73,7 @@ func BuildTasks(ctx context.Context, config TasksConfig) (record.Storage[task.Ta
 	return storage, nil
 }
 
-func BuildTasksStorage(ctx context.Context, config TasksStorageConfig) (record.Storage[task.Task], error) {
+func BuildTasksStorage(ctx context.Context, logger *slog.Logger, config TasksStorageConfig) (task.Storage, error) {
 	switch config.Kind {
 	case "mongo":
 		client, err := buildMongo(ctx, config.URI)
@@ -92,7 +91,17 @@ func BuildTasksStorage(ctx context.Context, config TasksStorageConfig) (record.S
 			return nil, errx.FailedToBuild("mongo", err)
 		}
 
-		return mongorec.New[task.Task](client.Database(db).Collection(collection), task.Codec{}), nil
+		st := &storage.MongoStorage{
+			Collection: client.Database(db).Collection(collection),
+			Logger:     logger,
+		}
+
+		taskStorage := &task.MongoStorage{
+			BaseStorage: st,
+			Codec:       task.Codec{},
+		}
+
+		return taskStorage, nil
 	default:
 		return nil, errx.UnsupportedKind(config.Kind)
 	}

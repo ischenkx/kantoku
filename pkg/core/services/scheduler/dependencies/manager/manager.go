@@ -3,7 +3,6 @@ package manager
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/common/data/record"
 	"github.com/ischenkx/kantoku/pkg/common/dependency"
 	"github.com/ischenkx/kantoku/pkg/core/system"
 	"github.com/mitchellh/mapstructure"
@@ -45,11 +44,11 @@ func (manager *Manager) Register(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to allocate new dependencies: %w", err)
 	}
 
-	depIds := lo.Map(dependencies, func(dep dependency.Dependency, _ int) string {
+	depIDs := lo.Map(dependencies, func(dep dependency.Dependency, _ int) string {
 		return dep.ID
 	})
 
-	for index, depId := range depIds {
+	for index, depId := range depIDs {
 		spec := specs[index]
 
 		resolver, ok := manager.Resolvers[spec.Name]
@@ -71,27 +70,21 @@ func (manager *Manager) Register(ctx context.Context, id string) error {
 		return fmt.Errorf("failed to save a task-group binding: %w", err)
 	}
 
-	if err := manager.Dependencies.InitializeGroup(ctx, groupId, depIds...); err != nil {
+	if err := manager.Dependencies.InitializeGroup(ctx, groupId, depIDs...); err != nil {
 		return fmt.Errorf("failed to initialize group: %w", err)
 	}
 
-	manager.Logger.Info("saving",
-		slog.Any("instances", depIds))
+	manager.Logger.Info("saving", slog.Any("instances", depIDs))
 
 	err = manager.System.
 		Tasks().
-		Filter(record.R{"id": id}).
-		Update(ctx,
-			record.R{
-				"info": record.R{
-					"dependencies": record.R{
-						"group_id":  groupId,
-						"instances": depIds,
-					},
-				},
+		UpdateByIDs(
+			ctx,
+			[]string{id},
+			map[string]any{
+				"info.dependencies.group_id":  groupId,
+				"info.dependencies.instances": depIDs,
 			},
-			//record.R{"dependencies": depIds, "group_id": groupId},
-			record.R{"id": id},
 		)
 	if err != nil {
 		return fmt.Errorf("failed to update task's info: %w", err)

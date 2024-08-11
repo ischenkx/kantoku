@@ -3,14 +3,13 @@ package http
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/common/data/record"
-	"github.com/ischenkx/kantoku/pkg/common/data/record/ops"
-	recutil "github.com/ischenkx/kantoku/pkg/common/data/record/util"
+	"github.com/ischenkx/kantoku/pkg/common/data/storage"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
 	"github.com/ischenkx/kantoku/pkg/core/system"
 	"github.com/ischenkx/kantoku/pkg/core/task"
 	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/oas"
 	"github.com/ischenkx/kantoku/pkg/lib/tasks"
+	"github.com/ischenkx/kantoku/pkg/lib/tasks/restarter"
 	"github.com/ischenkx/kantoku/pkg/lib/tasks/specification"
 	"github.com/ischenkx/kantoku/pkg/lib/tasks/specification/typing"
 	"github.com/samber/lo"
@@ -29,6 +28,118 @@ func NewServer(system system.AbstractSystem, specifications *specification.Manag
 		system:         system,
 		specifications: specifications,
 	}
+}
+
+func (server *Server) PostTasksStorageDelete(ctx context.Context, request oas.PostTasksStorageDeleteRequestObject) (oas.PostTasksStorageDeleteResponseObject, error) {
+	err := server.system.Tasks().Delete(ctx, *request.Body)
+	if err != nil {
+		return oas.PostTasksStorageDelete500JSONResponse{
+			Message: fmt.Sprintf("failed to delete: %s", err.Error()),
+		}, nil
+	}
+
+	return oas.PostTasksStorageDelete200Response{}, nil
+}
+
+func (server *Server) PostTasksStorageGetByIds(ctx context.Context, request oas.PostTasksStorageGetByIdsRequestObject) (oas.PostTasksStorageGetByIdsResponseObject, error) {
+	taskList, err := server.system.Tasks().ByIDs(ctx, *request.Body)
+	if err != nil {
+		return oas.PostTasksStorageGetByIds500JSONResponse{
+			Message: fmt.Sprintf("failed to get: %s", err.Error()),
+		}, nil
+	}
+
+	return oas.PostTasksStorageGetByIds200JSONResponse(lo.Map(taskList, func(t task.Task, _ int) oas.Task {
+		return TaskToDto(t)
+	})), nil
+}
+
+func (server *Server) PostTasksStorageGetWithProperties(ctx context.Context, request oas.PostTasksStorageGetWithPropertiesRequestObject) (oas.PostTasksStorageGetWithPropertiesResponseObject, error) {
+	taskList, err := server.system.Tasks().GetWithProperties(ctx, request.Body.PropertiesToValues)
+	if err != nil {
+		return oas.PostTasksStorageGetWithProperties500JSONResponse{
+			Message: fmt.Sprintf("failed to get: %s", err.Error()),
+		}, nil
+	}
+
+	return oas.PostTasksStorageGetWithProperties200JSONResponse(lo.Map(taskList, func(t task.Task, _ int) oas.Task {
+		return TaskToDto(t)
+	})), nil
+}
+
+func (server *Server) PostTasksStorageInsert(ctx context.Context, request oas.PostTasksStorageInsertRequestObject) (oas.PostTasksStorageInsertResponseObject, error) {
+	err := server.system.Tasks().Insert(ctx, lo.Map(*request.Body, func(mt oas.Task, _ int) task.Task {
+		return task.Task{
+			Inputs:  mt.Inputs,
+			Outputs: mt.Outputs,
+			ID:      mt.Id,
+			Info:    mt.Info,
+		}
+	}))
+	if err != nil {
+		return oas.PostTasksStorageInsert500JSONResponse{
+			Message: fmt.Sprintf("failed to insert: %s", err.Error()),
+		}, nil
+	}
+
+	return oas.PostTasksStorageInsert200Response{}, nil
+}
+
+func (server *Server) PostTasksStorageUpdateByIds(ctx context.Context, request oas.PostTasksStorageUpdateByIdsRequestObject) (oas.PostTasksStorageUpdateByIdsResponseObject, error) {
+	err := server.system.Tasks().UpdateByIDs(ctx, request.Body.Ids, request.Body.Properties)
+	if err != nil {
+		return oas.PostTasksStorageUpdateByIds500JSONResponse{
+			Message: fmt.Sprintf("failed to update: %s", err.Error()),
+		}, nil
+	}
+
+	return oas.PostTasksStorageUpdateByIds200Response{}, nil
+}
+
+func (server *Server) PostTasksStorageUpdateWithProperties(ctx context.Context, request oas.PostTasksStorageUpdateWithPropertiesRequestObject) (oas.PostTasksStorageUpdateWithPropertiesResponseObject, error) {
+	modified, err := server.system.Tasks().UpdateWithProperties(ctx, request.Body.PropertiesToValues, request.Body.NewProperties)
+	if err != nil {
+		return oas.PostTasksStorageUpdateWithProperties500JSONResponse{
+			Message: fmt.Sprintf("failed to update: %s", err.Error()),
+		}, nil
+	}
+
+	return oas.PostTasksStorageUpdateWithProperties200JSONResponse{Modified: modified}, nil
+}
+
+func (server *Server) PostTasksStorageExec(ctx context.Context, request oas.PostTasksStorageExecRequestObject) (oas.PostTasksStorageExecResponseObject, error) {
+	documents, err := server.system.Tasks().Exec(ctx, storage.Command{
+		Operation: request.Body.Operation,
+		Params: lo.Map(request.Body.Params, func(param oas.TaskStorageCommandParam, _ int) storage.Param {
+			return storage.Param{
+				Name:  param.Name,
+				Value: param.Value,
+			}
+		}),
+		Meta: request.Body.Meta,
+	})
+
+	if err != nil {
+		return oas.PostTasksStorageExec500JSONResponse{
+			Message: err.Error(),
+		}, nil
+	}
+
+	return oas.PostTasksStorageExec200JSONResponse(documents), nil
+}
+
+func (server *Server) PostTasksStorageSettings(ctx context.Context, request oas.PostTasksStorageSettingsRequestObject) (oas.PostTasksStorageSettingsResponseObject, error) {
+	settings, err := server.system.Tasks().Settings(ctx)
+	if err != nil {
+		return oas.PostTasksStorageSettings500JSONResponse{
+			Message: err.Error(),
+		}, nil
+	}
+
+	return oas.PostTasksStorageSettings200JSONResponse{
+		Meta: settings.Meta,
+		Type: settings.Type,
+	}, nil
 }
 
 func (server *Server) PostResourcesAllocate(ctx context.Context, request oas.PostResourcesAllocateRequestObject) (oas.PostResourcesAllocateResponseObject, error) {
@@ -93,14 +204,9 @@ func (server *Server) PostResourcesLoad(ctx context.Context, request oas.PostRes
 }
 
 func (server *Server) PostTasksLoad(ctx context.Context, request oas.PostTasksLoadRequestObject) (oas.PostTasksLoadResponseObject, error) {
-	tasks, err := recutil.List(
-		ctx,
-		server.system.
-			Tasks().
-			Filter(record.R{"id": ops.In[string](*request.Body...)}).
-			Cursor().
-			Iter(),
-	)
+	tasks, err := server.system.
+		Tasks().
+		ByIDs(ctx, *request.Body)
 	if err != nil {
 		return oas.PostTasksLoad500JSONResponse{
 			Message: fmt.Sprintf("failed to load tasks: %s", err),
@@ -130,7 +236,6 @@ func (server *Server) PostTasksSpawn(ctx context.Context, request oas.PostTasksS
 }
 
 func (server *Server) PostTasksSpawnFromSpec(ctx context.Context, request oas.PostTasksSpawnFromSpecRequestObject) (oas.PostTasksSpawnFromSpecResponseObject, error) {
-
 	type txParams struct {
 		Inputs  []string
 		Outputs []string
@@ -230,204 +335,15 @@ func (server *Server) PostTasksSpawnFromSpec(ctx context.Context, request oas.Po
 	return oas.PostTasksSpawnFromSpec200JSONResponse{Id: result.Id}, nil
 }
 
-func (server *Server) PostTasksCount(ctx context.Context, request oas.PostTasksCountRequestObject) (oas.PostTasksCountResponseObject, error) {
-	records := server.system.Tasks()
-
-	if request.Body.Filter != nil {
-		filter := instantiateFilterOperators(*request.Body.Filter)
-		records = records.Filter(filter.(map[string]any))
-	}
-
-	var cursor record.Cursor[task.Task]
-
-	if request.Body.Cursor != nil {
-		cursorConfig := request.Body.Cursor
-
-		if cursorConfig.Distinct != nil {
-			cursor = records.Distinct(*cursorConfig.Distinct...)
-		} else {
-			cursor = records.Cursor()
-		}
-
-		if cursorConfig.Sort != nil {
-			var sorters []record.Sorter
-			for _, val := range *cursorConfig.Sort {
-				sorters = append(sorters, record.Sorter{
-					Key:      val.Key,
-					Ordering: record.Ordering(val.Ordering),
-				})
-			}
-			cursor = cursor.Sort(sorters...)
-		}
-
-		if cursorConfig.Masks != nil {
-			var masks []record.Mask
-			for _, val := range *cursorConfig.Masks {
-				masks = append(masks, record.Mask{
-					Operation:       val.Operation,
-					PropertyPattern: val.PropertyPattern,
-				})
-			}
-			cursor = cursor.Mask(masks...)
-		}
-
-		if cursorConfig.Skip != nil {
-			cursor = cursor.Skip(*cursorConfig.Skip)
-		}
-
-		if cursorConfig.Limit != nil {
-			cursor = cursor.Limit(*cursorConfig.Limit)
-		}
-	} else {
-		cursor = records.Cursor()
-	}
-
-	count, err := cursor.Count(ctx)
+func (server *Server) PostTasksRestart(ctx context.Context, request oas.PostTasksRestartRequestObject) (oas.PostTasksRestartResponseObject, error) {
+	newTaskID, err := restarter.Restart(ctx, server.system, request.Body.Id)
 	if err != nil {
-		return oas.PostTasksCount500JSONResponse{
-			Message: fmt.Sprintf("failed to count: %s", err),
+		return oas.PostTasksRestart500JSONResponse{
+			Message: err.Error(),
 		}, nil
 	}
 
-	return oas.PostTasksCount200JSONResponse(count), nil
-}
-
-//func (server *Server) PostTasksInfoErase(ctx context.Context, request oas.PostTasksInfoEraseRequestObject) (oas.PostTasksInfoEraseResponseObject, error) {
-//	var records record.Set = server.system.Info()
-//
-//	if request.Body.Filter != nil {
-//		filter := instantiateFilterOperators(*request.Body.Filter)
-//		records = records.Filter(filter.(map[string]any))
-//	}
-//
-//	if err := records.Erase(ctx); err != nil {
-//		return oas.PostTasksInfoErase500JSONResponse{
-//			Message: fmt.Sprintf("failed to erase: %s", err),
-//		}, nil
-//	}
-//
-//	return oas.PostTasksInfoErase200JSONResponse{}, nil
-//}
-//
-//func (server *Server) PostTasksInfoInsert(ctx context.Context, request oas.PostTasksInfoInsertRequestObject) (oas.PostTasksInfoInsertResponseObject, error) {
-//	if err := server.system.Info().Insert(ctx, *request.Body); err != nil {
-//		return oas.PostTasksInfoInsert500JSONResponse{
-//			Message: fmt.Sprintf("failed to insert: %s", err),
-//		}, nil
-//	}
-//
-//	return oas.PostTasksInfoInsert200JSONResponse{}, nil
-//}
-
-func (server *Server) PostTasksFilter(ctx context.Context, request oas.PostTasksFilterRequestObject) (oas.PostTasksFilterResponseObject, error) {
-	records := server.system.Tasks()
-
-	if request.Body.Filter != nil {
-		filter := instantiateFilterOperators(*request.Body.Filter)
-		records = records.Filter(filter.(map[string]any))
-	}
-
-	var cursor record.Cursor[task.Task]
-
-	if request.Body.Cursor != nil {
-		cursorConfig := request.Body.Cursor
-
-		if cursorConfig.Distinct != nil {
-			cursor = records.Distinct(*cursorConfig.Distinct...)
-		} else {
-			cursor = records.Cursor()
-		}
-
-		if cursorConfig.Sort != nil {
-			var sorters []record.Sorter
-			for _, val := range *cursorConfig.Sort {
-				sorters = append(sorters, record.Sorter{
-					Key:      val.Key,
-					Ordering: record.Ordering(val.Ordering),
-				})
-			}
-			cursor = cursor.Sort(sorters...)
-		}
-
-		if cursorConfig.Masks != nil {
-			var masks []record.Mask
-			for _, val := range *cursorConfig.Masks {
-				masks = append(masks, record.Mask{
-					Operation:       val.Operation,
-					PropertyPattern: val.PropertyPattern,
-				})
-			}
-			cursor = cursor.Mask(masks...)
-		}
-
-		if cursorConfig.Skip != nil {
-			cursor = cursor.Skip(*cursorConfig.Skip)
-		}
-
-		if cursorConfig.Limit != nil {
-			cursor = cursor.Limit(*cursorConfig.Limit)
-		}
-	} else {
-		cursor = records.Cursor()
-	}
-
-	tasks, err := recutil.List(ctx, cursor.Iter())
-	if err != nil {
-		return nil, fmt.Errorf("failed to load: %w", err)
-	}
-
-	dtos := lo.Map(tasks, func(t task.Task, _ int) oas.Task {
-		return TaskToDto(t)
-	})
-
-	return oas.PostTasksFilter200JSONResponse(dtos), nil
-}
-
-func (server *Server) PostTasksUpdate(ctx context.Context, request oas.PostTasksUpdateRequestObject) (oas.PostTasksUpdateResponseObject, error) {
-	records := server.system.Tasks()
-
-	if request.Body.Filter != nil {
-		filter := instantiateFilterOperators(request.Body.Filter)
-		records = records.Filter(filter.(map[string]any))
-	}
-
-	var upsert record.R = nil
-	if request.Body.Upsert != nil {
-		upsert = *request.Body.Upsert
-	}
-
-	err := records.Update(ctx, request.Body.Update, upsert)
-	if err != nil {
-		return oas.PostTasksUpdate500JSONResponse{
-			Message: fmt.Sprintf("failed to update: %s", err),
-		}, nil
-	}
-
-	return oas.PostTasksUpdate200JSONResponse{}, nil
-}
-
-func instantiateFilterOperators(value any) any {
-	switch d := value.(type) {
-	case map[string]any:
-		data, dataExists := d["Data"]
-		typ, typeExists := d["Type"]
-		if dataExists && typeExists {
-			value = ops.Operation{
-				Type: typ.(string),
-				Data: instantiateFilterOperators(data),
-			}
-		} else {
-			for key, v := range d {
-				d[key] = instantiateFilterOperators(v)
-			}
-		}
-	case []any:
-		for index, v := range d {
-			d[index] = instantiateFilterOperators(v)
-		}
-	}
-
-	return value
+	return oas.PostTasksRestart200JSONResponse{Id: newTaskID}, nil
 }
 
 func (server *Server) PostTasksSpecificationsCreate(ctx context.Context, request oas.PostTasksSpecificationsCreateRequestObject) (oas.PostTasksSpecificationsCreateResponseObject, error) {

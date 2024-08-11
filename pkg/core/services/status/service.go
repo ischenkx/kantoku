@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	codec "github.com/ischenkx/kantoku/pkg/common/data/codec"
-	"github.com/ischenkx/kantoku/pkg/common/data/record"
-	"github.com/ischenkx/kantoku/pkg/common/data/record/ops"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
 	"github.com/ischenkx/kantoku/pkg/core/event"
@@ -140,12 +138,19 @@ func (srvc *Service) status2precedingStatuses(status string) []any {
 func (srvc *Service) updateStatus(ctx context.Context, id string, status, subStatus string) error {
 	now := time.Now().Unix()
 
-	err := srvc.System.
+	_, err := srvc.System.
 		Tasks().
-		Filter(record.R{"id": id, "info.status": ops.In[any](srvc.status2precedingStatuses(status)...)}).
-		Update(ctx,
-			record.R{"info": record.R{"status": status, "sub_status": subStatus, "updated_at": now}},
-			nil,
+		UpdateWithProperties(
+			ctx,
+			map[string][]any{
+				"id":          {id},
+				"info.status": srvc.status2precedingStatuses(status),
+			},
+			map[string]any{
+				"info.status":     status,
+				"info.sub_status": subStatus,
+				"info.updated_at": now,
+			},
 		)
 	if err != nil {
 		return fmt.Errorf("failed to update records: %w", err)
@@ -155,10 +160,17 @@ func (srvc *Service) updateStatus(ctx context.Context, id string, status, subSta
 }
 
 func (srvc *Service) saveResultData(ctx context.Context, result executor.Result) error {
-	err := srvc.System.
+	_, err := srvc.System.
 		Tasks().
-		Filter(record.R{"id": result.TaskID}).
-		Update(ctx, record.R{"info": record.R{"result": string(result.Data)}}, nil)
+		UpdateWithProperties(
+			ctx,
+			map[string][]any{
+				"id": {result.TaskID},
+			},
+			map[string]any{
+				"info.result": string(result.Data),
+			},
+		)
 	if err != nil {
 		return fmt.Errorf("failed to update records: %w", err)
 	}

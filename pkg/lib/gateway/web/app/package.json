@@ -32,9 +32,11 @@
     "react-dom": "^18.0.0",
     "react-json-view": "^1.21.3",
     "react-router-dom": "^6.8.1",
-    "styled-components": "^6.1.11"
+    "styled-components": "^6.1.11",
+    "swagger-client": "^3.28.2"
   },
   "devDependencies": {
+    "@openapitools/openapi-generator-cli": "^2.13.4",
     "@types/node": "^18.16.2",
     "@types/react": "^18.0.0",
     "@types/react-dom": "^18.0.0",

@@ -21,7 +21,7 @@ A platform for distributed task execution
 	    - Each service instance must have its persistent ID that can be used as a consumer group label for queues.  
 	  - Service discovery  
 	    - We need to collect information about services (their presence, id, other properties)
-- [ ] Task Restarts
+- [x] Task Restarts
 	A restart seems to be an easy concept but in the world of kantoku a few problems arise:
 	- Should task be recreated (or sending a new `task_ready` event is enough)? Should output resources be recreated (if yes, how to manage dependents of the failed task?)? 
 	- Restarting a task parallelly can cause double output resource resolution. So, it's crucial to guarantee some kind of synchronization of the action. It can be done by delegating the restarting logic to scheduler (actually it's not a complete solution yet, synchronization among multiple scheduler instances must be also provided) or by setting some flag in the restarted task's info, e.g. `restarted: true` (this approach also has a tricky part: the task storage should guarantee atomic writes and such stuff).
@@ -29,9 +29,9 @@ A platform for distributed task execution
 - [ ] Implement auto tasks parsing from source code
 	- [ ] Use "source" column in the specifications table to identify which tasks are expected to be deleted
 	- [ ] Either parse task from source code structures with embedded `kantoku.Task`  or register tasks manually in some package-wise router (in this case, code generation for task files is preferrable)
-- [ ] Investigate alternatives for `records`
-	- [ ] Consider using raw mql requests (can be used with Postgres via FerretDB)
-	- [ ] Consider using postgres + jsonb
+- [x] Investigate alternatives for `records`
+	- [x] Consider using raw mql requests (can be used with Postgres via FerretDB)
+	- [ ] ~~Consider using postgres + jsonb~~
 - [ ] Scheduler
 	- [ ] Dependencies
 		- [ ] Make resource dependency resolver instant using resource initialization notifier.
@@ -40,6 +40,7 @@ A platform for distributed task execution
 		- [ ] Investigate approaches for a better dependencies engine 
 	- [ ] Make it scalable
 - [ ] Executor
+
 	Executor interface is pretty simple and the current implementation is sufficient for basic usage. In the future (meaning that this task shouldn't be taken until more fundamental problems are solved) it'd be nice to have a more complex and environment-aware version. Some points on what'd be cool to see:
 	- Select the running machine based on some set of labels in task's info
 	- Shard tasks by their execution context / resource usage. This would improve usage of a local resource cache  
@@ -48,8 +49,10 @@ A platform for distributed task execution
 	- [ ] Make it follow REST principles (stop using `POST` for all requests)
 	- [ ] Consider using jsonrpc
 - [ ] Spawners
+
     A spawner is a new entity. It is some program that spawns tasks. Might be a kafka message, a cron event or a telegram message.
 - [ ] Pipelines
+
 	Pipelines are DAGs of tasks. It's pretty simple to implement but it requires good visualization along with support for partial restarts (a task restart without output reallocation).
 	- Preprocessors: pure functions written in some scripting language that are used for a slight data rectification in order to match a dependent task input's type.   
 ### Tests
