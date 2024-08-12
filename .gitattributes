@@ -1,2 +1,4 @@
 pkg/lib/gateway/web/app/src/api/generated/** linguist-generated
 pkg/lib/gateway/api/http/oas/oas.gen.go linguist-generated
+pkg/lib/gateway/web/app/src/components linguist-generated
+pkg/lib/gateway/web/app/src/contexts linguist-generated
