@@ -343,7 +343,7 @@ export const TaskList: React.FC<IResourceComponentsProps> = () => {
                         <Table
                             {...tableProps}
                             rowKey='id'
-                            // bordered
+                            bordered
                             size='middle'
                             style={{width: '100%'}}
                             pagination={{

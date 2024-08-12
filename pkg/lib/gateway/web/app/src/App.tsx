@@ -77,6 +77,7 @@ const App: React.FC = () => {
                                             // collapsed is a boolean value that indicates whether the <Sidebar> is collapsed or not
                                             collapsed={collapsed}
                                             text='Kantoku'
+                                            icon={<img width={26} src={'/favicon.svg'}></img>}
                                         />
                                     )}
                                 >
@@ -111,7 +112,6 @@ const App: React.FC = () => {
                         </Route>
                     </Routes>
                     <UnsavedChangesNotifier/>
-
                 </Refine>
             </ColorModeContextProvider>
         </BrowserRouter>

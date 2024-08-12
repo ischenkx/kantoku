@@ -40,6 +40,18 @@ func (system System) Spawn(ctx context.Context, newTask task.Task) (initializedT
 		task task.Task
 	}
 
+	// shallow copying the info to avoid modification of the original object
+	shallowCopiedInfo := make(map[string]any)
+	for key, val := range newTask.Info {
+		shallowCopiedInfo[key] = val
+	}
+	newTask.Info = shallowCopiedInfo
+
+	// initializing the execution context
+	if _, ok := newTask.Info["context_id"]; !ok {
+		newTask.Info["context_id"] = uid.Generate()
+	}
+
 	newTask.ID = uid.Generate()
 
 	// TODO: transactions must provide atomicity and eventual consistency guarantees
@@ -48,9 +60,7 @@ func (system System) Spawn(ctx context.Context, newTask task.Task) (initializedT
 	tx := lo.NewTransaction[state]().
 		Then(
 			func(state state) (state, error) {
-				err := system.Tasks().Insert(ctx, []task.Task{
-					newTask,
-				})
+				err := system.Tasks().Insert(ctx, []task.Task{state.task})
 				if err != nil {
 					return state, err
 				}

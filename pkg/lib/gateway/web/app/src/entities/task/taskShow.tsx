@@ -2,13 +2,14 @@ import React, {useContext, useState} from 'react'
 import {
     IResourceComponentsProps,
     OpenNotificationParams,
+    useGo,
     useList,
     useMany,
     useNavigation,
     useShow
 } from '@refinedev/core'
 import {Show, TextField} from '@refinedev/antd'
-import {Collapse, Descriptions, Spin, Table, Tag, Typography} from 'antd'
+import {Collapse, Descriptions, Spin, Steps, Table, Tag, Typography} from 'antd'
 import ReactJson from 'react-json-view'
 import {Link} from 'react-router-dom'
 import {ColorModeContext} from '../../contexts/color-mode'
@@ -17,6 +18,7 @@ import Viewer from '../utils/objectViewer/DynamicViewer'
 import {TaskStatus} from './taskList'
 import {CaretRightOutlined} from '@ant-design/icons'
 import {Resource, Task} from '../../api/generated'
+import {APIWrapper} from '../../providers/common'
 
 const {Panel} = Collapse
 const {Title, Text} = Typography
@@ -88,8 +90,69 @@ const ResourceView: React.FC<{ inputs: Resource[], outputs: Resource[] }> =
             },
         ]
 
-        return <Table dataSource={dataSource} columns={columns}/>
+        return <Table pagination={{hideOnSinglePage: true}} dataSource={dataSource} columns={columns}/>
     }
+
+const TaskRestartsView: React.FC<{ task: Task }> =
+    ({task}) => {
+        const [shouldFetch, setShouldFetch] = useState<boolean>(true)
+        const [taskRestarts, setTaskRestarts] = useState<Task[] | null>(null)
+        const go = useGo()
+
+        if (shouldFetch) {
+            APIWrapper.getTaskRestarts(task)
+                .catch(err => {
+                    console.log('failed to get task restarts:', err)
+                })
+                .then(tasks => {
+                    if (!tasks) return
+                    setShouldFetch(false)
+                    setTaskRestarts(tasks)
+                })
+
+            return null
+        }
+
+        if (!taskRestarts) return null
+
+        console.log('task restarts:', taskRestarts)
+
+        taskRestarts.sort((a: Task, b: Task): number => {
+            const aInfo = a.info as Record<string, any>,
+                bInfo = b.info as Record<string, any>
+            const at = aInfo['updated_at'] as number || 0,
+                bt = bInfo['updated_at'] as number || 0
+            return at - bt
+        })
+
+        const steps = taskRestarts.map(t => {
+            const taskUrl = go({
+                to: {
+                    resource: 'tasks',
+                    action: 'show',
+                    id: t.id,
+                },
+                type: 'path',
+            })
+
+            const info = t.info as Record<string, any>
+
+            return {
+                title: task.id === t.id ? <>{t.id}</> : <Link to={taskUrl || ''}>{t.id}</Link>,
+                description: <TaskStatus status={info['status'] || ''} subStatus={info['sub_status'] || ''}/>
+            }
+        })
+
+        return (
+            <Steps
+                progressDot
+                current={steps.length}
+                direction='vertical'
+                items={steps}
+            />
+        )
+    }
+
 
 export const TaskShow: React.FC<IResourceComponentsProps> = () => {
     const {showUrl} = useNavigation()
@@ -136,7 +199,7 @@ export const TaskShow: React.FC<IResourceComponentsProps> = () => {
         }
     })
 
-    if (areSpecificationsLoading || areResourcesLoading || isTaskLoading) {
+    if (areSpecificationsLoading || areResourcesLoading || isTaskLoading || !task) {
         return <Spin/>
     }
 
@@ -280,24 +343,26 @@ export const TaskShow: React.FC<IResourceComponentsProps> = () => {
             )
             }
 
-
             <Collapse
-                // bordered={false}
                 expandIcon={({isActive}) => <CaretRightOutlined rotate={isActive ? 90 : 0}/>}
             >
-                <Panel header={'Resources'} key='1'>
+                <Panel header={'Resources'} key='2'>
                     <ResourceView inputs={inputResources} outputs={outputResources}/>
                 </Panel>
-            </Collapse>
 
-            <br/>
 
-            <Collapse
-                expandIcon={({isActive}) => <CaretRightOutlined rotate={isActive ? 90 : 0}/>}
-            >
-                <Panel header={'Dependencies'} key='1'>
-                    <Table dataSource={dependenciesTableDataSource} columns={dependenciesColumns}/>
-                </Panel>
+                {dependenciesTableDataSource.length > 0 &&
+                    <Panel header={'Dependencies'} key='3'>
+                        <Table dataSource={dependenciesTableDataSource} columns={dependenciesColumns}/>
+                    </Panel>
+                }
+
+                {taskInfo['restart_root'] &&
+                    <Panel header={'Restarts'} key='1'>
+                        <TaskRestartsView task={task}/>
+                    </Panel>
+                }
+
             </Collapse>
         </Show>
     )

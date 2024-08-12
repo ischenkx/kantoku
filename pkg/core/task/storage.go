@@ -6,6 +6,7 @@ import (
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/common/data/storage"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"reflect"
 )
 
@@ -220,7 +221,7 @@ func (ms *MongoStorage) GetWithProperties(ctx context.Context, propertiesToValue
 		return nil, fmt.Errorf("no property 'firstBatch' in the cursor")
 	}
 
-	firstBatchArray, ok := firstBatch.([]any)
+	firstBatchArray, ok := firstBatch.(primitive.A)
 	if !ok {
 		return nil, fmt.Errorf("firstBatch has the wrong type")
 	}

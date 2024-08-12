@@ -6,10 +6,6 @@ A platform for distributed task execution
 
 ## Back-end
 
-### Infra
-- [ ] Save logs to some persistent storage (OpenSearch/Elastic/Loki)
-- [ ] Use Prometheus and Grafana for metrics
-- [ ] When environment is not set up (Docker isn't running), services start to poll ddos the components (Consul, Postgres, etc). We need timeouts.
 ### Core
 - [x] Basic
 	- [x] Task Dependencies
@@ -22,6 +18,7 @@ A platform for distributed task execution
 	  - Service discovery  
 	    - We need to collect information about services (their presence, id, other properties)
 - [x] Task Restarts
+
 	A restart seems to be an easy concept but in the world of kantoku a few problems arise:
 	- Should task be recreated (or sending a new `task_ready` event is enough)? Should output resources be recreated (if yes, how to manage dependents of the failed task?)? 
 	- Restarting a task parallelly can cause double output resource resolution. So, it's crucial to guarantee some kind of synchronization of the action. It can be done by delegating the restarting logic to scheduler (actually it's not a complete solution yet, synchronization among multiple scheduler instances must be also provided) or by setting some flag in the restarted task's info, e.g. `restarted: true` (this approach also has a tricky part: the task storage should guarantee atomic writes and such stuff).
@@ -55,18 +52,32 @@ A platform for distributed task execution
 
 	Pipelines are DAGs of tasks. It's pretty simple to implement but it requires good visualization along with support for partial restarts (a task restart without output reallocation).
 	- Preprocessors: pure functions written in some scripting language that are used for a slight data rectification in order to match a dependent task input's type.   
+
+- [ ] CLI (ktk)
+  - Design a `ktk` cli utility similar to kubectl
+
+### Infra
+- [ ] Save logs to some persistent storage (OpenSearch/Elastic/Loki)
+- [ ] Use Prometheus and Grafana for metrics
+- [ ] When environment is not set up (Docker isn't running), services start to poll ddos the components (Consul, Postgres, etc). We need timeouts.
+
 ### Tests
 - [ ] Add tests for all services
 - [ ] Add tests for kantoku (end2end)
 - [ ] Write unit tests for common stuff
 
-## Front-end
+### Docs
+- [ ] Create a JS-based emulator of the whole system and show it using reactflow
+
+## Web UI
+
 ### Task List
 - [x] Fix `failed` and `ok` statuses
 - [x] Add `running` status (a.k.a received)
 - [x] Make ID a hyperlink to task (and remove the eye action)
 - [x] Make one-sided filter on updated_at
 - [ ] Add updated_at column and make it sortable
+
 ### Task Show
 - [x] Show the task's status (ok, failed, running...)
 - [x] Show type (aka spec) and info about it

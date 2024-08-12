@@ -51,3 +51,7 @@ func WithDependencies(dependencies ...Dependency) task.Option {
 		t.Info["dependencies"] = existingDependencies
 	}
 }
+
+func WithContextID(ctxId string) task.Option {
+	return task.WithProperty("context_id", ctxId)
+}

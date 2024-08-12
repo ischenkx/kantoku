@@ -47,13 +47,19 @@ func Restart(ctx context.Context, system system.AbstractSystem, id string, infoC
 		}
 	}
 
+	var restartRoot any = t.ID
+	if parentRestartRoot, ok := t.Info["restart_root"]; ok {
+		restartRoot = parentRestartRoot
+	}
+
 	modified, err := system.Tasks().UpdateWithProperties(ctx,
 		map[string][]any{
 			"info.restarted": {nil},
 			"id":             {id},
 		},
 		map[string]any{
-			"info.restarted": true,
+			"info.restarted":    true,
+			"info.restart_root": restartRoot,
 		},
 	)
 	if err != nil {
@@ -74,11 +80,6 @@ func Restart(ctx context.Context, system system.AbstractSystem, id string, infoC
 		if err := copier(ctx, system, t, newInfo); err != nil {
 			return "", fmt.Errorf("failed to copy info: %w", err)
 		}
-	}
-
-	var restartRoot any = t.ID
-	if parentRestartRoot, ok := t.Info["restart_root"]; ok {
-		restartRoot = parentRestartRoot
 	}
 
 	newTask, err := system.Spawn(ctx, task.New(

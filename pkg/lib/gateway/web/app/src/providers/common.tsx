@@ -1,6 +1,9 @@
 import {Configuration, DefaultApi} from "../api/generated";
+import {Api} from '../api/api'
 
 const API = new DefaultApi(new Configuration(), 'http://localhost:8585');
+
+export const APIWrapper = new Api('http://localhost:8585')
 
 interface ConvertedFilter<T> {
     [key: string]: {
