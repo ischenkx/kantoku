@@ -2,8 +2,8 @@ package test
 
 import (
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/lib/tasks/fn_d"
-	"github.com/ischenkx/kantoku/pkg/lib/tasks/fn_d/future"
+	"github.com/ischenkx/kantoku/pkg/lib/tasks/fn"
+	"github.com/ischenkx/kantoku/pkg/lib/tasks/fn/future"
 	"math/rand"
 )
 
@@ -15,15 +15,15 @@ type (
 	}
 
 	RandFail struct {
-		fn_d.Function[RandFail, RandFailInput, RandFailOutput]
+		fn.Function[*RandFail, RandFailInput, RandFailOutput]
 	}
 )
 
 var (
-	_ fn_d.AbstractFunction[RandFailInput, RandFailOutput] = (*RandFail)(nil)
+	_ fn.AbstractFunction[RandFailInput, RandFailOutput] = (*RandFail)(nil)
 )
 
-func (task RandFail) Call(ctx *fn_d.Context, input RandFailInput) (output RandFailOutput, err error) {
+func (task *RandFail) Call(ctx *fn.Context, input RandFailInput) (output RandFailOutput, err error) {
 	num := rand.Intn(100)
 	if num < 50 {
 		return RandFailOutput{}, fmt.Errorf("you lost: %d", num)

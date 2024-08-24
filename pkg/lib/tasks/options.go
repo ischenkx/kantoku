@@ -55,3 +55,7 @@ func WithDependencies(dependencies ...Dependency) task.Option {
 func WithContextID(ctxId string) task.Option {
 	return task.WithProperty("context_id", ctxId)
 }
+
+func WithType(t string) task.Option {
+	return task.WithProperty("type", t)
+}

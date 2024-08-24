@@ -18,10 +18,22 @@ type AbstractFuture interface {
 	getId() fid
 }
 
+type InitializeableFuture interface {
+	Initialize()
+}
+
 type Future[T any] struct {
 	id     fid // local id, valid only during program run
 	value  *T
 	filled bool
+}
+
+func (f *Future[T]) Initialize() {
+	if f.id != 0 {
+		return
+	}
+
+	f.id = fid(atomic.AddInt32((*int32)(&idCounter), 1))
 }
 
 func (f Future[T]) getId() fid {
@@ -37,13 +49,12 @@ func (f Future[T]) IsFilled() bool {
 }
 
 func Empty[T any]() Future[T] {
-	atomic.AddInt32((*int32)(&idCounter), 1)
-	return Future[T]{filled: false, id: fid(atomic.LoadInt32((*int32)(&idCounter)))}
+
+	return Future[T]{filled: false, id: fid(atomic.AddInt32((*int32)(&idCounter), 1))}
 }
 
 func FromValue[T any](val T) Future[T] {
-	atomic.AddInt32((*int32)(&idCounter), 1)
-	return Future[T]{value: &val, filled: true, id: fid(atomic.LoadInt32((*int32)(&idCounter)))}
+	return Future[T]{value: &val, filled: true, id: fid(atomic.AddInt32((*int32)(&idCounter), 1))}
 }
 
 func (f Future[T]) ParseToNew(data []byte) (Future[T], error) {

@@ -3,8 +3,8 @@ package http
 import (
 	"bytes"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/lib/tasks/fn_d"
-	"github.com/ischenkx/kantoku/pkg/lib/tasks/fn_d/future"
+	"github.com/ischenkx/kantoku/pkg/lib/tasks/fn"
+	"github.com/ischenkx/kantoku/pkg/lib/tasks/fn/future"
 	"io"
 	"net/http"
 	"net/url"
@@ -25,15 +25,15 @@ type (
 	}
 
 	Do struct {
-		fn_d.Function[Do, DoInput, DoOutput]
+		fn.Function[Do, DoInput, DoOutput]
 	}
 )
 
 var (
-	_ fn_d.AbstractFunction[DoInput, DoOutput] = (*Do)(nil)
+	_ fn.AbstractFunction[DoInput, DoOutput] = (*Do)(nil)
 )
 
-func (task Do) Call(ctx *fn_d.Context, input DoInput) (output DoOutput, err error) {
+func (task Do) Call(ctx *fn.Context, input DoInput) (output DoOutput, err error) {
 	_url, err := url.Parse(input.Url.Value())
 	if err != nil {
 		return DoOutput{}, fmt.Errorf("failed to parse url: %w", err)

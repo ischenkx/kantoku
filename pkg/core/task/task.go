@@ -22,6 +22,15 @@ func New(options ...Option) Task {
 	return t
 }
 
+func (task Task) ContextID() string {
+	rawContextID, ok := task.Info["context_id"]
+	if !ok {
+		return ""
+	}
+
+	return rawContextID.(string)
+}
+
 func (task Task) AsDoc() storage.Document {
 	return map[string]any{
 		"id":      task.ID,

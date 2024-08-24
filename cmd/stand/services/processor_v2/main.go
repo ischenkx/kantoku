@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/ischenkx/kantoku/cmd/stand/http_executor"
+	"github.com/ischenkx/kantoku/cmd/stand/executor"
 	"github.com/ischenkx/kantoku/cmd/stand/utils"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/lib/platform"
@@ -20,7 +20,9 @@ func main() {
 		log.Fatal("failed to build system: ", err)
 	}
 
-	deployment, err := platform.BuildProcessorDeployment(ctx, sys, http_executor.New(), logger, cfg.Services.Processor)
+	exec := executor.New()
+
+	deployment, err := platform.BuildProcessorDeployment(ctx, sys, exec, logger, cfg.Services.Processor)
 	if err != nil {
 		log.Fatal("failed to build processor:", err)
 	}

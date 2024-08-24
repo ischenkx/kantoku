@@ -118,9 +118,9 @@ export const SpecificationList: React.FC<IResourceComponentsProps> = () => {
 
             let title: ReactNode
             if (index > -1 && searchValue.length > 0) {
-                title = <span className='site-tree-search-value'>{strTitle}</span>
+                title = <div className='site-tree-search-value' style={{  wordBreak: 'break-all', textOverflow: 'ellipsis' }}>{strTitle}</div>
             } else {
-                title = <span>{strTitle}</span>
+                title = <div style={{ wordBreak: 'break-all', textOverflow: 'ellipsis' }}>{strTitle}</div>
             }
 
             if (item.children) {
@@ -152,6 +152,7 @@ export const SpecificationList: React.FC<IResourceComponentsProps> = () => {
                     expandedKeys={expandedKeys}
                     onExpand={onExpand}
                     autoExpandParent={autoExpandParent}
+                    expandAction={'click'}
                     showLine
                     style={{padding: 10}}
                 />

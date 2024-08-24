@@ -13,8 +13,8 @@ type Router struct {
 	typ2exe map[string]executor.Executor
 }
 
-func NewRouter() Router {
-	return Router{
+func NewRouter() *Router {
+	return &Router{
 		typ2exe: map[string]executor.Executor{},
 	}
 }

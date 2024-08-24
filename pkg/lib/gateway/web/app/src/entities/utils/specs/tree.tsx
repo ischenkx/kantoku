@@ -1,5 +1,6 @@
 import {Specification} from './specification'
 import {ReactElement} from 'react'
+
 export type TreeValue = {
     path: string
     spec: Specification | null
@@ -16,15 +17,35 @@ export const newTree = (path: string, spec: Specification | null): Tree => {
     return {value: {path, spec}, children: {}}
 }
 
+function compressSpecificationTree(tree: Tree) {
+    Object.values(tree.children).forEach(compressSpecificationTree)
+
+    while (objectSize(tree.children) === 1) {
+        const [childKey, child] = Object.entries(tree.children)[0]
+
+        const childChildren = Object.entries(child.children)
+
+        if (childChildren.length !== 1) break
+
+        tree.children = Object.fromEntries(
+            childChildren.map(([subChildKey, subChild]) => {
+                return [childKey + '/' + subChildKey, subChild]
+            })
+        )
+        tree.value = child.value
+    }
+
+}
+
 export function buildSpecificationTree(specifications: Specification[]): Tree {
     const tree = newTree('', null)
 
     for (const spec of specifications) {
-        const path = spec.id.split('.').filter(part => !!part)
+        const path = spec.id.split('/').filter(part => !!part)
         let currentNode = tree
         let currentPath = ''
         for (const part of path) {
-            if (currentPath.length > 0) currentPath += '.'
+            if (currentPath.length > 0) currentPath += '/'
             currentPath += part
 
             if (!currentNode.children[part]) currentNode.children[part] = newTree(currentPath, null)
@@ -34,6 +55,12 @@ export function buildSpecificationTree(specifications: Specification[]): Tree {
 
         currentNode.value.spec = spec
     }
+
+    console.log(tree)
+
+    compressSpecificationTree(tree)
+
+    console.log(tree)
 
     return tree
 }
@@ -58,4 +85,13 @@ export function convertTreeToAntdTree(headlessTree: TreeChildren): AntdTree[] {
             __spec: subTree.value.spec,
         }
     })
+}
+
+function objectSize(obj) {
+    let length = 0
+    for (const key in obj) {
+        length++
+    }
+
+    return length
 }

@@ -1,7 +1,8 @@
-package fn_d
+package fn
 
 import (
 	"context"
+	"fmt"
 	"github.com/ischenkx/kantoku/pkg/core/resource"
 	"github.com/ischenkx/kantoku/pkg/core/system"
 	"github.com/ischenkx/kantoku/pkg/core/task"
@@ -26,6 +27,7 @@ func WithContext[T any](ctx context.Context, sys system.AbstractSystem, f func(*
 func schedulingContext(ctx context.Context, sys system.AbstractSystem, f func(*Context) error) error {
 	proxy := proxyTask{f: f}
 	exe := NewExecutor[proxyTask, EmptyStruct, EmptyStruct](proxy)
+	taskCtx := NewContext(ctx)
 
 	sysTask := task.Task{
 		Inputs:  []resource.ID{},
@@ -34,16 +36,17 @@ func schedulingContext(ctx context.Context, sys system.AbstractSystem, f func(*C
 		Info:    map[string]any{},
 	}
 
-	taskCtx, inp, err := exe.prepare(ctx, sys, sysTask)
+	input, err := exe.prepareInput(taskCtx, sys, sysTask)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to prepare input: %w", err)
 	}
-	out, err := proxy.Call(taskCtx, inp)
+
+	output, err := proxy.Call(taskCtx, input)
 	if err != nil {
 		return err
 	}
 
-	return exe.save(taskCtx, sys, sysTask, out)
+	return exe.save(taskCtx, sys, sysTask, output)
 }
 
 type proxyTask struct {
@@ -53,8 +56,8 @@ type proxyTask struct {
 
 type EmptyStruct struct{}
 
-func (t proxyTask) EmptyOutput() EmptyStruct {
-	return EmptyStruct{}
+func (t proxyTask) EmptyOutput() (EmptyStruct, error) {
+	return EmptyStruct{}, nil
 }
 
 func (t proxyTask) Call(ctx *Context, input EmptyStruct) (EmptyStruct, error) {

@@ -1,4 +1,4 @@
-package fn_d
+package fn
 
 import (
 	"github.com/ischenkx/kantoku/pkg/lib/tasks/specification"
@@ -21,7 +21,7 @@ func ToSpecification[T AbstractFunction[Input, Output], Input, Output any](task 
 			Outputs: structToResourceSet(zeroOutput),
 		},
 		Executable: specification.Executable{
-			Type: "fn_d-go",
+			Type: "fn-go",
 		},
 	}
 }
@@ -40,7 +40,9 @@ func structToResourceSet[T any](s T) specification.ResourceSet {
 		resourceSet.Naming[i] = field.Name
 
 		fieldType := field.Type
-		if fieldType.Kind() == reflect.Struct && strings.HasPrefix(fieldType.Name(), "Future[") && fieldType.PkgPath() == "github.com/ischenkx/kantoku/pkg/lib/tasks/fn_d/future" {
+		if fieldType.Kind() == reflect.Struct &&
+			strings.HasPrefix(fieldType.Name(), "Future[") &&
+			fieldType.PkgPath() == "github.com/ischenkx/kantoku/pkg/lib/tasks/fn/future" {
 			// If the field type is future.Future, use its inner type
 			typ, ok := fieldType.FieldByName("value")
 			if !ok {
