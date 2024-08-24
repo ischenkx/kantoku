@@ -2,7 +2,7 @@
 
 A platform for distributed task execution
 
-<img src="./dev/assets/pipeline_example.png" width="600">
+<img src="./dev/assets/pipeline_example.gif" width="600">
 
 # Todo
 
