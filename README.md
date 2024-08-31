@@ -1,4 +1,4 @@
-# <img src="./dev/assets/logo.svg" width="60"> Kantoku
+# <img src="./dev/assets/logo.svg" width="40"> Kantoku
 
 A platform for distributed task execution
 
