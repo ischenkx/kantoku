@@ -6,13 +6,13 @@ import (
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
-	"github.com/ischenkx/kantoku/pkg/core/event"
+	"github.com/ischenkx/kantoku/pkg/core"
 	"log/slog"
 )
 
 const (
-	RequestsTopic  = "discovery:request"
-	ResponsesTopic = "discovery:response"
+	RequestsTopic  = "discovery.request"
+	ResponsesTopic = "discovery.response"
 )
 
 type Request struct {
@@ -27,26 +27,26 @@ type Response struct {
 type Responder[Service service.Service] struct {
 	Service       Service
 	InfoProvider  func(ctx context.Context, srvc Service) (map[string]any, error)
-	Events        *event.Broker
+	Events        core.Broker
 	RequestCodec  codec.Codec[Request, []byte]
 	ResponseCodec codec.Codec[Response, []byte]
 }
 
 func (responder *Responder[Service]) Run(ctx context.Context) error {
-	channel, err := responder.Events.Consume(ctx, broker.TopicsInfo{
-		Group: responder.Service.ID(),
-		Topics: []string{
-			RequestsTopic,
-		},
-	})
+	channel, err := responder.Events.Consume(ctx,
+		[]string{RequestsTopic},
+		broker.ConsumerSettings{
+			Group:                responder.Service.ID(),
+			InitializationPolicy: broker.NewestOffset,
+		})
 	if err != nil {
 		return fmt.Errorf("failed to consume: %w", err)
 	}
 
-	//responder.Service.Logger().Info("starting a responder")
+	//responder.Service.logger().Info("starting a responder")
 
-	broker.Processor[event.Event]{
-		Handler: func(ctx context.Context, ev event.Event) error {
+	broker.Processor[core.Event]{
+		Handler: func(ctx context.Context, ev core.Event) error {
 			request, err := responder.RequestCodec.Decode(ev.Data)
 			if err != nil {
 				responder.Service.Logger().Error("failed to decode a discovery request",
@@ -55,8 +55,9 @@ func (responder *Responder[Service]) Run(ctx context.Context) error {
 				return nil
 			}
 
-			//responder.Service.Logger().Info("received a discovery request",
-			//	slog.String("id", request.ID))
+			responder.Service.Logger().
+				Info("received a discovery request",
+					slog.String("id", request.ID))
 
 			var info map[string]any
 			if responder.InfoProvider != nil {
@@ -86,7 +87,7 @@ func (responder *Responder[Service]) Run(ctx context.Context) error {
 				return nil
 			}
 
-			if err := responder.Events.Send(ctx, event.New(ResponsesTopic, encodedResponse)); err != nil {
+			if err := responder.Events.Send(ctx, core.NewEvent(ResponsesTopic, encodedResponse)); err != nil {
 				responder.Service.Logger().Error("failed to send a discovery response",
 					slog.String("error", err.Error()),
 					slog.String("event_id", ev.ID))

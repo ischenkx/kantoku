@@ -5,7 +5,7 @@ import (
 	"github.com/ischenkx/kantoku/cmd/stand/executor"
 	"github.com/ischenkx/kantoku/cmd/stand/utils"
 	"github.com/ischenkx/kantoku/pkg/common/service"
-	"github.com/ischenkx/kantoku/pkg/lib/platform"
+	"github.com/ischenkx/kantoku/pkg/lib/builder"
 	"log"
 	"os"
 )
@@ -15,14 +15,14 @@ func main() {
 	cfg := utils.LoadConfig()
 	logger := utils.GetLogger(os.Stdout, "processor_v2")
 
-	sys, err := platform.BuildSystem(ctx, logger, cfg.Core.System)
+	sys, err := builder.BuildSystem(ctx, logger, cfg.Core.System)
 	if err != nil {
 		log.Fatal("failed to build system: ", err)
 	}
 
 	exec := executor.New()
 
-	deployment, err := platform.BuildProcessorDeployment(ctx, sys, exec, logger, cfg.Services.Processor)
+	deployment, err := builder.BuildProcessorDeployment(ctx, sys, exec, logger, cfg.Services.Processor)
 	if err != nil {
 		log.Fatal("failed to build processor:", err)
 	}

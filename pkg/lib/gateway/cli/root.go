@@ -8,7 +8,7 @@ import (
 
 func New() *cobra.Command {
 	root := &cobra.Command{
-		Use: "kanto",
+		Use: "ktk",
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			// Read environment variables from the file provided by the --env flag
 			envFilePath, _ := cmd.Flags().GetString("env")

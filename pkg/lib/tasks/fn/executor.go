@@ -5,9 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
-	"github.com/ischenkx/kantoku/pkg/core/resource"
-	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/ischenkx/kantoku/pkg/core/task"
+	"github.com/ischenkx/kantoku/pkg/core"
 	"github.com/ischenkx/kantoku/pkg/lib/tasks/fn/future"
 	"reflect"
 	"strings"
@@ -21,7 +19,7 @@ func NewExecutor[T AbstractFunction[I, O], I, O any](t T) Executor[T, I, O] {
 	return Executor[T, I, O]{task: t}
 }
 
-func (e Executor[T, I, O]) Execute(ctx context.Context, sys system.AbstractSystem, task task.Task) error {
+func (e Executor[T, I, O]) Execute(ctx context.Context, sys core.AbstractSystem, task core.Task) error {
 	taskCtx := NewContext(ctx)
 
 	input, err := e.prepareInput(taskCtx, sys, task)
@@ -48,7 +46,7 @@ func (e Executor[T, I, O]) Type() string {
 	return taskType[T, I, O]()
 }
 
-func (e Executor[T, I, O]) prepareInput(ctx *Context, sys system.AbstractSystem, task task.Task) (I, error) {
+func (e Executor[T, I, O]) prepareInput(ctx *Context, sys core.AbstractSystem, task core.Task) (I, error) {
 	var input I
 
 	inputResources, err := sys.Resources().Load(ctx, task.Inputs...)
@@ -64,7 +62,7 @@ func (e Executor[T, I, O]) prepareInput(ctx *Context, sys system.AbstractSystem,
 	return input, nil
 }
 
-func (e Executor[T, I, O]) save(ctx *Context, sys system.AbstractSystem, task task.Task, out O) error {
+func (e Executor[T, I, O]) save(ctx *Context, sys core.AbstractSystem, task core.Task, out O) error {
 	if _, err := ctx.bindObjectToResources(out, task.Outputs); err != nil {
 		return fmt.Errorf("failed to bind outputs: %w", err)
 	}
@@ -96,7 +94,7 @@ func (e Executor[T, I, O]) save(ctx *Context, sys system.AbstractSystem, task ta
 }
 
 // can replace any in return value to 'I', but it's hard to return empty value this way
-func (e Executor[T, I, O]) buildInput(ctx *Context, resources []resource.Resource) (I, error) {
+func (e Executor[T, I, O]) buildInput(ctx *Context, resources []core.Resource) (I, error) {
 	// TODO: use (var input I; reflect.TypeOf(input)
 	structType := e.task.InputType()
 	structValue := reflect.New(structType).Elem()
@@ -113,8 +111,8 @@ func (e Executor[T, I, O]) buildInput(ctx *Context, resources []resource.Resourc
 
 	// Initialize struct fields from the fields array
 	for i := 0; i < numFields; i++ {
-		if resources[i].Status != resource.Ready {
-			return input, fmt.Errorf("not ready resource at position %d", i)
+		if resources[i].Status != core.ResourceStatuses.Ready {
+			return input, fmt.Errorf("not ready resource_db at position %d", i)
 		}
 
 		err := parseField(resources[i].Data, structValue.Field(i))
@@ -122,7 +120,7 @@ func (e Executor[T, I, O]) buildInput(ctx *Context, resources []resource.Resourc
 			return input, err
 		}
 
-		// save resource to storage so they won't be copied
+		// save resource_db to storage so they won't be copied
 		fut, ok := structValue.Field(i).Interface().(future.AbstractFuture)
 		if !ok {
 			return input, errors.New("cannot convert field to future")

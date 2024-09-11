@@ -6,10 +6,7 @@ import (
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
-	"github.com/ischenkx/kantoku/pkg/core/event"
-	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/ischenkx/kantoku/pkg/core/system/events"
-	"github.com/ischenkx/kantoku/pkg/core/task"
+	"github.com/ischenkx/kantoku/pkg/core"
 	"sync"
 )
 
@@ -18,7 +15,7 @@ type process struct {
 }
 
 type executionController struct {
-	System      system.AbstractSystem
+	System      core.AbstractSystem
 	Executor    Executor
 	ResultCodec codec.Codec[Result, []byte]
 	Service     service.Core
@@ -28,11 +25,11 @@ type executionController struct {
 }
 
 func (controller *executionController) start(ctx context.Context) error {
-	cancellationEvents, err := controller.System.Events().Consume(ctx,
-		broker.TopicsInfo{
-			Group:  controller.Service.ID(),
-			Topics: []string{events.OnTask.Cancelled},
-		})
+	cancellationEvents, err := controller.System.Events().Consume(
+		ctx,
+		[]string{core.OnTask.Cancelled},
+		broker.ConsumerSettings{Group: controller.Service.ID()},
+	)
 	if err != nil {
 		return err
 	}
@@ -42,9 +39,9 @@ func (controller *executionController) start(ctx context.Context) error {
 	return nil
 }
 
-func (controller *executionController) processCancellationEvents(ctx context.Context, cancellationEvents <-chan broker.Message[event.Event]) {
-	broker.Processor[event.Event]{
-		Handler: func(ctx context.Context, ev event.Event) error {
+func (controller *executionController) processCancellationEvents(ctx context.Context, cancellationEvents <-chan broker.Message[core.Event]) {
+	broker.Processor[core.Event]{
+		Handler: func(ctx context.Context, ev core.Event) error {
 			taskId := string(ev.Data)
 			controller.cancel(ctx, taskId)
 			return nil
@@ -53,7 +50,7 @@ func (controller *executionController) processCancellationEvents(ctx context.Con
 }
 
 func (controller *executionController) processReadyTask(ctx context.Context, id string) error {
-	err := controller.System.Events().Send(ctx, event.New(events.OnTask.Received, []byte(id)))
+	err := controller.System.Events().Send(ctx, core.NewEvent(core.OnTask.Received, []byte(id)))
 	if err != nil {
 		return err
 	}
@@ -71,7 +68,7 @@ func (controller *executionController) processReadyTask(ctx context.Context, id 
 		return fmt.Errorf("failed to encode the result: %w", err)
 	}
 
-	err = controller.System.Events().Send(ctx, event.New(events.OnTask.Finished, encodedResult))
+	err = controller.System.Events().Send(ctx, core.NewEvent(core.OnTask.Finished, encodedResult))
 	if err != nil {
 		return err
 	}
@@ -101,9 +98,9 @@ func (controller *executionController) execute(ctx context.Context, id string) e
 	return nil
 }
 
-func (controller *executionController) validateReadyTask(ctx context.Context, t task.Task) error {
+func (controller *executionController) validateReadyTask(ctx context.Context, t core.Task) error {
 	if rawStatus, ok := t.Info["status"]; ok {
-		if value, ok := rawStatus.(string); ok && value == task.Statuses.Cancelled {
+		if value, ok := rawStatus.(string); ok && value == core.TaskStatuses.Cancelled {
 			return fmt.Errorf("task canceled")
 		}
 	}

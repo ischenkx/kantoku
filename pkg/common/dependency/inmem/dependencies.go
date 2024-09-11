@@ -4,15 +4,15 @@ import (
 	"context"
 	"fmt"
 	"github.com/google/uuid"
-	"github.com/ischenkx/kantoku/pkg/common/data/deps"
+	"github.com/ischenkx/kantoku/pkg/common/dependency"
 	"github.com/samber/lo"
 	"sync"
 	"time"
 )
 
-var validStatuses = []deps.Status{
-	deps.OK,
-	deps.Failed,
+var validStatuses = []dependency.Status{
+	dependency.OK,
+	dependency.Failed,
 }
 
 type groupInfo struct {
@@ -21,24 +21,24 @@ type groupInfo struct {
 }
 
 type Manager struct {
-	dependencies map[string]deps.Dependency
+	dependencies map[string]dependency.Dependency
 	groups       map[string]groupInfo
 	mu           sync.RWMutex
 }
 
 func New() *Manager {
 	return &Manager{
-		dependencies: make(map[string]deps.Dependency),
+		dependencies: make(map[string]dependency.Dependency),
 		groups:       make(map[string]groupInfo),
 	}
 }
 
-func (manager *Manager) LoadDependencies(ctx context.Context, ids ...string) ([]deps.Dependency, error) {
+func (manager *Manager) LoadDependencies(ctx context.Context, ids ...string) ([]dependency.Dependency, error) {
 	manager.mu.RLock()
 	defer manager.mu.RUnlock()
 
 	ids = lo.Uniq(ids)
-	result := make([]deps.Dependency, 0, len(ids))
+	result := make([]dependency.Dependency, 0, len(ids))
 
 	for _, id := range ids {
 		if dep, ok := manager.dependencies[id]; ok {
@@ -49,12 +49,12 @@ func (manager *Manager) LoadDependencies(ctx context.Context, ids ...string) ([]
 	return result, nil
 }
 
-func (manager *Manager) LoadGroups(ctx context.Context, ids ...string) ([]deps.Group, error) {
+func (manager *Manager) LoadGroups(ctx context.Context, ids ...string) ([]dependency.Group, error) {
 	manager.mu.RLock()
 	defer manager.mu.RUnlock()
 
 	ids = lo.Uniq(ids)
-	result := make([]deps.Group, 0, len(ids))
+	result := make([]dependency.Group, 0, len(ids))
 
 	for _, id := range ids {
 		info, ok := manager.groups[id]
@@ -62,9 +62,9 @@ func (manager *Manager) LoadGroups(ctx context.Context, ids ...string) ([]deps.G
 			continue
 		}
 
-		group := deps.Group{
+		group := dependency.Group{
 			ID:           id,
-			Dependencies: make([]deps.Dependency, 0, len(info.deps)),
+			Dependencies: make([]dependency.Dependency, 0, len(info.deps)),
 		}
 		for _, depId := range info.deps {
 			group.Dependencies = append(group.Dependencies, manager.dependencies[depId])
@@ -75,7 +75,7 @@ func (manager *Manager) LoadGroups(ctx context.Context, ids ...string) ([]deps.G
 	return result, nil
 }
 
-func (manager *Manager) Resolve(ctx context.Context, values ...deps.Dependency) error {
+func (manager *Manager) Resolve(ctx context.Context, values ...dependency.Dependency) error {
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
@@ -92,15 +92,15 @@ func (manager *Manager) Resolve(ctx context.Context, values ...deps.Dependency) 
 	return nil
 }
 
-func (manager *Manager) NewDependencies(ctx context.Context, n int) ([]deps.Dependency, error) {
+func (manager *Manager) NewDependencies(ctx context.Context, n int) ([]dependency.Dependency, error) {
 	manager.mu.Lock()
 	defer manager.mu.Unlock()
 
-	result := make([]deps.Dependency, 0, n)
+	result := make([]dependency.Dependency, 0, n)
 	for i := 0; i < n; i++ {
-		dep := deps.Dependency{
+		dep := dependency.Dependency{
 			ID:     uuid.New().String(),
-			Status: deps.Pending,
+			Status: dependency.Pending,
 		}
 		manager.dependencies[dep.ID] = dep
 		result = append(result, dep)
@@ -152,7 +152,7 @@ func (manager *Manager) syncGroups() (result []string) {
 
 		resolved := true
 		for _, depId := range info.deps {
-			if manager.dependencies[depId].Status == deps.Pending {
+			if manager.dependencies[depId].Status == dependency.Pending {
 				resolved = false
 				break
 			}

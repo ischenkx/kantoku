@@ -5,8 +5,8 @@ import (
 	"github.com/ischenkx/kantoku/pkg/common/data/uid"
 	"github.com/ischenkx/kantoku/pkg/common/logging/prefixed"
 	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
-	"github.com/ischenkx/kantoku/pkg/core/event"
-	"github.com/ischenkx/kantoku/pkg/lib/platform"
+	"github.com/ischenkx/kantoku/pkg/core"
+	"github.com/ischenkx/kantoku/pkg/lib/builder"
 	"github.com/spf13/cobra"
 	"log/slog"
 	"os"
@@ -43,11 +43,11 @@ func NewEvents() *cobra.Command {
 				),
 			)
 
-			var cfg platform.Config
+			var cfg builder.Config
 
 			if sendFlags.config != "" {
 				var err error
-				cfg, err = platform.FromFile(sendFlags.config)
+				cfg, err = builder.FromFile(sendFlags.config)
 				if err != nil {
 					cmd.PrintErrln("failed to parse config from file:", err)
 					return
@@ -60,13 +60,13 @@ func NewEvents() *cobra.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			events, err := platform.BuildEvents(ctx, logger, cfg.Core.System.Events)
+			events, err := builder.BuildEvents(ctx, logger, cfg.Core.System.Events)
 			if err != nil {
 				cmd.PrintErrln("failed to create events:", err)
 				return
 			}
 
-			ev := event.New(sendFlags.name, []byte(sendFlags.payload))
+			ev := core.NewEvent(sendFlags.name, []byte(sendFlags.payload))
 
 			cmd.Println("ID:", ev.ID)
 			cmd.Println("Name:", ev.Topic)
@@ -107,11 +107,11 @@ func NewEvents() *cobra.Command {
 				),
 			)
 
-			var cfg platform.Config
+			var cfg builder.Config
 
 			if consumeFlags.config != "" {
 				var err error
-				cfg, err = platform.FromFile(consumeFlags.config)
+				cfg, err = builder.FromFile(consumeFlags.config)
 				if err != nil {
 					cmd.PrintErrln("failed to parse config from file:", err)
 					return
@@ -124,16 +124,16 @@ func NewEvents() *cobra.Command {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
-			events, err := platform.BuildEvents(ctx, logger, cfg.Core.System.Events)
+			events, err := builder.BuildEvents(ctx, logger, cfg.Core.System.Events)
 			if err != nil {
 				cmd.PrintErrln("failed to create events:", err)
 				return
 			}
 
-			channel, err := events.Consume(ctx, broker.TopicsInfo{
-				Group:  consumeFlags.group,
-				Topics: consumeFlags.names,
-			})
+			channel, err := events.Consume(ctx,
+				consumeFlags.names,
+				broker.ConsumerSettings{Group: consumeFlags.group},
+			)
 			if err != nil {
 				cmd.PrintErrln("failed to consume:", err)
 				return
@@ -142,8 +142,8 @@ func NewEvents() *cobra.Command {
 			cmd.Println("Group:", consumeFlags.group)
 			cmd.Println("Events:", strings.Join(consumeFlags.names, ", "))
 
-			broker.Processor[event.Event]{
-				Handler: func(ctx context.Context, ev event.Event) error {
+			broker.Processor[core.Event]{
+				Handler: func(ctx context.Context, ev core.Event) error {
 					cmd.Printf("id='%s' event='%s' data='%s'\n", ev.ID, ev.Topic, string(ev.Data))
 					return nil
 				},

@@ -4,9 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ischenkx/kantoku/pkg/core"
 	"github.com/ischenkx/kantoku/pkg/core/services/executor"
-	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/ischenkx/kantoku/pkg/core/task"
 )
 
 type Router struct {
@@ -23,7 +22,7 @@ func (r *Router) AddExecutor(exe executor.Executor, typ string) {
 	r.typ2exe[typ] = exe
 }
 
-func (r *Router) Execute(ctx context.Context, sys system.AbstractSystem, task task.Task) error {
+func (r *Router) Execute(ctx context.Context, sys core.AbstractSystem, task core.Task) error {
 	typ, ok := task.Info["type"]
 	if !ok {
 		return errors.New("task without type")

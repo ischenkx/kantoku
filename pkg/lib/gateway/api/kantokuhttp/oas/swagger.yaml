@@ -541,7 +541,7 @@ paths:
     post:
       summary: Deallocate resources
       requestBody:
-        description: A list of resource identifiers
+        description: A list of resource_db identifiers
         required: true
         content:
           application/json:
@@ -592,7 +592,7 @@ paths:
     post:
       summary: Load resources
       requestBody:
-        description: A list of resource identifiers
+        description: A list of resource_db identifiers
         required: true
         content:
           application/json:

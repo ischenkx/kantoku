@@ -97,7 +97,7 @@ export default class DefaultApi {
 
     /**
      * Deallocate resources
-     * @param {Array.<String>} requestBody A list of resource identifiers
+     * @param {Array.<String>} requestBody A list of resource_db identifiers
      * @param {module:api/DefaultApi~resourcesDeallocatePostCallback} callback The callback function, accepting three arguments: error, data, response
      * data is of type: {@link Object}
      */
@@ -179,7 +179,7 @@ export default class DefaultApi {
 
     /**
      * Load resources
-     * @param {Array.<String>} requestBody A list of resource identifiers
+     * @param {Array.<String>} requestBody A list of resource_db identifiers
      * @param {module:api/DefaultApi~resourcesLoadPostCallback} callback The callback function, accepting three arguments: error, data, response
      * data is of type: {@link Array.<module:model/Resource>}
      */

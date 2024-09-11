@@ -25,13 +25,21 @@ import '@xyflow/react/dist/base.css'
 
 import './styles.css'
 import {ThemeProvider} from 'styled-components'
-import {theme} from 'antd'
-import {CheckCircleOutlined, CloseCircleOutlined, FunctionOutlined, LoadingOutlined} from '@ant-design/icons'
+import {Button, Collapse, Input, Space, theme} from 'antd'
+import {
+    ApartmentOutlined,
+    CheckCircleOutlined,
+    CloseCircleOutlined,
+    FunctionOutlined,
+    LoadingOutlined,
+    ReloadOutlined
+} from '@ant-design/icons'
 import FloatingConnectionLine from './FloatingConnectionLine'
 import FloatingEdge from './FloatingEdge'
 import {tasksToReactflowGraph} from './graph'
 import {APIWrapper} from '../../providers/common'
 import {ColorModeContext} from '../../contexts/color-mode'
+import {useParsed} from '@refinedev/core'
 
 export type TaskResource = {
     name: string
@@ -145,7 +153,7 @@ const PipelineNodeStatus = ({node}: { node: Node }) => {
 }
 
 const PipelineNode = ({data: node}: { data: Node }) => {
-    console.log('NODE:', node)
+    console.log('at pipeline node!')
     return (
         <div className={'pipeline__node'}>
             <div className={'pipeline__node_header'}>
@@ -282,103 +290,82 @@ const getLayoutedElements = (nodes, edges, options) => {
     }
 }
 
+interface ControlPanelParams {
+    contextId: string;
 
-const Flow = ({initialNodes, initialEdges}) => {
+    updateContext(contextId: string): void;
+
+    fixLayout(): void;
+
+    reload(): void;
+
+    fitView(): void;
+}
+
+const ControlPanel = ({contextId, updateContext, fixLayout, reload, fitView}: ControlPanelParams) => {
+    const [contextIdInputValue, setContextIdInputValue] = useState<string>(contextId)
+
+    return <>
+        <Collapse style={{width: 360}}>
+            <Collapse.Panel key={'1'} header={'Control Panel'} style={{background: 'rgba(0, 0, 0, 0.7)'}}>
+                <Space direction={'vertical'}>
+                    <Space>
+                        Context:
+                        <Input placeholder='Context Id'
+                               defaultValue={contextIdInputValue}
+                               onChange={(e) => setContextIdInputValue(e.target.value)}/>
+                        <Button onClick={() => {
+                            updateContext(contextIdInputValue)
+                            console.log('updating context', contextIdInputValue)
+                        }}>Apply</Button>
+                    </Space>
+
+                    <Space>
+                        <Button icon={<ApartmentOutlined/>} onClick={() => fixLayout()}>Fix Layout</Button>
+                        <Button onClick={() => fitView()}>Fit View</Button>
+                        <Button icon={<ReloadOutlined/>} onClick={() => reload()}>Reload</Button>
+                    </Space>
+                </Space>
+            </Collapse.Panel>
+        </Collapse>
+    </>
+}
+
+const Flow = () => {
     const {token} = theme.useToken()
-    const {mode, setMode} = useContext(ColorModeContext)
+    const {mode} = useContext(ColorModeContext)
+
+    const {params} = useParsed()
 
     const {fitView, getNodes, getEdges} = useReactFlow()
-    const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
-    const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+    const [nodes, setNodes, onNodesChange] = useNodesState([])
+    const [edges, setEdges, onEdgesChange] = useEdgesState([])
     const nodesInitialized = useNodesInitialized({
         includeHiddenNodes: false,
     })
 
-    const onConnect = useCallback(
-        (connection) => setEdges((eds) => {
-            console.log('here!123', connection, eds)
-            return addEdge(connection, eds)
-        }),
-        [setEdges]
-    )
-
-    const onLayout = (direction) => {
-        const nodes = getNodes()
-        const edges = getEdges()
-        const layouted = getLayoutedElements(nodes, edges, {direction})
-
-        console.log('layout', layouted)
-
-        setNodes([...layouted.nodes])
-        setEdges([...layouted.edges])
-
-        window.requestAnimationFrame(() => {
-            fitView()
-        })
-    }
-
-    useEffect(() => {
-        if (nodesInitialized) {
-            console.log('data', nodes, edges)
-            onLayout('LR')
-        }
-    }, [nodesInitialized])
-
-    return (
-        <ThemeProvider theme={{antd: token, base: {color: 'mediumseagreen'}}}>
-            <ReactFlow
-                nodes={nodes}
-                edges={edges}
-                nodeTypes={nodeTypes}
-                edgeTypes={edgeTypes}
-                onNodesChange={onNodesChange}
-                onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
-                onInit={() => {
-                    window.requestAnimationFrame(() => {
-                        fitView()
-                    })
-                }}
-                panOnScroll
-                selectionOnDrag
-                panOnDrag={panOnDrag}
-                selectionMode={SelectionMode.Partial}
-                style={{borderRadius: 20}}
-                proOptions={{hideAttribution: true}}
-                fitView
-                minZoom={0.01}
-                maxZoom={4}
-                connectionLineComponent={FloatingConnectionLine}
-            >
-                <Background
-                    style={{backgroundColor: mode === 'dark' ? '#262626' : '#D9D9D9'}}
-                    color={mode === 'dark' ? '#D9D9D9' : '#262626'}
-                    variant={BackgroundVariant.Dots}
-                />
-                <MiniMap style={{borderRadius: 20, overflow: 'hidden'}}/>
-                <Panel position='bottom-center'>
-                    <button onClick={() => onLayout('LR')}>layout</button>
-                </Panel>
-            </ReactFlow>
-        </ThemeProvider>
-    )
-}
-
-const ProviderFlow = () => {
-    const [tasks, setTasks] = useState<Task[]>([])
     const [shouldFetch, setShouldFetch] = useState<boolean>(true)
+    const [contextId, setContextId] = useState<string>(params.context_id as string || '')
 
-    const contextId = "7396f21897c042a4bc7ad526ea4b9339"
+    const [shouldFitView, setShouldFitView] = useState<boolean>(true)
+    const [shouldLayout, setShouldLayout] = useState<boolean>(true)
 
     useEffect(() => {
         if (!shouldFetch) return
+
+        if (!contextId) {
+            setShouldFetch(false)
+            return
+        }
+
+        console.log('fetching:', contextId)
 
         APIWrapper.getSpecifications().then((specifications) => {
             APIWrapper.getTasksByContext(contextId).then(apiTasks => {
                 setShouldFetch(false)
                 console.log('got', apiTasks)
 
-                setTasks(apiTasks.map((t): Task => {
+                const tasks = apiTasks.map((t): Task => {
                     let status = 'running'
                     const rawStatus = t.info['status'] as string
                     const rawSubstatus = t.info['sub_status'] as string
@@ -427,25 +414,114 @@ const ProviderFlow = () => {
                         parentId: t.info['context_parent_id'],
                         info: t.info,
                     }
-                }))
+                })
+
+                const reactflowGraph = tasksToReactflowGraph(tasks)
+
+                setNodes(reactflowGraph.nodes)
+                setEdges(reactflowGraph.edges)
+
+
+                setShouldLayout(true)
+                setShouldFitView(true)
+                // onLayout('LR')
             })
         })
-
-
     })
 
-    console.log('tasks', tasks)
+    useEffect(() => {
+        if (nodesInitialized) {
+            if (shouldLayout) {
+                onLayout('LR')
+                setShouldLayout(false)
+            } else if (shouldFitView) {
+                setTimeout(fitView)
+                setShouldFitView(false)
+            }
+        }
+    })
 
-    let {nodes, edges} = tasksToReactflowGraph(tasks)
+    // const onInit = useCallback(() => {
+    //     onLayout('LR')
+    //     // setShouldFitView(true)
+    // })
 
-    console.log('nodes/edges', nodes, edges)
-    // edges= []
 
-    if (shouldFetch) return
+    const onConnect = useCallback(
+        (connection) => setEdges((eds) => {
+            return addEdge(connection, eds)
+        }),
+        [setEdges]
+    )
+
+    const onLayout = (direction) => {
+        const nodes = getNodes()
+        const edges = getEdges()
+        const layouted = getLayoutedElements(nodes, edges, {direction})
+
+        setNodes([...layouted.nodes])
+        setEdges([...layouted.edges])
+
+        console.log('layed out')
+
+        setTimeout(fitView)
+    }
+
+
+    // if (shouldFetch) return
 
     return (
+        <ThemeProvider theme={{antd: token, base: {color: 'mediumseagreen'}}}>
+            <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                // onInit={onInit}
+                panOnScroll
+                selectionOnDrag
+                panOnDrag={panOnDrag}
+                selectionMode={SelectionMode.Partial}
+                style={{borderRadius: 20}}
+                proOptions={{hideAttribution: true}}
+                fitView
+                minZoom={0.01}
+                maxZoom={4}
+                connectionLineComponent={FloatingConnectionLine}
+            >
+                <Background
+                    style={{backgroundColor: mode === 'dark' ? '#262626' : '#D9D9D9'}}
+                    color={mode === 'dark' ? '#D9D9D9' : '#262626'}
+                    variant={BackgroundVariant.Dots}
+                />
+                <MiniMap position='top-right' style={{borderRadius: 20, overflow: 'hidden'}}/>
+
+                <Panel position={'top-left'}>
+                    <ControlPanel
+                        contextId={contextId}
+                        updateContext={(ctx: string) => {
+                            setContextId(ctx)
+                            setShouldFetch(true)
+
+                        }}
+                        fixLayout={() => onLayout('LR')}
+                        reload={() => setShouldFetch(true)}
+                        fitView={fitView}
+                    />
+                </Panel>
+
+            </ReactFlow>
+        </ThemeProvider>
+    )
+}
+
+const ProviderFlow = () => {
+    return (
         <ReactFlowProvider>
-            <Flow initialNodes={nodes} initialEdges={edges}/>
+            <Flow/>
         </ReactFlowProvider>
     )
 }

@@ -1,8 +1,9 @@
-package platform
+package builder
 
 import (
 	"context"
 	"fmt"
+	"github.com/ThreeDotsLabs/watermill-kafka/v2/pkg/kafka"
 	"github.com/ThreeDotsLabs/watermill-nats/v2/pkg/nats"
 	capi "github.com/hashicorp/consul/api"
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
@@ -13,20 +14,19 @@ import (
 	"github.com/ischenkx/kantoku/pkg/common/logging/prefixed"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/common/transport/broker/watermill"
-	"github.com/ischenkx/kantoku/pkg/core/event"
-	"github.com/ischenkx/kantoku/pkg/core/resource"
-	redisResources "github.com/ischenkx/kantoku/pkg/core/resource/redis"
+	"github.com/ischenkx/kantoku/pkg/core"
+	"github.com/ischenkx/kantoku/pkg/core/database/event_broker"
+	resourcedb "github.com/ischenkx/kantoku/pkg/core/database/resource_db"
+	"github.com/ischenkx/kantoku/pkg/core/database/task_db"
 	"github.com/ischenkx/kantoku/pkg/core/services/executor"
 	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies"
 	manager2 "github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/manager"
 	resourceResolver2 "github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/manager/resolvers/resource_resolver"
 	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/manager/task2group"
 	"github.com/ischenkx/kantoku/pkg/core/services/status"
-	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/ischenkx/kantoku/pkg/core/task"
+	"github.com/ischenkx/kantoku/pkg/lib/builder/errx"
 	"github.com/ischenkx/kantoku/pkg/lib/discovery"
 	"github.com/ischenkx/kantoku/pkg/lib/discovery/consul"
-	"github.com/ischenkx/kantoku/pkg/lib/platform/errx"
 	"github.com/ischenkx/kantoku/pkg/lib/resources"
 	"github.com/ischenkx/kantoku/pkg/lib/tasks/specification"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -40,8 +40,8 @@ import (
 	"time"
 )
 
-func BuildSystem(ctx context.Context, logger *slog.Logger, config SystemConfig) (*system.System, error) {
-	tasks, err := BuildTasks(ctx, logger, config.Tasks)
+func BuildSystem(ctx context.Context, logger *slog.Logger, config SystemConfig) (*core.System, error) {
+	tasksDb, err := BuildTasks(ctx, logger, config.Tasks)
 	if err != nil {
 		return nil, errx.FailedToBuild("tasks", err)
 	}
@@ -51,20 +51,20 @@ func BuildSystem(ctx context.Context, logger *slog.Logger, config SystemConfig) 
 		return nil, errx.FailedToBuild("events", err)
 	}
 
-	resources, err := BuildResources(ctx, events, logger, config.Resources)
+	resourceDb, err := BuildResources(ctx, events, logger, config.Resources)
 	if err != nil {
 		return nil, errx.FailedToBuild("resources", err)
 	}
 
-	return &system.System{
-		Events_:    events,
-		Resources_: resources,
-		Tasks_:     tasks,
-		Logger:     logger.With(slog.String("component", "system")),
-	}, nil
+	return core.NewSystem(
+		events,
+		resourceDb,
+		tasksDb,
+		logger.With(slog.String("component", "system")),
+	), nil
 }
 
-func BuildTasks(ctx context.Context, logger *slog.Logger, config TasksConfig) (task.Storage, error) {
+func BuildTasks(ctx context.Context, logger *slog.Logger, config TasksConfig) (core.TaskDB, error) {
 	storage, err := BuildTasksStorage(ctx, logger, config.Storage)
 	if err != nil {
 		return nil, errx.FailedToBuild("tasks_storage", err)
@@ -73,7 +73,7 @@ func BuildTasks(ctx context.Context, logger *slog.Logger, config TasksConfig) (t
 	return storage, nil
 }
 
-func BuildTasksStorage(ctx context.Context, logger *slog.Logger, config TasksStorageConfig) (task.Storage, error) {
+func BuildTasksStorage(ctx context.Context, logger *slog.Logger, config TasksStorageConfig) (core.TaskDB, error) {
 	switch config.Kind {
 	case "mongo":
 		client, err := buildMongo(ctx, config.URI)
@@ -96,9 +96,9 @@ func BuildTasksStorage(ctx context.Context, logger *slog.Logger, config TasksSto
 			Logger:     logger,
 		}
 
-		taskStorage := &task.MongoStorage{
+		taskStorage := &taskdb.MongoDB{
 			BaseStorage: st,
-			Codec:       task.Codec{},
+			Codec:       core.TaskCodec{},
 		}
 
 		return taskStorage, nil
@@ -107,7 +107,7 @@ func BuildTasksStorage(ctx context.Context, logger *slog.Logger, config TasksSto
 	}
 }
 
-func BuildResources(ctx context.Context, broker *event.Broker, logger *slog.Logger, config ResourcesConfig) (resource.Storage, error) {
+func BuildResources(ctx context.Context, broker core.Broker, logger *slog.Logger, config ResourcesConfig) (core.ResourceDB, error) {
 	storage, err := BuildResourcesStorage(ctx, config.Storage)
 	if err != nil {
 		return nil, errx.FailedToBuild("resources_storage", err)
@@ -125,7 +125,7 @@ func BuildResources(ctx context.Context, broker *event.Broker, logger *slog.Logg
 	return storage, nil
 }
 
-func BuildResourcesStorage(ctx context.Context, config ResourcesStorageConfig) (resource.Storage, error) {
+func BuildResourcesStorage(ctx context.Context, config ResourcesStorageConfig) (core.ResourceDB, error) {
 	switch config.Kind {
 	case "redis":
 		redisClient, err := buildRedis(ctx, config.URI)
@@ -138,13 +138,13 @@ func BuildResourcesStorage(ctx context.Context, config ResourcesStorageConfig) (
 			return nil, errx.FailedToBuild("redis", err)
 		}
 
-		return redisResources.New(redisClient, codec.JSON[resource.Resource](), keyPrefix), nil
+		return resourcedb.NewRedisDB(redisClient, codec.JSON[core.Resource](), keyPrefix), nil
 	default:
 		return nil, errx.UnsupportedKind(config.Kind)
 	}
 }
 
-func BuildResourcesObserver(ctx context.Context, broker *event.Broker, logger *slog.Logger, config ResourcesObserverConfig) (resources.Observer, error) {
+func BuildResourcesObserver(ctx context.Context, broker core.Broker, logger *slog.Logger, config ResourcesObserverConfig) (resources.Observer, error) {
 	switch config.Kind {
 	case "notifier":
 		var notifierConfig struct {
@@ -166,11 +166,11 @@ func BuildResourcesObserver(ctx context.Context, broker *event.Broker, logger *s
 	}
 }
 
-func BuildEvents(ctx context.Context, logger *slog.Logger, config EventsConfig) (*event.Broker, error) {
+func BuildEvents(ctx context.Context, logger *slog.Logger, config EventsConfig) (core.Broker, error) {
 	return BuildEventBroker(ctx, logger, config.Broker)
 }
 
-func BuildEventBroker(ctx context.Context, logger *slog.Logger, cfg EventsBrokerConfig) (*event.Broker, error) {
+func BuildEventBroker(ctx context.Context, logger *slog.Logger, cfg EventsBrokerConfig) (core.Broker, error) {
 	switch cfg.Kind {
 	case "nats":
 		natsOptions := []nc.Option{
@@ -228,17 +228,48 @@ func BuildEventBroker(ctx context.Context, logger *slog.Logger, cfg EventsBroker
 			return nil, fmt.Errorf("failed to connect to nats: %w", err)
 		}
 
-		b := watermill.Broker[event.Event]{
+		b := watermill.Broker[core.Event]{
 			Agent:     agent,
-			ItemCodec: codec.JSON[event.Event](),
+			ItemCodec: codec.JSON[core.Event](),
 			Logger: logger.With(
 				slog.String("component", "broker"),
 			),
-			//Logger:                    extractLogger(ctx, slog.Default()),
+			//logger:                    extractLogger(ctx, slog.Default()),
 			ConsumerChannelBufferSize: 1024,
 		}
 
-		return event.NewBroker(b), nil
+		return eventbroker.WrapCommonBroker(b), nil
+	case "kafka":
+		subscriberConfig := kafka.SubscriberConfig{
+			Unmarshaler: kafka.DefaultMarshaler{},
+		}
+		publishedConfig := kafka.PublisherConfig{
+			Marshaler: kafka.DefaultMarshaler{},
+		}
+
+		agent, err := watermill.Kafka(
+			[]string{cfg.URI},
+			subscriberConfig,
+			publishedConfig,
+			logger.With(
+				slog.String("component", "broker_agent"),
+				slog.String("component_type", "kafka"),
+			),
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to connect to kafka: %w", err)
+		}
+
+		b := watermill.Broker[core.Event]{
+			Agent:     agent,
+			ItemCodec: codec.JSON[core.Event](),
+			Logger: logger.With(
+				slog.String("component", "broker"),
+			),
+			ConsumerChannelBufferSize: 1024,
+		}
+
+		return eventbroker.WrapCommonBroker(b), nil
 	default:
 		return nil, errx.UnsupportedKind(cfg.Kind)
 	}
@@ -277,7 +308,7 @@ func BuildSpecifications(ctx context.Context, cfg SpecificationsConfig) (*specif
 	}
 }
 
-func BuildHttpApiDeployment(ctx context.Context, sys *system.System, specificationManager *specification.Manager, logger *slog.Logger, cfg HttpApiServiceConfig) (Deployment[*HttpApiService], error) {
+func BuildHttpApiDeployment(ctx context.Context, sys *core.System, specificationManager *specification.Manager, logger *slog.Logger, cfg HttpApiServiceConfig) (Deployment[*HttpApiService], error) {
 	core, err := BuildServiceCore(ctx, "http-api", logger, cfg.ServiceConfig)
 	if err != nil {
 		return Deployment[*HttpApiService]{}, errx.FailedToBuild("core", err)
@@ -299,7 +330,7 @@ func BuildHttpApiDeployment(ctx context.Context, sys *system.System, specificati
 	}, nil
 }
 
-func BuildSchedulerDeployment(ctx context.Context, sys *system.System, logger *slog.Logger, cfg SchedulerServiceConfig) (Deployment[*dependencies.Service], error) {
+func BuildSchedulerDeployment(ctx context.Context, sys *core.System, logger *slog.Logger, cfg SchedulerServiceConfig) (Deployment[*dependencies.Service], error) {
 	core, err := BuildServiceCore(ctx, "scheduler", logger, cfg.ServiceConfig)
 	if err != nil {
 		return Deployment[*dependencies.Service]{}, errx.FailedToBuild("core", err)
@@ -326,7 +357,7 @@ func BuildSchedulerDeployment(ctx context.Context, sys *system.System, logger *s
 		TaskToGroup:  taskToGroup,
 		Resolvers:    resolvers,
 		Logger:       logger.With(slog.String("component", "dependency_manager")),
-		//Logger:       extractLogger(ctx, slog.Default()),
+		//logger:       extractLogger(ctx, slog.Default()),
 	}
 
 	srvc := &dependencies.Service{
@@ -341,11 +372,11 @@ func BuildSchedulerDeployment(ctx context.Context, sys *system.System, logger *s
 	}, nil
 }
 
-func buildResolvers(ctx context.Context, system system.AbstractSystem, logger *slog.Logger, configs []SchedulerResolverConfig) (map[string]manager2.Resolver, error) {
+func buildResolvers(ctx context.Context, system core.AbstractSystem, logger *slog.Logger, configs []SchedulerResolverConfig) (map[string]manager2.Resolver, error) {
 	result := make(map[string]manager2.Resolver, len(configs))
 	for _, config := range configs {
 		switch config.Kind {
-		case "resource":
+		case "resource_db":
 			var resourceResolverConfig SchedulerResourceResolverConfig
 			if err := config.Data.Bind(&resourceResolverConfig); err != nil {
 				return nil, errx.FailedToBind(err)
@@ -356,7 +387,7 @@ func buildResolvers(ctx context.Context, system system.AbstractSystem, logger *s
 				return nil, errx.FailedToBuild("resource_resolver", err)
 			}
 
-			result["resource"] = resolver
+			result["resource_db"] = resolver
 		default:
 			return nil, errx.UnsupportedKind(config.Kind)
 		}
@@ -365,7 +396,7 @@ func buildResolvers(ctx context.Context, system system.AbstractSystem, logger *s
 	return result, nil
 }
 
-func buildResourceResolver(ctx context.Context, system system.AbstractSystem, logger *slog.Logger, cfg SchedulerResourceResolverConfig) (*resourceResolver2.Resolver, error) {
+func buildResourceResolver(ctx context.Context, system core.AbstractSystem, logger *slog.Logger, cfg SchedulerResourceResolverConfig) (*resourceResolver2.Resolver, error) {
 	storage, err := buildResourceResolverStorage(ctx, cfg.Storage)
 	if err != nil {
 		return nil, errx.FailedToBuild("resource_resolver_storage", err)
@@ -378,9 +409,9 @@ func buildResourceResolver(ctx context.Context, system system.AbstractSystem, lo
 		PollInterval: cfg.Poller.Interval,
 		Logger: logger.With(
 			slog.String("component", "dependency_resolver"),
-			slog.String("component_type", "resource"),
+			slog.String("component_type", "resource_db"),
 		),
-		//Logger:       extractLogger(ctx, slog.Default()),
+		//logger:       extractLogger(ctx, slog.Default()),
 	}
 
 	return resolver, nil
@@ -452,13 +483,13 @@ func buildBatchedPostgresDependencies(ctx context.Context, logger *slog.Logger, 
 			slog.String("component", "dependencies"),
 			slog.String("component_type", "postgres:batched"),
 		),
-		//Logger: extractLogger(ctx, slog.Default()),
+		//logger: extractLogger(ctx, slog.Default()),
 	}
 
 	return mng, nil
 }
 
-func BuildStatusDeployment(ctx context.Context, sys *system.System, logger *slog.Logger, cfg StatusServiceConfig) (Deployment[*status.Service], error) {
+func BuildStatusDeployment(ctx context.Context, sys *core.System, logger *slog.Logger, cfg StatusServiceConfig) (Deployment[*status.Service], error) {
 	core, err := BuildServiceCore(ctx, "status", logger, cfg.ServiceConfig)
 	if err != nil {
 		return Deployment[*status.Service]{}, errx.FailedToBuild("core", err)
@@ -478,7 +509,7 @@ func BuildStatusDeployment(ctx context.Context, sys *system.System, logger *slog
 	}, nil
 }
 
-func BuildProcessorDeployment(ctx context.Context, sys *system.System, exe executor.Executor, logger *slog.Logger, cfg ProcessorServiceConfig) (Deployment[*executor.Service], error) {
+func BuildProcessorDeployment(ctx context.Context, sys *core.System, exe executor.Executor, logger *slog.Logger, cfg ProcessorServiceConfig) (Deployment[*executor.Service], error) {
 	core, err := BuildServiceCore(ctx, "processor", logger, cfg.ServiceConfig)
 	if err != nil {
 		return Deployment[*executor.Service]{}, errx.FailedToBuild("core", err)
@@ -499,7 +530,7 @@ func BuildProcessorDeployment(ctx context.Context, sys *system.System, exe execu
 	}, nil
 }
 
-func BuildDiscoveryDeployment(ctx context.Context, sys *system.System, logger *slog.Logger, cfg DiscoveryServiceConfig) (Deployment[*discovery.Poller], error) {
+func BuildDiscoveryDeployment(ctx context.Context, sys *core.System, logger *slog.Logger, cfg DiscoveryServiceConfig) (Deployment[*discovery.Poller], error) {
 	core, err := BuildServiceCore(ctx, "discovery", logger, cfg.ServiceConfig)
 	if err != nil {
 		return Deployment[*discovery.Poller]{}, errx.FailedToBuild("core", err)
@@ -599,7 +630,7 @@ func BuildPrettySlogHandler(w io.Writer, level slog.Level) slog.Handler {
 	return prefixedHandler
 }
 
-func buildMiddlewares(sys *system.System, cfg ServiceConfig) []service.Middleware {
+func buildMiddlewares(sys *core.System, cfg ServiceConfig) []service.Middleware {
 	var middlewares []service.Middleware
 
 	if cfg.Discovery.Enabled {

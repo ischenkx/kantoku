@@ -3,13 +3,11 @@ package fn
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/core/resource"
-	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/ischenkx/kantoku/pkg/core/task"
+	"github.com/ischenkx/kantoku/pkg/core"
 	"reflect"
 )
 
-func WithContext[T any](ctx context.Context, sys system.AbstractSystem, f func(*Context) (T, error)) (T, error) {
+func WithContext[T any](ctx context.Context, sys core.AbstractSystem, f func(*Context) (T, error)) (T, error) {
 	var result T
 	err := schedulingContext(ctx, sys, func(c *Context) error {
 		res, err := f(c)
@@ -24,14 +22,14 @@ func WithContext[T any](ctx context.Context, sys system.AbstractSystem, f func(*
 	return result, err
 }
 
-func schedulingContext(ctx context.Context, sys system.AbstractSystem, f func(*Context) error) error {
+func schedulingContext(ctx context.Context, sys core.AbstractSystem, f func(*Context) error) error {
 	proxy := proxyTask{f: f}
 	exe := NewExecutor[proxyTask, EmptyStruct, EmptyStruct](proxy)
 	taskCtx := NewContext(ctx)
 
-	sysTask := task.Task{
-		Inputs:  []resource.ID{},
-		Outputs: []resource.ID{},
+	sysTask := core.Task{
+		Inputs:  []string{},
+		Outputs: []string{},
 		ID:      "proxy---should-not-see-this",
 		Info:    map[string]any{},
 	}

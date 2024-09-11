@@ -6,9 +6,7 @@ import (
 	codec "github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
-	"github.com/ischenkx/kantoku/pkg/core/event"
-	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/ischenkx/kantoku/pkg/core/system/events"
+	"github.com/ischenkx/kantoku/pkg/core"
 	"golang.org/x/sync/errgroup"
 	"log/slog"
 )
@@ -16,7 +14,7 @@ import (
 const QueueName = "executor"
 
 type Service struct {
-	System      system.AbstractSystem
+	System      core.AbstractSystem
 	ResultCodec codec.Codec[Result, []byte]
 	Executor    Executor
 
@@ -33,37 +31,44 @@ func (srvc *Service) Run(ctx context.Context) error {
 		Service:     srvc.Core,
 	}
 
-	g.Go(func() error {
-		readyTaskEvents, err := srvc.System.Events().Consume(ctx, broker.TopicsInfo{
-			Group:  QueueName,
-			Topics: []string{events.OnTask.Ready},
+	readyTaskEvents, err := srvc.System.Events().Consume(ctx,
+		[]string{core.OnTask.Ready},
+		broker.ConsumerSettings{Group: QueueName},
+	)
+	if err != nil {
+		return fmt.Errorf("failed to read events: %w", err)
+	}
+
+	for i := 0; i < 100; i++ {
+		i := i
+		g.Go(func() error {
+			srvc.Logger().Info("starting a processor",
+				"worker", i+1)
+			broker.Processor[core.Event]{
+				Handler: func(ctx context.Context, ev core.Event) error {
+					taskId := string(ev.Data)
+
+					srvc.Logger().Info("received a task", "task_id", taskId)
+
+					if err := executionService.processReadyTask(ctx, taskId); err != nil {
+						return err
+					}
+
+					return nil
+				},
+				ErrorHandler: func(ctx context.Context, ev core.Event, err error) {
+					taskId := string(ev.Data)
+
+					srvc.Logger().
+						Error("failed to process a ready task",
+							slog.String("id", taskId),
+							slog.String("error", err.Error()))
+				},
+			}.Process(ctx, readyTaskEvents)
+
+			return nil
 		})
-		if err != nil {
-			return fmt.Errorf("failed to read events: %w", err)
-		}
-
-		broker.Processor[event.Event]{
-			Handler: func(ctx context.Context, ev event.Event) error {
-				taskId := string(ev.Data)
-
-				if err := executionService.processReadyTask(ctx, taskId); err != nil {
-					return err
-				}
-
-				return nil
-			},
-			ErrorHandler: func(ctx context.Context, ev event.Event, err error) {
-				taskId := string(ev.Data)
-
-				srvc.Logger().
-					Error("failed to process a ready task",
-						slog.String("id", taskId),
-						slog.String("error", err.Error()))
-			},
-		}.Process(ctx, readyTaskEvents)
-
-		return nil
-	})
+	}
 
 	g.Go(func() error {
 		if err := executionService.start(ctx); err != nil {

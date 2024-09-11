@@ -137,7 +137,7 @@ export const TaskCreate: React.FC<IResourceComponentsProps> = () => {
 
             const url = go({
                 to: {
-                    resource: 'tasks', // resource name or identifier
+                    resource: 'tasks', // resource_db name or identifier
                     action: 'show',
                     id: data.data.id || '',
                 },

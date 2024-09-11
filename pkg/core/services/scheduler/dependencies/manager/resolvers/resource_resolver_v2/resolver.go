@@ -3,15 +3,14 @@ package resourceResolverV2
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/core/resource"
-	"github.com/ischenkx/kantoku/pkg/core/system"
+	"github.com/ischenkx/kantoku/pkg/core"
 	"github.com/samber/lo"
 	"log/slog"
 	"time"
 )
 
 type Resolver struct {
-	System              system.AbstractSystem
+	System              core.AbstractSystem
 	ReadyResourcesTopic string
 	Logger              *slog.Logger
 }
@@ -23,7 +22,7 @@ func (resolver *Resolver) Bind(ctx context.Context, depId string, data any) erro
 	}
 
 	if err := resolver.Storage.Save(ctx, depId, resourceId); err != nil {
-		return fmt.Errorf("failed to bind resource and dependency: %w", err)
+		return fmt.Errorf("failed to bind resource_db and dependency: %w", err)
 	}
 
 	return nil
@@ -82,7 +81,7 @@ poller:
 			var resolvedIds []string
 
 			for _, res := range resources {
-				if res.Status != resource.Ready {
+				if res.Status != core.Ready {
 					continue
 				}
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/ischenkx/kantoku/pkg/common/logging/prefixed"
 	"github.com/ischenkx/kantoku/pkg/common/service"
-	"github.com/ischenkx/kantoku/pkg/lib/platform"
+	"github.com/ischenkx/kantoku/pkg/lib/builder"
 	"github.com/spf13/cobra"
 	"log/slog"
 	"os"
@@ -53,7 +53,7 @@ func NewDeploy() *cobra.Command {
 				flags.serviceDiscovery = false
 			}
 
-			var cfg platform.Config
+			var cfg builder.Config
 
 			logger := slog.New(
 				prefixed.NewHandler(
@@ -67,7 +67,7 @@ func NewDeploy() *cobra.Command {
 
 			if flags.config != "" {
 				var err error
-				cfg, err = platform.FromFile(flags.config)
+				cfg, err = builder.FromFile(flags.config)
 				if err != nil {
 					cmd.PrintErrln("failed to parse config from file:", err)
 					return
@@ -81,14 +81,14 @@ func NewDeploy() *cobra.Command {
 			defer cancel()
 
 			cmd.Println("building: system")
-			sys, err := platform.BuildSystem(ctx, logger, cfg.Core.System)
+			sys, err := builder.BuildSystem(ctx, logger, cfg.Core.System)
 			if err != nil {
 				cmd.PrintErrln("failed to create a system instance from config:", err)
 				return
 			}
 
 			cmd.Println("building: system")
-			specifications, err := platform.BuildSpecifications(ctx, cfg.Core.Specifications)
+			specifications, err := builder.BuildSpecifications(ctx, cfg.Core.Specifications)
 			if err != nil {
 				cmd.PrintErrln("failed to build a specifications manager:", err)
 				return
@@ -98,7 +98,7 @@ func NewDeploy() *cobra.Command {
 
 			if flags.scheduler {
 				cmd.Println("building: scheduler")
-				deployment, err := platform.BuildSchedulerDeployment(ctx, sys, logger, cfg.Services.Scheduler)
+				deployment, err := builder.BuildSchedulerDeployment(ctx, sys, logger, cfg.Services.Scheduler)
 				if err != nil {
 					cmd.PrintErrln(err)
 					return
@@ -110,7 +110,7 @@ func NewDeploy() *cobra.Command {
 			if flags.processor {
 				cmd.Println("building: processor")
 				// TODO: add processor!
-				deployment, err := platform.BuildProcessorDeployment(ctx, sys, nil, logger, cfg.Services.Processor)
+				deployment, err := builder.BuildProcessorDeployment(ctx, sys, nil, logger, cfg.Services.Processor)
 				if err != nil {
 					cmd.PrintErrln(err)
 					return
@@ -122,7 +122,7 @@ func NewDeploy() *cobra.Command {
 			if flags.status {
 				cmd.Println("building: status")
 
-				deployment, err := platform.BuildStatusDeployment(ctx, sys, logger, cfg.Services.Status)
+				deployment, err := builder.BuildStatusDeployment(ctx, sys, logger, cfg.Services.Status)
 				if err != nil {
 					cmd.PrintErrln(err)
 					return
@@ -134,7 +134,7 @@ func NewDeploy() *cobra.Command {
 			if flags.api {
 				cmd.Println("building: api")
 
-				deployment, err := platform.BuildHttpApiDeployment(ctx, sys, specifications, logger, cfg.Services.HttpApi)
+				deployment, err := builder.BuildHttpApiDeployment(ctx, sys, specifications, logger, cfg.Services.HttpApi)
 				if err != nil {
 					cmd.PrintErrln(err)
 					return
@@ -146,7 +146,7 @@ func NewDeploy() *cobra.Command {
 			if flags.serviceDiscovery {
 				cmd.Println("building service discovery")
 
-				deployemnt, err := platform.BuildDiscoveryDeployment(ctx, sys, logger, cfg.Services.Discovery)
+				deployemnt, err := builder.BuildDiscoveryDeployment(ctx, sys, logger, cfg.Services.Discovery)
 				if err != nil {
 					cmd.PrintErrln(err)
 					return

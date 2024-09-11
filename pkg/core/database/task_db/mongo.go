@@ -1,42 +1,32 @@
-package task
+package taskdb
 
 import (
 	"context"
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/common/data/storage"
+	"github.com/ischenkx/kantoku/pkg/core"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"reflect"
 )
 
-type Storage interface {
-	storage.Storage
+var _ core.TaskDB = (*MongoDB)(nil)
 
-	Insert(ctx context.Context, tasks []Task) error
-	Delete(ctx context.Context, ids []string) error
-	ByIDs(ctx context.Context, ids []string) ([]Task, error)
-	UpdateByIDs(ctx context.Context, ids []string, properties map[string]any) error
-	GetWithProperties(ctx context.Context, propertiesToValues map[string][]any) ([]Task, error)
-	UpdateWithProperties(ctx context.Context, propertiesToValues map[string][]any, newProperties map[string]any) (updatedDocs int, err error)
-}
-
-var _ Storage = (*MongoStorage)(nil)
-
-type MongoStorage struct {
+type MongoDB struct {
 	BaseStorage *storage.MongoStorage
-	Codec       codec.Codec[Task, map[string]any]
+	Codec       codec.Codec[core.Task, map[string]any]
 }
 
-func (ms *MongoStorage) Settings(ctx context.Context) (storage.Settings, error) {
+func (ms *MongoDB) Settings(ctx context.Context) (storage.Settings, error) {
 	return ms.BaseStorage.Settings(ctx)
 }
 
-func (ms *MongoStorage) Exec(ctx context.Context, command storage.Command) ([]storage.Document, error) {
+func (ms *MongoDB) Exec(ctx context.Context, command storage.Command) ([]storage.Document, error) {
 	return ms.BaseStorage.Exec(ctx, command)
 }
 
-func (ms *MongoStorage) Insert(ctx context.Context, tasks []Task) error {
+func (ms *MongoDB) Insert(ctx context.Context, tasks []core.Task) error {
 	encoded := make([]storage.Document, 0, len(tasks))
 	for _, task := range tasks {
 		encodedTask, err := ms.Codec.Encode(task)
@@ -64,7 +54,7 @@ func (ms *MongoStorage) Insert(ctx context.Context, tasks []Task) error {
 	return nil
 }
 
-func (ms *MongoStorage) Delete(ctx context.Context, ids []string) error {
+func (ms *MongoDB) Delete(ctx context.Context, ids []string) error {
 	_, err := ms.Exec(ctx, storage.Command{
 		Operation: "delete",
 		Params: []storage.Param{
@@ -91,7 +81,7 @@ func (ms *MongoStorage) Delete(ctx context.Context, ids []string) error {
 	return nil
 }
 
-func (ms *MongoStorage) ByIDs(ctx context.Context, ids []string) ([]Task, error) {
+func (ms *MongoDB) ByIDs(ctx context.Context, ids []string) ([]core.Task, error) {
 	docs, err := ms.Exec(ctx, storage.Command{
 		Operation: "find",
 		Params: []storage.Param{
@@ -134,7 +124,7 @@ func (ms *MongoStorage) ByIDs(ctx context.Context, ids []string) ([]Task, error)
 		return nil, fmt.Errorf("firstBatch has the wrong type: %s", reflect.TypeOf(firstBatchArray))
 	}
 
-	var result []Task
+	var result []core.Task
 	for _, doc := range firstBatchArray {
 		docObject, ok := doc.(map[string]interface{})
 		if !ok {
@@ -152,7 +142,7 @@ func (ms *MongoStorage) ByIDs(ctx context.Context, ids []string) ([]Task, error)
 	return result, nil
 }
 
-func (ms *MongoStorage) UpdateByIDs(ctx context.Context, ids []string, properties map[string]any) error {
+func (ms *MongoDB) UpdateByIDs(ctx context.Context, ids []string, properties map[string]any) error {
 	_, err := ms.Exec(ctx, storage.Command{
 		Operation: "update",
 		Params: []storage.Param{
@@ -180,7 +170,7 @@ func (ms *MongoStorage) UpdateByIDs(ctx context.Context, ids []string, propertie
 	return nil
 }
 
-func (ms *MongoStorage) GetWithProperties(ctx context.Context, propertiesToValues map[string][]any) ([]Task, error) {
+func (ms *MongoDB) GetWithProperties(ctx context.Context, propertiesToValues map[string][]any) ([]core.Task, error) {
 	filter := map[string]any{}
 	for key, value := range propertiesToValues {
 		filter[key] = map[string]any{
@@ -191,10 +181,9 @@ func (ms *MongoStorage) GetWithProperties(ctx context.Context, propertiesToValue
 	docs, err := ms.Exec(ctx, storage.Command{
 		Operation: "find",
 		Params: []storage.Param{
-			{
-				Name:  "filter",
-				Value: filter,
-			},
+			{"filter", filter},
+			{"batchSize", 200000000},
+			{"singleBatch", true},
 		},
 	})
 	if err != nil {
@@ -226,7 +215,7 @@ func (ms *MongoStorage) GetWithProperties(ctx context.Context, propertiesToValue
 		return nil, fmt.Errorf("firstBatch has the wrong type")
 	}
 
-	var result []Task
+	var result []core.Task
 	for _, doc := range firstBatchArray {
 		docObject, ok := doc.(map[string]interface{})
 		if !ok {
@@ -244,7 +233,7 @@ func (ms *MongoStorage) GetWithProperties(ctx context.Context, propertiesToValue
 	return result, nil
 }
 
-func (ms *MongoStorage) UpdateWithProperties(ctx context.Context, propertiesToValues map[string][]any, newProperties map[string]any) (int, error) {
+func (ms *MongoDB) UpdateWithProperties(ctx context.Context, propertiesToValues map[string][]any, newProperties map[string]any) (int, error) {
 	filter := map[string]any{}
 	for key, value := range propertiesToValues {
 		filter[key] = map[string]any{

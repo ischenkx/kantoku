@@ -5,30 +5,27 @@ import (
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
-	"github.com/ischenkx/kantoku/pkg/core/event"
-	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/ischenkx/kantoku/pkg/core/system/events"
+	"github.com/ischenkx/kantoku/pkg/core"
 	"log/slog"
 )
 
 const QueueName = "scheduler"
 
 type Service struct {
-	System system.AbstractSystem
+	System core.AbstractSystem
 	service.Core
 }
 
 func (srvc *Service) Run(ctx context.Context) error {
-	channel, err := srvc.System.Events().Consume(ctx, broker.TopicsInfo{
-		Group:  QueueName,
-		Topics: []string{events.OnTask.Created},
+	channel, err := srvc.System.Events().Consume(ctx, []string{core.OnTask.Created}, broker.ConsumerSettings{
+		Group: QueueName,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to read events: %w", err)
 	}
 
-	broker.Processor[event.Event]{
-		Handler: func(ctx context.Context, ev event.Event) error {
+	broker.Processor[core.Event]{
+		Handler: func(ctx context.Context, ev core.Event) error {
 			taskId := string(ev.Data)
 
 			srvc.Logger().Debug("new task",
@@ -39,14 +36,14 @@ func (srvc *Service) Run(ctx context.Context) error {
 				return fmt.Errorf("failed to load task (id='%s'): %w", taskId, err)
 			}
 
-			err = srvc.System.Events().Send(ctx, event.New(events.OnTask.Ready, []byte(t.ID)))
+			err = srvc.System.Events().Send(ctx, core.NewEvent(core.OnTask.Ready, []byte(t.ID)))
 			if err != nil {
 				return fmt.Errorf("failed to publish an event (taskId='%s'): %w", taskId, err)
 			}
 
 			return nil
 		},
-		ErrorHandler: func(ctx context.Context, ev event.Event, err error) {
+		ErrorHandler: func(ctx context.Context, ev core.Event, err error) {
 			taskId := string(ev.Data)
 
 			srvc.Logger().Error("failed to schedule task",

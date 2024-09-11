@@ -584,7 +584,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Allocates N resources
          * @param {number} amount 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         resourcesAllocatePost: async (amount: number, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -620,8 +620,8 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
         /**
          * 
          * @summary Deallocate resources
-         * @param {Array<string>} requestBody A list of resource identifiers
-         * @param {*} [options] Override http request option.
+         * @param {Array<string>} requestBody A list of resource_db identifiers
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         resourcesDeallocatePost: async (requestBody: Array<string>, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -657,7 +657,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Initialize resources
          * @param {Array<ResourceInitializer>} resourceInitializer A dictionary (ResourceID -&gt; Value)
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         resourcesInitializePost: async (resourceInitializer: Array<ResourceInitializer>, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -692,8 +692,8 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
         /**
          * 
          * @summary Load resources
-         * @param {Array<string>} requestBody A list of resource identifiers
-         * @param {*} [options] Override http request option.
+         * @param {Array<string>} requestBody A list of resource_db identifiers
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         resourcesLoadPost: async (requestBody: Array<string>, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -729,7 +729,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Load a set of tasks
          * @param {Array<string>} requestBody A list of task identifiers
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksLoadPost: async (requestBody: Array<string>, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -765,7 +765,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Restart a failed task
          * @param {TasksRestartPostRequest} tasksRestartPostRequest A task id
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksRestartPost: async (tasksRestartPostRequest: TasksRestartPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -801,7 +801,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Spawn a new task from specification
          * @param {SpecificationBasedTaskParameters} specificationBasedTaskParameters The specification of a task to be spawned
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpawnFromSpecPost: async (specificationBasedTaskParameters: SpecificationBasedTaskParameters, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -837,7 +837,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Spawn a new task
          * @param {TaskParameters} taskParameters The specification of a task to be spawned
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpawnPost: async (taskParameters: TaskParameters, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -873,7 +873,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Create a specification
          * @param {Specification} specification 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpecificationsCreatePost: async (specification: Specification, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -908,7 +908,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
         /**
          * 
          * @summary Get all specifications
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpecificationsGetAllPost: async (options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -939,7 +939,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Get specifications by id
          * @param {TasksRestartPostRequest} tasksRestartPostRequest 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpecificationsGetPost: async (tasksRestartPostRequest: TasksRestartPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -975,7 +975,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Remove a specification
          * @param {TasksRestartPostRequest} tasksRestartPostRequest 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpecificationsRemovePost: async (tasksRestartPostRequest: TasksRestartPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -1011,7 +1011,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Create a type
          * @param {TypeWithID} typeWithID 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpecificationsTypesCreatePost: async (typeWithID: TypeWithID, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -1046,7 +1046,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
         /**
          * 
          * @summary Get all types
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpecificationsTypesGetAllPost: async (options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -1077,7 +1077,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Get a type by id
          * @param {TasksRestartPostRequest} tasksRestartPostRequest 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpecificationsTypesGetPost: async (tasksRestartPostRequest: TasksRestartPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -1113,7 +1113,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Remove a type
          * @param {TasksRestartPostRequest} tasksRestartPostRequest 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpecificationsTypesRemovePost: async (tasksRestartPostRequest: TasksRestartPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -1149,7 +1149,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Delete tasks with the given ids
          * @param {Array<string>} requestBody An array of task ids to delete
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksStorageDeletePost: async (requestBody: Array<string>, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -1185,7 +1185,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Execute a command in the task storage
          * @param {TaskStorageCommand} taskStorageCommand A command
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksStorageExecPost: async (taskStorageCommand: TaskStorageCommand, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -1221,7 +1221,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Get a list of tasks by their ids
          * @param {Array<string>} requestBody An array of ids
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksStorageGetByIdsPost: async (requestBody: Array<string>, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -1257,7 +1257,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Get tasks with provided properties
          * @param {TasksStorageGetWithPropertiesPostRequest} tasksStorageGetWithPropertiesPostRequest properties
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksStorageGetWithPropertiesPost: async (tasksStorageGetWithPropertiesPostRequest: TasksStorageGetWithPropertiesPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -1293,7 +1293,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Insert tasks in the database
          * @param {Array<Task>} task An array of tasks to insert
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksStorageInsertPost: async (task: Array<Task>, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -1328,7 +1328,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
         /**
          * 
          * @summary Get storage settings
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksStorageSettingsPost: async (options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -1359,7 +1359,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Update task properties by ids
          * @param {TasksStorageUpdateByIdsPostRequest} tasksStorageUpdateByIdsPostRequest Update info
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksStorageUpdateByIdsPost: async (tasksStorageUpdateByIdsPostRequest: TasksStorageUpdateByIdsPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -1395,7 +1395,7 @@ export const DefaultApiAxiosParamCreator = function (configuration?: Configurati
          * 
          * @summary Update tasks with provided properties
          * @param {TasksStorageUpdateWithPropertiesPostRequest} tasksStorageUpdateWithPropertiesPostRequest properties
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksStorageUpdateWithPropertiesPost: async (tasksStorageUpdateWithPropertiesPostRequest: TasksStorageUpdateWithPropertiesPostRequest, options: AxiosRequestConfig = {}): Promise<RequestArgs> => {
@@ -1441,7 +1441,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Allocates N resources
          * @param {number} amount 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async resourcesAllocatePost(amount: number, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<string>>> {
@@ -1451,8 +1451,8 @@ export const DefaultApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary Deallocate resources
-         * @param {Array<string>} requestBody A list of resource identifiers
-         * @param {*} [options] Override http request option.
+         * @param {Array<string>} requestBody A list of resource_db identifiers
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async resourcesDeallocatePost(requestBody: Array<string>, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<object>> {
@@ -1463,7 +1463,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Initialize resources
          * @param {Array<ResourceInitializer>} resourceInitializer A dictionary (ResourceID -&gt; Value)
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async resourcesInitializePost(resourceInitializer: Array<ResourceInitializer>, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<object>> {
@@ -1473,8 +1473,8 @@ export const DefaultApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary Load resources
-         * @param {Array<string>} requestBody A list of resource identifiers
-         * @param {*} [options] Override http request option.
+         * @param {Array<string>} requestBody A list of resource_db identifiers
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async resourcesLoadPost(requestBody: Array<string>, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Resource>>> {
@@ -1485,7 +1485,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Load a set of tasks
          * @param {Array<string>} requestBody A list of task identifiers
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksLoadPost(requestBody: Array<string>, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Task>>> {
@@ -1496,7 +1496,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Restart a failed task
          * @param {TasksRestartPostRequest} tasksRestartPostRequest A task id
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksRestartPost(tasksRestartPostRequest: TasksRestartPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<TasksRestartPostRequest>> {
@@ -1507,7 +1507,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Spawn a new task from specification
          * @param {SpecificationBasedTaskParameters} specificationBasedTaskParameters The specification of a task to be spawned
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksSpawnFromSpecPost(specificationBasedTaskParameters: SpecificationBasedTaskParameters, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<TaskSpawnResponse>> {
@@ -1518,7 +1518,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Spawn a new task
          * @param {TaskParameters} taskParameters The specification of a task to be spawned
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksSpawnPost(taskParameters: TaskParameters, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<TaskSpawnResponse>> {
@@ -1529,7 +1529,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Create a specification
          * @param {Specification} specification 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksSpecificationsCreatePost(specification: Specification, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
@@ -1539,7 +1539,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary Get all specifications
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksSpecificationsGetAllPost(options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Specification>>> {
@@ -1550,7 +1550,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Get specifications by id
          * @param {TasksRestartPostRequest} tasksRestartPostRequest 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksSpecificationsGetPost(tasksRestartPostRequest: TasksRestartPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Specification>> {
@@ -1561,7 +1561,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Remove a specification
          * @param {TasksRestartPostRequest} tasksRestartPostRequest 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksSpecificationsRemovePost(tasksRestartPostRequest: TasksRestartPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
@@ -1572,7 +1572,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Create a type
          * @param {TypeWithID} typeWithID 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksSpecificationsTypesCreatePost(typeWithID: TypeWithID, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
@@ -1582,7 +1582,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary Get all types
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksSpecificationsTypesGetAllPost(options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<TypeWithID>>> {
@@ -1593,7 +1593,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Get a type by id
          * @param {TasksRestartPostRequest} tasksRestartPostRequest 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksSpecificationsTypesGetPost(tasksRestartPostRequest: TasksRestartPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<TypeWithID>> {
@@ -1604,7 +1604,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Remove a type
          * @param {TasksRestartPostRequest} tasksRestartPostRequest 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksSpecificationsTypesRemovePost(tasksRestartPostRequest: TasksRestartPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
@@ -1615,7 +1615,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Delete tasks with the given ids
          * @param {Array<string>} requestBody An array of task ids to delete
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksStorageDeletePost(requestBody: Array<string>, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
@@ -1626,7 +1626,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Execute a command in the task storage
          * @param {TaskStorageCommand} taskStorageCommand A command
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksStorageExecPost(taskStorageCommand: TaskStorageCommand, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<{ [key: string]: any; }>>> {
@@ -1637,7 +1637,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Get a list of tasks by their ids
          * @param {Array<string>} requestBody An array of ids
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksStorageGetByIdsPost(requestBody: Array<string>, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Task>>> {
@@ -1648,7 +1648,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Get tasks with provided properties
          * @param {TasksStorageGetWithPropertiesPostRequest} tasksStorageGetWithPropertiesPostRequest properties
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksStorageGetWithPropertiesPost(tasksStorageGetWithPropertiesPostRequest: TasksStorageGetWithPropertiesPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<Array<Task>>> {
@@ -1659,7 +1659,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Insert tasks in the database
          * @param {Array<Task>} task An array of tasks to insert
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksStorageInsertPost(task: Array<Task>, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
@@ -1669,7 +1669,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
         /**
          * 
          * @summary Get storage settings
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksStorageSettingsPost(options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<TaskStorageSettings>> {
@@ -1680,7 +1680,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Update task properties by ids
          * @param {TasksStorageUpdateByIdsPostRequest} tasksStorageUpdateByIdsPostRequest Update info
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksStorageUpdateByIdsPost(tasksStorageUpdateByIdsPostRequest: TasksStorageUpdateByIdsPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
@@ -1691,7 +1691,7 @@ export const DefaultApiFp = function(configuration?: Configuration) {
          * 
          * @summary Update tasks with provided properties
          * @param {TasksStorageUpdateWithPropertiesPostRequest} tasksStorageUpdateWithPropertiesPostRequest properties
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         async tasksStorageUpdateWithPropertiesPost(tasksStorageUpdateWithPropertiesPostRequest: TasksStorageUpdateWithPropertiesPostRequest, options?: AxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<TasksStorageUpdateWithPropertiesPost200Response>> {
@@ -1712,7 +1712,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Allocates N resources
          * @param {number} amount 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         resourcesAllocatePost(amount: number, options?: any): AxiosPromise<Array<string>> {
@@ -1721,8 +1721,8 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
         /**
          * 
          * @summary Deallocate resources
-         * @param {Array<string>} requestBody A list of resource identifiers
-         * @param {*} [options] Override http request option.
+         * @param {Array<string>} requestBody A list of resource_db identifiers
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         resourcesDeallocatePost(requestBody: Array<string>, options?: any): AxiosPromise<object> {
@@ -1732,7 +1732,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Initialize resources
          * @param {Array<ResourceInitializer>} resourceInitializer A dictionary (ResourceID -&gt; Value)
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         resourcesInitializePost(resourceInitializer: Array<ResourceInitializer>, options?: any): AxiosPromise<object> {
@@ -1741,8 +1741,8 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
         /**
          * 
          * @summary Load resources
-         * @param {Array<string>} requestBody A list of resource identifiers
-         * @param {*} [options] Override http request option.
+         * @param {Array<string>} requestBody A list of resource_db identifiers
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         resourcesLoadPost(requestBody: Array<string>, options?: any): AxiosPromise<Array<Resource>> {
@@ -1752,7 +1752,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Load a set of tasks
          * @param {Array<string>} requestBody A list of task identifiers
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksLoadPost(requestBody: Array<string>, options?: any): AxiosPromise<Array<Task>> {
@@ -1762,7 +1762,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Restart a failed task
          * @param {TasksRestartPostRequest} tasksRestartPostRequest A task id
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksRestartPost(tasksRestartPostRequest: TasksRestartPostRequest, options?: any): AxiosPromise<TasksRestartPostRequest> {
@@ -1772,7 +1772,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Spawn a new task from specification
          * @param {SpecificationBasedTaskParameters} specificationBasedTaskParameters The specification of a task to be spawned
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpawnFromSpecPost(specificationBasedTaskParameters: SpecificationBasedTaskParameters, options?: any): AxiosPromise<TaskSpawnResponse> {
@@ -1782,7 +1782,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Spawn a new task
          * @param {TaskParameters} taskParameters The specification of a task to be spawned
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpawnPost(taskParameters: TaskParameters, options?: any): AxiosPromise<TaskSpawnResponse> {
@@ -1792,7 +1792,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Create a specification
          * @param {Specification} specification 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpecificationsCreatePost(specification: Specification, options?: any): AxiosPromise<void> {
@@ -1801,7 +1801,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
         /**
          * 
          * @summary Get all specifications
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpecificationsGetAllPost(options?: any): AxiosPromise<Array<Specification>> {
@@ -1811,7 +1811,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Get specifications by id
          * @param {TasksRestartPostRequest} tasksRestartPostRequest 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpecificationsGetPost(tasksRestartPostRequest: TasksRestartPostRequest, options?: any): AxiosPromise<Specification> {
@@ -1821,7 +1821,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Remove a specification
          * @param {TasksRestartPostRequest} tasksRestartPostRequest 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpecificationsRemovePost(tasksRestartPostRequest: TasksRestartPostRequest, options?: any): AxiosPromise<void> {
@@ -1831,7 +1831,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Create a type
          * @param {TypeWithID} typeWithID 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpecificationsTypesCreatePost(typeWithID: TypeWithID, options?: any): AxiosPromise<void> {
@@ -1840,7 +1840,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
         /**
          * 
          * @summary Get all types
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpecificationsTypesGetAllPost(options?: any): AxiosPromise<Array<TypeWithID>> {
@@ -1850,7 +1850,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Get a type by id
          * @param {TasksRestartPostRequest} tasksRestartPostRequest 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpecificationsTypesGetPost(tasksRestartPostRequest: TasksRestartPostRequest, options?: any): AxiosPromise<TypeWithID> {
@@ -1860,7 +1860,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Remove a type
          * @param {TasksRestartPostRequest} tasksRestartPostRequest 
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksSpecificationsTypesRemovePost(tasksRestartPostRequest: TasksRestartPostRequest, options?: any): AxiosPromise<void> {
@@ -1870,7 +1870,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Delete tasks with the given ids
          * @param {Array<string>} requestBody An array of task ids to delete
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksStorageDeletePost(requestBody: Array<string>, options?: any): AxiosPromise<void> {
@@ -1880,7 +1880,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Execute a command in the task storage
          * @param {TaskStorageCommand} taskStorageCommand A command
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksStorageExecPost(taskStorageCommand: TaskStorageCommand, options?: any): AxiosPromise<Array<{ [key: string]: any; }>> {
@@ -1890,7 +1890,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Get a list of tasks by their ids
          * @param {Array<string>} requestBody An array of ids
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksStorageGetByIdsPost(requestBody: Array<string>, options?: any): AxiosPromise<Array<Task>> {
@@ -1900,7 +1900,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Get tasks with provided properties
          * @param {TasksStorageGetWithPropertiesPostRequest} tasksStorageGetWithPropertiesPostRequest properties
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksStorageGetWithPropertiesPost(tasksStorageGetWithPropertiesPostRequest: TasksStorageGetWithPropertiesPostRequest, options?: any): AxiosPromise<Array<Task>> {
@@ -1910,7 +1910,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Insert tasks in the database
          * @param {Array<Task>} task An array of tasks to insert
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksStorageInsertPost(task: Array<Task>, options?: any): AxiosPromise<void> {
@@ -1919,7 +1919,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
         /**
          * 
          * @summary Get storage settings
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksStorageSettingsPost(options?: any): AxiosPromise<TaskStorageSettings> {
@@ -1929,7 +1929,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Update task properties by ids
          * @param {TasksStorageUpdateByIdsPostRequest} tasksStorageUpdateByIdsPostRequest Update info
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksStorageUpdateByIdsPost(tasksStorageUpdateByIdsPostRequest: TasksStorageUpdateByIdsPostRequest, options?: any): AxiosPromise<void> {
@@ -1939,7 +1939,7 @@ export const DefaultApiFactory = function (configuration?: Configuration, basePa
          * 
          * @summary Update tasks with provided properties
          * @param {TasksStorageUpdateWithPropertiesPostRequest} tasksStorageUpdateWithPropertiesPostRequest properties
-         * @param {*} [options] Override http request option.
+         * @param {*} [options] Override kantokuhttp request option.
          * @throws {RequiredError}
          */
         tasksStorageUpdateWithPropertiesPost(tasksStorageUpdateWithPropertiesPostRequest: TasksStorageUpdateWithPropertiesPostRequest, options?: any): AxiosPromise<TasksStorageUpdateWithPropertiesPost200Response> {
@@ -1959,7 +1959,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Allocates N resources
      * @param {number} amount 
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -1970,8 +1970,8 @@ export class DefaultApi extends BaseAPI {
     /**
      * 
      * @summary Deallocate resources
-     * @param {Array<string>} requestBody A list of resource identifiers
-     * @param {*} [options] Override http request option.
+     * @param {Array<string>} requestBody A list of resource_db identifiers
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -1983,7 +1983,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Initialize resources
      * @param {Array<ResourceInitializer>} resourceInitializer A dictionary (ResourceID -&gt; Value)
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -1994,8 +1994,8 @@ export class DefaultApi extends BaseAPI {
     /**
      * 
      * @summary Load resources
-     * @param {Array<string>} requestBody A list of resource identifiers
-     * @param {*} [options] Override http request option.
+     * @param {Array<string>} requestBody A list of resource_db identifiers
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2007,7 +2007,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Load a set of tasks
      * @param {Array<string>} requestBody A list of task identifiers
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2019,7 +2019,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Restart a failed task
      * @param {TasksRestartPostRequest} tasksRestartPostRequest A task id
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2031,7 +2031,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Spawn a new task from specification
      * @param {SpecificationBasedTaskParameters} specificationBasedTaskParameters The specification of a task to be spawned
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2043,7 +2043,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Spawn a new task
      * @param {TaskParameters} taskParameters The specification of a task to be spawned
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2055,7 +2055,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Create a specification
      * @param {Specification} specification 
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2066,7 +2066,7 @@ export class DefaultApi extends BaseAPI {
     /**
      * 
      * @summary Get all specifications
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2078,7 +2078,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Get specifications by id
      * @param {TasksRestartPostRequest} tasksRestartPostRequest 
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2090,7 +2090,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Remove a specification
      * @param {TasksRestartPostRequest} tasksRestartPostRequest 
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2102,7 +2102,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Create a type
      * @param {TypeWithID} typeWithID 
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2113,7 +2113,7 @@ export class DefaultApi extends BaseAPI {
     /**
      * 
      * @summary Get all types
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2125,7 +2125,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Get a type by id
      * @param {TasksRestartPostRequest} tasksRestartPostRequest 
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2137,7 +2137,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Remove a type
      * @param {TasksRestartPostRequest} tasksRestartPostRequest 
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2149,7 +2149,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Delete tasks with the given ids
      * @param {Array<string>} requestBody An array of task ids to delete
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2161,7 +2161,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Execute a command in the task storage
      * @param {TaskStorageCommand} taskStorageCommand A command
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2173,7 +2173,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Get a list of tasks by their ids
      * @param {Array<string>} requestBody An array of ids
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2185,7 +2185,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Get tasks with provided properties
      * @param {TasksStorageGetWithPropertiesPostRequest} tasksStorageGetWithPropertiesPostRequest properties
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2197,7 +2197,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Insert tasks in the database
      * @param {Array<Task>} task An array of tasks to insert
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2208,7 +2208,7 @@ export class DefaultApi extends BaseAPI {
     /**
      * 
      * @summary Get storage settings
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2220,7 +2220,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Update task properties by ids
      * @param {TasksStorageUpdateByIdsPostRequest} tasksStorageUpdateByIdsPostRequest Update info
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */
@@ -2232,7 +2232,7 @@ export class DefaultApi extends BaseAPI {
      * 
      * @summary Update tasks with provided properties
      * @param {TasksStorageUpdateWithPropertiesPostRequest} tasksStorageUpdateWithPropertiesPostRequest properties
-     * @param {*} [options] Override http request option.
+     * @param {*} [options] Override kantokuhttp request option.
      * @throws {RequiredError}
      * @memberof DefaultApi
      */

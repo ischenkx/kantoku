@@ -1,34 +1,34 @@
-package redis
+package resourcedb
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
-	codec "github.com/ischenkx/kantoku/pkg/common/data/codec"
-	"github.com/ischenkx/kantoku/pkg/core/resource"
+	"github.com/ischenkx/kantoku/pkg/common/data/codec"
+	"github.com/ischenkx/kantoku/pkg/core"
 	"github.com/redis/go-redis/v9"
 	"github.com/samber/lo"
 	"strings"
 )
 
-type Storage struct {
+type RedisDB struct {
 	client    redis.UniversalClient
-	codec     codec.Codec[resource.Resource, []byte]
+	codec     codec.Codec[core.Resource, []byte]
 	keyPrefix string
 }
 
-func New(client redis.UniversalClient, codec codec.Codec[resource.Resource, []byte], keyPrefix string) *Storage {
-	return &Storage{
+func NewRedisDB(client redis.UniversalClient, codec codec.Codec[core.Resource, []byte], keyPrefix string) *RedisDB {
+	return &RedisDB{
 		client:    client,
 		codec:     codec,
 		keyPrefix: keyPrefix,
 	}
 }
 
-func (storage *Storage) Load(ctx context.Context, ids ...resource.ID) ([]resource.Resource, error) {
+func (storage *RedisDB) Load(ctx context.Context, ids ...string) ([]core.Resource, error) {
 	if len(ids) == 0 {
-		return []resource.Resource{}, nil
+		return []core.Resource{}, nil
 	}
 
 	cmd := storage.client.MGet(ctx, lo.Map(ids, func(id string, _ int) string {
@@ -38,14 +38,14 @@ func (storage *Storage) Load(ctx context.Context, ids ...resource.ID) ([]resourc
 		return nil, cmd.Err()
 	}
 
-	resources := make([]resource.Resource, 0, len(ids))
+	resources := make([]core.Resource, 0, len(ids))
 
 	for index, value := range cmd.Val() {
 		id := ids[index]
 
 		res, err := storage.parseResourceFromRedisValue(id, value)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse the resource (id='%s'): %w", id, err)
+			return nil, fmt.Errorf("failed to parse the resource_db (id='%s'): %w", id, err)
 		}
 
 		resources = append(resources, res)
@@ -54,9 +54,9 @@ func (storage *Storage) Load(ctx context.Context, ids ...resource.ID) ([]resourc
 	return resources, nil
 }
 
-func (storage *Storage) Alloc(ctx context.Context, amount int) ([]resource.ID, error) {
+func (storage *RedisDB) Alloc(ctx context.Context, amount int) ([]string, error) {
 	if amount == 0 {
-		return []resource.ID{}, nil
+		return []string{}, nil
 	}
 
 	ids := lo.Times(amount, func(_ int) string {
@@ -66,12 +66,12 @@ func (storage *Storage) Alloc(ctx context.Context, amount int) ([]resource.ID, e
 	var arguments []any
 
 	for _, id := range ids {
-		encodedResource, err := storage.codec.Encode(resource.Resource{
+		encodedResource, err := storage.codec.Encode(core.Resource{
 			ID:     id,
-			Status: resource.Allocated,
+			Status: core.ResourceStatuses.Allocated,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("failed to encode the resource: %w", err)
+			return nil, fmt.Errorf("failed to encode the resource_db: %w", err)
 		}
 
 		arguments = append(arguments, storage.globalResourceID(id), encodedResource)
@@ -85,11 +85,11 @@ func (storage *Storage) Alloc(ctx context.Context, amount int) ([]resource.ID, e
 	return ids, nil
 }
 
-func (storage *Storage) Init(ctx context.Context, resources []resource.Resource) error {
+func (storage *RedisDB) Init(ctx context.Context, resources []core.Resource) error {
 	if len(resources) == 0 {
 		return nil
 	}
-	resourceIDs := lo.Map(resources, func(res resource.Resource, _ int) string {
+	resourceIDs := lo.Map(resources, func(res core.Resource, _ int) string {
 		return res.ID
 	})
 	globalResourceIDs := lo.Map(resourceIDs, func(localID string, _ int) string {
@@ -111,18 +111,18 @@ func (storage *Storage) Init(ctx context.Context, resources []resource.Resource)
 				return fmt.Errorf("failed to parse the redis value (id='%s'): %w", providedResource.ID, err)
 			}
 
-			if loadedResource.Status != resource.Allocated {
-				return fmt.Errorf("can't initialize a resource with status '%s' (id='%s')",
+			if loadedResource.Status != core.ResourceStatuses.Allocated {
+				return fmt.Errorf("can't initialize a resource_db with status '%s' (id='%s')",
 					loadedResource.Status,
 					loadedResource.ID)
 			}
 
 			loadedResource.Data = providedResource.Data
-			loadedResource.Status = resource.Ready
+			loadedResource.Status = core.ResourceStatuses.Ready
 
 			encodedReadyResource, err := storage.codec.Encode(loadedResource)
 			if err != nil {
-				return fmt.Errorf("failed to encode a ready resource: %w", err)
+				return fmt.Errorf("failed to encode a ready resource_db: %w", err)
 			}
 
 			newValues = append(newValues, encodedReadyResource)
@@ -148,7 +148,7 @@ func (storage *Storage) Init(ctx context.Context, resources []resource.Resource)
 	return nil
 }
 
-func (storage *Storage) Dealloc(ctx context.Context, ids []resource.ID) error {
+func (storage *RedisDB) Dealloc(ctx context.Context, ids []string) error {
 	if len(ids) == 0 {
 		return nil
 	}
@@ -159,11 +159,11 @@ func (storage *Storage) Dealloc(ctx context.Context, ids []resource.ID) error {
 		Err()
 }
 
-func (storage *Storage) parseResourceFromRedisValue(id string, value any) (res resource.Resource, err error) {
+func (storage *RedisDB) parseResourceFromRedisValue(id string, value any) (res core.Resource, err error) {
 	if value == nil {
-		res = resource.Resource{
-			ID:     resource.ID(id),
-			Status: resource.DoesNotExist,
+		res = core.Resource{
+			ID:     id,
+			Status: core.ResourceStatuses.DoesNotExist,
 		}
 	} else {
 		encodedResource, ok := value.(string)
@@ -180,10 +180,10 @@ func (storage *Storage) parseResourceFromRedisValue(id string, value any) (res r
 	return
 }
 
-func (storage *Storage) generateKey() string {
+func (storage *RedisDB) generateKey() string {
 	return strings.ReplaceAll(uuid.New().String(), "-", "")
 }
 
-func (storage *Storage) globalResourceID(key string) string {
+func (storage *RedisDB) globalResourceID(key string) string {
 	return fmt.Sprintf("%s:%s", storage.keyPrefix, key)
 }

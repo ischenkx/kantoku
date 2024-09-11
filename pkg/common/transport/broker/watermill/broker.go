@@ -18,14 +18,14 @@ type Broker[Item any] struct {
 	ConsumerChannelBufferSize int
 }
 
-func (b Broker[Item]) Consume(ctx context.Context, info broker.TopicsInfo) (<-chan broker.Message[Item], error) {
-	subscriber, err := b.Agent.SubscriberFactory.New(ctx, info.Group)
+func (b Broker[Item]) Consume(ctx context.Context, topics []string, settings broker.ConsumerSettings) (<-chan broker.Message[Item], error) {
+	subscriber, err := b.Agent.SubscriberFactory.New(ctx, settings)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create a subscriber: %w", err)
 	}
 
-	channels := make([]<-chan *message.Message, 0, len(info.Topics))
-	for _, topic := range info.Topics {
+	channels := make([]<-chan *message.Message, 0, len(topics))
+	for _, topic := range topics {
 		ctx := context.WithValue(ctx, "topic", topic)
 		channel, err := subscriber.Subscribe(ctx, topic)
 		if err != nil {

@@ -2,9 +2,12 @@ package kantoku
 
 import (
 	"fmt"
-	kantokuHttp "github.com/ischenkx/kantoku/pkg/lib/gateway/api/http"
-	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/oas"
+	"github.com/ischenkx/kantoku/pkg/core"
+	kantokuHttp "github.com/ischenkx/kantoku/pkg/lib/gateway/api/kantokuhttp"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/kantokuhttp/oas"
 )
+
+type Kantoku = core.AbstractSystem
 
 func Connect(url string, options ...oas.ClientOption) (*kantokuHttp.Client, error) {
 	oasClient, err := oas.NewClientWithResponses(url, options...)

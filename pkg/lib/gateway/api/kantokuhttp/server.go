@@ -1,14 +1,12 @@
-package http
+package kantokuhttp
 
 import (
 	"context"
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/data/storage"
-	"github.com/ischenkx/kantoku/pkg/core/resource"
-	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/ischenkx/kantoku/pkg/core/task"
-	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/oas"
-	"github.com/ischenkx/kantoku/pkg/lib/tasks"
+	"github.com/ischenkx/kantoku/pkg/core"
+	"github.com/ischenkx/kantoku/pkg/core/taskopts"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/kantokuhttp/oas"
 	"github.com/ischenkx/kantoku/pkg/lib/tasks/restarter"
 	"github.com/ischenkx/kantoku/pkg/lib/tasks/specification"
 	"github.com/ischenkx/kantoku/pkg/lib/tasks/specification/typing"
@@ -19,11 +17,11 @@ import (
 var _ oas.StrictServerInterface = (*Server)(nil)
 
 type Server struct {
-	system         system.AbstractSystem
+	system         core.AbstractSystem
 	specifications *specification.Manager
 }
 
-func NewServer(system system.AbstractSystem, specifications *specification.Manager) *Server {
+func NewServer(system core.AbstractSystem, specifications *specification.Manager) *Server {
 	return &Server{
 		system:         system,
 		specifications: specifications,
@@ -49,7 +47,7 @@ func (server *Server) PostTasksStorageGetByIds(ctx context.Context, request oas.
 		}, nil
 	}
 
-	return oas.PostTasksStorageGetByIds200JSONResponse(lo.Map(taskList, func(t task.Task, _ int) oas.Task {
+	return oas.PostTasksStorageGetByIds200JSONResponse(lo.Map(taskList, func(t core.Task, _ int) oas.Task {
 		return TaskToDto(t)
 	})), nil
 }
@@ -62,14 +60,14 @@ func (server *Server) PostTasksStorageGetWithProperties(ctx context.Context, req
 		}, nil
 	}
 
-	return oas.PostTasksStorageGetWithProperties200JSONResponse(lo.Map(taskList, func(t task.Task, _ int) oas.Task {
+	return oas.PostTasksStorageGetWithProperties200JSONResponse(lo.Map(taskList, func(t core.Task, _ int) oas.Task {
 		return TaskToDto(t)
 	})), nil
 }
 
 func (server *Server) PostTasksStorageInsert(ctx context.Context, request oas.PostTasksStorageInsertRequestObject) (oas.PostTasksStorageInsertResponseObject, error) {
-	err := server.system.Tasks().Insert(ctx, lo.Map(*request.Body, func(mt oas.Task, _ int) task.Task {
-		return task.Task{
+	err := server.system.Tasks().Insert(ctx, lo.Map(*request.Body, func(mt oas.Task, _ int) core.Task {
+		return core.Task{
 			Inputs:  mt.Inputs,
 			Outputs: mt.Outputs,
 			ID:      mt.Id,
@@ -166,10 +164,10 @@ func (server *Server) PostResourcesDeallocate(ctx context.Context, request oas.P
 }
 
 func (server *Server) PostResourcesInitialize(ctx context.Context, request oas.PostResourcesInitializeRequestObject) (oas.PostResourcesInitializeResponseObject, error) {
-	var resources []resource.Resource
+	var resources []core.Resource
 
 	for _, initializer := range *request.Body {
-		resources = append(resources, resource.Resource{
+		resources = append(resources, core.Resource{
 			Data: []byte(initializer.Value),
 			ID:   initializer.Id,
 		})
@@ -194,7 +192,7 @@ func (server *Server) PostResourcesLoad(ctx context.Context, request oas.PostRes
 	}
 
 	return oas.PostResourcesLoad200JSONResponse(
-		lo.Map(resources, func(res resource.Resource, _ int) oas.Resource {
+		lo.Map(resources, func(res core.Resource, _ int) oas.Resource {
 			return oas.Resource{
 				Id:     res.ID,
 				Status: string(res.Status),
@@ -213,7 +211,7 @@ func (server *Server) PostTasksLoad(ctx context.Context, request oas.PostTasksLo
 		}, nil
 	}
 
-	dtoTasks := lo.Map(tasks, func(t task.Task, _ int) oas.Task {
+	dtoTasks := lo.Map(tasks, func(t core.Task, _ int) oas.Task {
 		return TaskToDto(t)
 	})
 
@@ -221,7 +219,7 @@ func (server *Server) PostTasksLoad(ctx context.Context, request oas.PostTasksLo
 }
 
 func (server *Server) PostTasksSpawn(ctx context.Context, request oas.PostTasksSpawnRequestObject) (oas.PostTasksSpawnResponseObject, error) {
-	spawnedTask, err := server.system.Spawn(ctx, task.Task{
+	spawnedTask, err := server.system.Spawn(ctx, core.Task{
 		Inputs:  request.Body.Inputs,
 		Outputs: request.Body.Outputs,
 		Info:    request.Body.Info,
@@ -258,7 +256,7 @@ func (server *Server) PostTasksSpawnFromSpec(ctx context.Context, request oas.Po
 	tx := lo.NewTransaction[txParams]().
 		Then(
 			func(params txParams) (txParams, error) {
-				// resource allocation
+				// resource_db allocation
 				inputAmounts := len(spec.IO.Inputs.Types)
 				outputAmounts := len(spec.IO.Outputs.Types)
 				totalResources := inputAmounts + outputAmounts
@@ -281,11 +279,11 @@ func (server *Server) PostTasksSpawnFromSpec(ctx context.Context, request oas.Po
 		).
 		Then(
 			func(params txParams) (txParams, error) {
-				initializedResources := make([]resource.Resource, 0, len(params.Inputs))
+				initializedResources := make([]core.Resource, 0, len(params.Inputs))
 				for index := 0; index < len(params.Inputs); index++ {
 					param := request.Body.Parameters[index]
 					resourceId := params.Inputs[index]
-					initializedResources = append(initializedResources, resource.Resource{
+					initializedResources = append(initializedResources, core.Resource{
 						Data: []byte(param),
 						ID:   resourceId,
 					})
@@ -304,12 +302,12 @@ func (server *Server) PostTasksSpawnFromSpec(ctx context.Context, request oas.Po
 		).
 		Then(
 			func(params txParams) (txParams, error) {
-				t, err := server.system.Spawn(ctx, task.New(
-					task.WithInputs(params.Inputs...),
-					task.WithOutputs(params.Outputs...),
-					task.WithInfo(request.Body.Info),
-					task.WithProperty("type", request.Body.Specification),
-					tasks.DependOnInputs(),
+				t, err := server.system.Spawn(ctx, core.New(
+					taskopts.WithInputs(params.Inputs...),
+					taskopts.WithOutputs(params.Outputs...),
+					taskopts.WithInfo(request.Body.Info),
+					taskopts.WithProperty("type", request.Body.Specification),
+					taskopts.DependOnInputs(),
 				))
 				if err != nil {
 					return params, fmt.Errorf("failed to spawn a new task: %s", err)

@@ -6,12 +6,12 @@ import (
 	"flag"
 	"fmt"
 	"github.com/ischenkx/kantoku/cmd/stand/utils"
-	"github.com/ischenkx/kantoku/pkg/core/resource"
-	"github.com/ischenkx/kantoku/pkg/lib/platform"
+	"github.com/ischenkx/kantoku/pkg/core"
+	"github.com/ischenkx/kantoku/pkg/lib/builder"
 	"os"
 )
 
-var resourceId = flag.String("resource", "", "Resource ID")
+var resourceId = flag.String("resource_db", "", "Resource ID")
 var filePath = flag.String("file", "", "File path")
 var useJson = flag.Bool("json", false, "Parse as json")
 
@@ -19,7 +19,7 @@ func main() {
 	flag.Parse()
 
 	if *resourceId == "" {
-		fmt.Println("You must specify a resource ID")
+		fmt.Println("You must specify a resource_db ID")
 		return
 	}
 
@@ -32,7 +32,7 @@ func main() {
 	cfg := utils.LoadConfig()
 	logger := utils.GetLogger(os.Stdout, "load_resource")
 
-	sys, err := platform.BuildSystem(ctx, logger, cfg.Core.System)
+	sys, err := builder.BuildSystem(ctx, logger, cfg.Core.System)
 	if err != nil {
 		fmt.Println("failed to build system:", err)
 		return
@@ -46,7 +46,7 @@ func main() {
 
 	res := resources[0]
 
-	if res.Status != resource.Ready {
+	if res.Status != core.ResourceStatuses.Ready {
 		fmt.Printf("Resource is not ready (status=%s)\n", res.Status)
 		return
 	}

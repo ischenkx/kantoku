@@ -6,20 +6,16 @@ import (
 	codec "github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
-	"github.com/ischenkx/kantoku/pkg/core/event"
+	"github.com/ischenkx/kantoku/pkg/core"
 	"github.com/ischenkx/kantoku/pkg/core/services/executor"
-	"github.com/ischenkx/kantoku/pkg/core/task"
-
-	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/ischenkx/kantoku/pkg/core/system/events"
 	"log/slog"
 	"time"
 )
 
-var QueueName = "scheduler"
+var QueueName = "status"
 
 type Service struct {
-	System      system.AbstractSystem
+	System      core.AbstractSystem
 	ResultCodec codec.Codec[executor.Result, []byte]
 
 	service.Core
@@ -29,29 +25,31 @@ func (srvc *Service) Run(ctx context.Context) error {
 	evs, err := srvc.System.
 		Events().
 		Consume(ctx,
-			broker.TopicsInfo{
-				Group: QueueName,
-				Topics: []string{
-					events.OnTask.Created,
-					events.OnTask.Ready,
-					events.OnTask.Received,
-					events.OnTask.Finished,
-					events.OnTask.Cancelled,
-				},
-			})
+			[]string{
+				core.OnTask.Created,
+				core.OnTask.Ready,
+				core.OnTask.Received,
+				core.OnTask.Finished,
+				core.OnTask.Cancelled,
+			},
+			broker.ConsumerSettings{
+				Group:                QueueName,
+				InitializationPolicy: broker.OldestOffset,
+			},
+		)
 	if err != nil {
 		return fmt.Errorf("failed to consumer events: %w", err)
 	}
 
-	broker.Processor[event.Event]{
-		Handler: func(ctx context.Context, ev event.Event) error {
+	broker.Processor[core.Event]{
+		Handler: func(ctx context.Context, ev core.Event) error {
 			if err := srvc.processEvent(ctx, ev); err != nil {
 				return err
 			}
 
 			return nil
 		},
-		ErrorHandler: func(ctx context.Context, ev event.Event, err error) {
+		ErrorHandler: func(ctx context.Context, ev core.Event, err error) {
 			srvc.Logger().Error("processing failed",
 				slog.String("error", err.Error()))
 		},
@@ -60,12 +58,12 @@ func (srvc *Service) Run(ctx context.Context) error {
 	return nil
 }
 
-func (srvc *Service) processEvent(ctx context.Context, ev event.Event) error {
+func (srvc *Service) processEvent(ctx context.Context, ev core.Event) error {
 	switch ev.Topic {
-	case events.OnTask.Created,
-		events.OnTask.Ready,
-		events.OnTask.Received,
-		events.OnTask.Cancelled:
+	case core.OnTask.Created,
+		core.OnTask.Ready,
+		core.OnTask.Received,
+		core.OnTask.Cancelled:
 
 		taskId := string(ev.Data)
 		newStatus := srvc.event2status(ev.Topic)
@@ -75,13 +73,13 @@ func (srvc *Service) processEvent(ctx context.Context, ev event.Event) error {
 				newStatus,
 				err)
 		}
-	case events.OnTask.Finished:
+	case core.OnTask.Finished:
 		result, err := srvc.ResultCodec.Decode(ev.Data)
 		if err != nil {
 			return fmt.Errorf("failed to decode the result: %w", err)
 		}
 
-		newStatus := task.Statuses.Finished
+		newStatus := core.TaskStatuses.Finished
 
 		if err := srvc.updateStatus(ctx, result.TaskID, newStatus, string(result.Status)); err != nil {
 			return fmt.Errorf("failed to update status (task_id='%s' status='%s'): %w",
@@ -105,14 +103,14 @@ func (srvc *Service) processEvent(ctx context.Context, ev event.Event) error {
 
 func (srvc *Service) event2status(topic string) string {
 	switch topic {
-	case events.OnTask.Created:
-		return task.Statuses.Initialized
-	case events.OnTask.Ready:
-		return task.Statuses.Ready
-	case events.OnTask.Received:
-		return task.Statuses.Received
-	case events.OnTask.Cancelled:
-		return task.Statuses.Cancelled
+	case core.OnTask.Created:
+		return core.TaskStatuses.Initialized
+	case core.OnTask.Ready:
+		return core.TaskStatuses.Ready
+	case core.OnTask.Received:
+		return core.TaskStatuses.Received
+	case core.OnTask.Cancelled:
+		return core.TaskStatuses.Cancelled
 	default:
 		return ""
 	}
@@ -120,15 +118,15 @@ func (srvc *Service) event2status(topic string) string {
 
 func (srvc *Service) status2precedingStatuses(status string) []any {
 	switch status {
-	case task.Statuses.Initialized:
+	case core.TaskStatuses.Initialized:
 		return []any{nil}
-	case task.Statuses.Ready:
-		return []any{task.Statuses.Initialized}
-	case task.Statuses.Received:
-		return []any{task.Statuses.Initialized, task.Statuses.Ready}
-	case task.Statuses.Finished:
-		return []any{task.Statuses.Initialized, task.Statuses.Ready, task.Statuses.Received}
-	case task.Statuses.Cancelled:
+	case core.TaskStatuses.Ready:
+		return []any{core.TaskStatuses.Initialized}
+	case core.TaskStatuses.Received:
+		return []any{core.TaskStatuses.Initialized, core.TaskStatuses.Ready}
+	case core.TaskStatuses.Finished:
+		return []any{core.TaskStatuses.Initialized, core.TaskStatuses.Ready, core.TaskStatuses.Received}
+	case core.TaskStatuses.Cancelled:
 		return []any{}
 	default:
 		return []any{}

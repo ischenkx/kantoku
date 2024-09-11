@@ -74,7 +74,7 @@ func (f Future[T]) EmptyValue() T {
 
 func (f Future[T]) Encode(codec codec.Codec[any, []byte]) ([]byte, error) {
 	if !f.IsFilled() {
-		return nil, errors.New("can't make resource from empty future")
+		return nil, errors.New("can't make resource_db from empty future")
 	}
 	data, err := codec.Encode(f.Value())
 	if err != nil {

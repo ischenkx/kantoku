@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/ischenkx/kantoku/cmd/stand/utils"
 	"github.com/ischenkx/kantoku/pkg/common/service"
-	"github.com/ischenkx/kantoku/pkg/lib/platform"
+	"github.com/ischenkx/kantoku/pkg/lib/builder"
 	"log"
 	"os"
 )
@@ -14,12 +14,12 @@ func main() {
 	cfg := utils.LoadConfig()
 	logger := utils.GetLogger(os.Stdout, "scheduler")
 
-	sys, err := platform.BuildSystem(ctx, logger, cfg.Core.System)
+	sys, err := builder.BuildSystem(ctx, logger, cfg.Core.System)
 	if err != nil {
 		log.Fatal("failed to build system: ", err)
 	}
 
-	deployment, err := platform.BuildSchedulerDeployment(ctx, sys, logger, cfg.Services.Scheduler)
+	deployment, err := builder.BuildSchedulerDeployment(ctx, sys, logger, cfg.Services.Scheduler)
 	if err != nil {
 		log.Fatal("failed to build scheduler:", err)
 	}

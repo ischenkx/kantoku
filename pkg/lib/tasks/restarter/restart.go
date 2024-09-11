@@ -3,11 +3,11 @@ package restarter
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/ischenkx/kantoku/pkg/core/task"
+	"github.com/ischenkx/kantoku/pkg/core"
+	"github.com/ischenkx/kantoku/pkg/core/taskopts"
 )
 
-func Restart(ctx context.Context, system system.AbstractSystem, id string, infoCopiers ...InfoCopier) (newTaskID string, err error) {
+func Restart(ctx context.Context, system core.AbstractSystem, id string, infoCopiers ...InfoCopier) (newTaskID string, err error) {
 	t, err := system.Task(ctx, id)
 	if err != nil {
 		return "", fmt.Errorf("failed to get task: %w", err)
@@ -23,7 +23,7 @@ func Restart(ctx context.Context, system system.AbstractSystem, id string, infoC
 		return "", fmt.Errorf("invalid task status type (not string)")
 	}
 
-	if status != task.Statuses.Finished {
+	if status != core.TaskStatuses.Finished {
 		return "", fmt.Errorf("task is not finished")
 	}
 
@@ -37,7 +37,7 @@ func Restart(ctx context.Context, system system.AbstractSystem, id string, infoC
 		return "", fmt.Errorf("invalid task sub_status type (not string)")
 	}
 
-	if subStatus != task.SubStatuses.Failed {
+	if subStatus != core.TaskSubStatuses.Failed {
 		return "", fmt.Errorf("task is not failed")
 	}
 
@@ -82,12 +82,12 @@ func Restart(ctx context.Context, system system.AbstractSystem, id string, infoC
 		}
 	}
 
-	newTask, err := system.Spawn(ctx, task.New(
-		task.WithInputs(t.Inputs...),
-		task.WithOutputs(t.Outputs...),
-		task.WithInfo(newInfo),
-		task.WithProperty("restart_parent", t.ID),
-		task.WithProperty("restart_root", restartRoot),
+	newTask, err := system.Spawn(ctx, core.New(
+		taskopts.WithInputs(t.Inputs...),
+		taskopts.WithOutputs(t.Outputs...),
+		taskopts.WithInfo(newInfo),
+		taskopts.WithProperty("restart_parent", t.ID),
+		taskopts.WithProperty("restart_root", restartRoot),
 	))
 	// TODO: rollback a restart (we might need another service that would persistently try to restart tasks)
 	if err != nil {
@@ -97,7 +97,7 @@ func Restart(ctx context.Context, system system.AbstractSystem, id string, infoC
 	return newTask.ID, nil
 }
 
-type InfoCopier func(ctx context.Context, system system.AbstractSystem, oldTask task.Task, newTaskInfo map[string]any) error
+type InfoCopier func(ctx context.Context, system core.AbstractSystem, oldTask core.Task, newTaskInfo map[string]any) error
 
 func copyEssentialInfo(oldInfo, newInfo map[string]any) {
 	typ, ok := oldInfo["type"]

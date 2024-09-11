@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/data/codec"
 	"github.com/ischenkx/kantoku/pkg/common/service"
-	"github.com/ischenkx/kantoku/pkg/core/event"
+	"github.com/ischenkx/kantoku/pkg/core"
 	"golang.org/x/sync/errgroup"
 )
 
 type Middleware[Service service.Service] struct {
 	InfoProvider  func(ctx context.Context, srvc Service) (map[string]any, error)
-	Events        *event.Broker
+	Events        core.Broker
 	RequestCodec  codec.Codec[Request, []byte]
 	ResponseCodec codec.Codec[Response, []byte]
 }
@@ -41,7 +41,7 @@ func (m Middleware[Service]) BeforeRun(ctx context.Context, g *errgroup.Group, s
 
 func WithStaticInfo[Service service.Service](
 	info map[string]any,
-	events *event.Broker,
+	events core.Broker,
 	requestCodec codec.Codec[Request, []byte],
 	responseCodec codec.Codec[Response, []byte],
 ) Middleware[Service] {

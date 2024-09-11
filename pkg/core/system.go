@@ -1,43 +1,56 @@
-package system
+package core
 
 import (
 	"context"
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/data/uid"
-	"github.com/ischenkx/kantoku/pkg/core/event"
-	"github.com/ischenkx/kantoku/pkg/core/resource"
-	"github.com/ischenkx/kantoku/pkg/core/system/events"
-	"github.com/ischenkx/kantoku/pkg/core/task"
 	"github.com/samber/lo"
 	"log/slog"
 )
 
-// TODO: UPDATE record.Storage, so It supports auto-encoding/decoding of record types
+type AbstractSystem interface {
+	Tasks() TaskDB
+	Resources() ResourceDB
+	Events() Broker
+
+	Spawn(ctx context.Context, t Task) (Task, error)
+	Task(ctx context.Context, id string) (Task, error)
+}
 
 var _ AbstractSystem = (*System)(nil)
 
 type System struct {
-	Events_    *event.Broker
-	Resources_ resource.Storage
-	Tasks_     task.Storage
-	Logger     *slog.Logger
+	broker    Broker
+	resources ResourceDB
+	tasks     TaskDB
+
+	logger *slog.Logger
 }
 
-func (system System) Tasks() task.Storage {
-	return system.Tasks_
+func NewSystem(broker Broker, resources ResourceDB, tasks TaskDB, logger *slog.Logger) *System {
+	return &System{
+		broker:    broker,
+		resources: resources,
+		tasks:     tasks,
+		logger:    logger,
+	}
 }
 
-func (system System) Resources() resource.Storage {
-	return system.Resources_
+func (system System) Tasks() TaskDB {
+	return system.tasks
 }
 
-func (system System) Events() *event.Broker {
-	return system.Events_
+func (system System) Resources() ResourceDB {
+	return system.resources
 }
 
-func (system System) Spawn(ctx context.Context, newTask task.Task) (initializedTask task.Task, err error) {
+func (system System) Events() Broker {
+	return system.broker
+}
+
+func (system System) Spawn(ctx context.Context, newTask Task) (initializedTask Task, err error) {
 	type state struct {
-		task task.Task
+		task Task
 	}
 
 	// shallow copying the info to avoid modification of the original object
@@ -60,7 +73,7 @@ func (system System) Spawn(ctx context.Context, newTask task.Task) (initializedT
 	tx := lo.NewTransaction[state]().
 		Then(
 			func(state state) (state, error) {
-				err := system.Tasks().Insert(ctx, []task.Task{state.task})
+				err := system.Tasks().Insert(ctx, []Task{state.task})
 				if err != nil {
 					return state, err
 				}
@@ -68,9 +81,9 @@ func (system System) Spawn(ctx context.Context, newTask task.Task) (initializedT
 				return state, nil
 			},
 			func(state state) state {
-				err := system.Tasks_.Delete(ctx, []string{state.task.ID})
+				err := system.tasks.Delete(ctx, []string{state.task.ID})
 				if err != nil {
-					system.Logger.Error("failed to delete task info in the compensating transaction",
+					system.logger.Error("failed to delete task info in the compensating transaction",
 						slog.String("id", state.task.ID),
 						slog.String("error", err.Error()))
 				}
@@ -80,7 +93,7 @@ func (system System) Spawn(ctx context.Context, newTask task.Task) (initializedT
 		Then(
 			func(s state) (state, error) {
 				// todo: enable back
-				err := system.Events().Send(ctx, event.New(events.OnTask.Created, []byte(s.task.ID)))
+				err := system.Events().Send(ctx, NewEvent(OnTask.Created, []byte(s.task.ID)))
 				if err != nil {
 					return s, fmt.Errorf("failed to publish an event: %w", err)
 				}
@@ -92,20 +105,20 @@ func (system System) Spawn(ctx context.Context, newTask task.Task) (initializedT
 
 	result, err := tx.Process(state{task: newTask})
 	if err != nil {
-		return task.Task{}, err
+		return Task{}, err
 	}
 
 	return result.task, nil
 }
 
-func (system System) Task(ctx context.Context, id string) (task.Task, error) {
+func (system System) Task(ctx context.Context, id string) (Task, error) {
 	tasks, err := system.Tasks().ByIDs(ctx, []string{id})
 	if err != nil {
-		return task.Task{}, fmt.Errorf("failed to load task: %w", err)
+		return Task{}, fmt.Errorf("failed to load task: %w", err)
 	}
 
 	if len(tasks) == 0 {
-		return task.Task{}, fmt.Errorf("task not found: %s", id)
+		return Task{}, fmt.Errorf("task not found: %s", id)
 	}
 
 	return tasks[0], nil

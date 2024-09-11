@@ -1,17 +1,14 @@
-package http
+package kantokuhttp
 
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/core/event"
-	"github.com/ischenkx/kantoku/pkg/core/resource"
-	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/ischenkx/kantoku/pkg/core/task"
-	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/oas"
+	"github.com/ischenkx/kantoku/pkg/core"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/kantokuhttp/oas"
 	"net/http"
 )
 
-var _ system.AbstractSystem = (*Client)(nil)
+var _ core.AbstractSystem = (*Client)(nil)
 
 type Client struct {
 	httpClient oas.ClientWithResponsesInterface
@@ -31,19 +28,19 @@ func (client *Client) Types() *SpecificationStorage {
 	return &SpecificationStorage{client.httpClient}
 }
 
-func (client *Client) Tasks() task.Storage {
+func (client *Client) Tasks() core.TaskDB {
 	return taskStorage{client.httpClient}
 }
 
-func (client *Client) Resources() resource.Storage {
+func (client *Client) Resources() core.ResourceDB {
 	return resourceStorage{httpClient: client.httpClient}
 }
 
-func (client *Client) Events() *event.Broker {
+func (client *Client) Events() core.Broker {
 	return nil
 }
 
-func (client *Client) Spawn(ctx context.Context, t task.Task) (task.Task, error) {
+func (client *Client) Spawn(ctx context.Context, t core.Task) (core.Task, error) {
 	res, err := client.httpClient.PostTasksSpawnWithResponse(ctx, oas.PostTasksSpawnJSONRequestBody{
 		Info:    t.Info,
 		Inputs:  t.Inputs,
@@ -65,14 +62,14 @@ func (client *Client) Spawn(ctx context.Context, t task.Task) (task.Task, error)
 	}
 }
 
-func (client *Client) Task(ctx context.Context, id string) (task.Task, error) {
+func (client *Client) Task(ctx context.Context, id string) (core.Task, error) {
 	ts, err := client.Tasks().ByIDs(ctx, []string{id})
 	if err != nil {
-		return task.Task{}, nil
+		return core.Task{}, nil
 	}
 
 	if len(ts) == 0 {
-		return task.Task{}, fmt.Errorf("not found")
+		return core.Task{}, fmt.Errorf("not found")
 	}
 
 	return ts[0], nil

@@ -2,7 +2,7 @@
 
 A platform for distributed task execution
 
-<img src="./dev/assets/pipeline_example.gif" width="600">
+<img src="assets/pipeline_example.gif" width="600">
 
 # Todo
 
@@ -19,7 +19,8 @@ A platform for distributed task execution
             - Each service instance must have its persistent ID that can be used as a consumer group label for queues.
         - Service discovery
             - We need to collect information about services (their presence, id, other properties)
-
+    - [ ] Clean Code/Architecture
+        - Decompose transport and business logic (reading events must be separated from their processing)
 - [x] Task Restarts
 
   A restart seems to be an easy concept but in the world of kantoku a few problems arise:

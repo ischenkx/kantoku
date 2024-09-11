@@ -1,9 +1,9 @@
-package http
+package kantokuhttp
 
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/oas"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/kantokuhttp/oas"
 	"github.com/ischenkx/kantoku/pkg/lib/tasks/specification"
 	"github.com/ischenkx/kantoku/pkg/lib/tasks/specification/typing"
 	"net/http"

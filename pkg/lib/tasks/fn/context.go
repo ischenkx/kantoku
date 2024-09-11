@@ -3,10 +3,8 @@ package fn
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/core/resource"
-	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/ischenkx/kantoku/pkg/core/task"
-	"github.com/ischenkx/kantoku/pkg/lib/tasks"
+	"github.com/ischenkx/kantoku/pkg/core"
+	"github.com/ischenkx/kantoku/pkg/core/taskopts"
 	"github.com/ischenkx/kantoku/pkg/lib/tasks/fn/future"
 	"github.com/samber/lo"
 	"log"
@@ -35,7 +33,7 @@ func NewContext(parent context.Context) *Context {
 	}
 }
 
-func (ctx *Context) bindObjectToResources(obj any, linkTo []resource.ID) ([]future.AbstractFuture, error) {
+func (ctx *Context) bindObjectToResources(obj any, linkTo []string) ([]future.AbstractFuture, error) {
 	arr, err := extractFuturesFromObject(obj)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract futures: %w", err)
@@ -48,37 +46,37 @@ func (ctx *Context) bindObjectToResources(obj any, linkTo []resource.ID) ([]futu
 	for i, f := range arr {
 		ctx.FutureStorage.AddFuture(f)
 		if linkTo != nil {
-			res := resource.Resource{ID: linkTo[i], Status: resource.Allocated}
+			res := core.Resource{ID: linkTo[i], Status: core.ResourceStatuses.Allocated}
 			ctx.FutureStorage.AssignResource(f, &res, false)
 		}
 	}
 	return arr, nil
 }
 
-func (ctx *Context) spawn(sys system.AbstractSystem, parentTask task.Task) error {
+func (ctx *Context) spawn(sys core.AbstractSystem, parentTask core.Task) error {
 	// sort in reverse top-sort order to ensure minimal possible execution while rollback is possible
 	for _, t := range ctx.Scheduled {
-		fut2res := func(fut future.AbstractFuture, _ int) resource.ID {
+		fut2res := func(fut future.AbstractFuture, _ int) string {
 			return ctx.FutureStorage.GetResource(fut).ID
 		}
 
 		inputs := lo.Map(t.Inputs, fut2res)
 		outputs := lo.Map(t.Outputs, fut2res)
-		deps := lo.Map(inputs, func(res resource.ID, _ int) tasks.Dependency {
-			return tasks.Dependency{
-				Name: "resource",
+		deps := lo.Map(inputs, func(res string, _ int) taskopts.Dependency {
+			return taskopts.Dependency{
+				Name: "resource_db",
 				Data: res,
 			}
 		})
 
 		spawned, err := sys.Spawn(ctx,
-			task.New(
-				task.WithInputs(inputs...),
-				task.WithOutputs(outputs...),
-				tasks.WithType(t.Type),
-				tasks.WithDependencies(deps...),
-				tasks.WithContextID(parentTask.ContextID()),
-				task.WithProperty("context_parent_id", parentTask.ID),
+			core.New(
+				taskopts.WithInputs(inputs...),
+				taskopts.WithOutputs(outputs...),
+				taskopts.WithProperty("context_parent_id", parentTask.ID),
+				taskopts.WithType(t.Type),
+				taskopts.WithDependencies(deps...),
+				taskopts.WithContextID(parentTask.ContextID()),
 			),
 		)
 		if err != nil {
@@ -90,7 +88,7 @@ func (ctx *Context) spawn(sys system.AbstractSystem, parentTask task.Task) error
 	return nil
 }
 
-func (ctx *Context) rollback(sys system.AbstractSystem, err error) {
+func (ctx *Context) rollback(sys core.AbstractSystem, err error) {
 	log.Printf("encountered error: %s", err)
 
 	err = ctx.FutureStorage.Rollback(ctx, sys.Resources())

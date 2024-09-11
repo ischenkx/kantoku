@@ -22,12 +22,12 @@ core:
         kind: redis
         uri: $RESOURCES_REDIS_URI
         options:
-          key_prefix: resource
+          key_prefix: resource_db
 
     events:
       broker:
-        kind: nats
-        uri: $EVENTS_NATS_URI
+        kind: kafka
+        uri: $EVENTS_KAFKA_URI
 services:
   scheduler:
     $:
@@ -44,7 +44,7 @@ services:
       postgres:
         uri: $SCHEDULER_DEPENDENCIES_POSTGRES_URI
     resolvers:
-      - kind: resource
+      - kind: resource_db
         data:
           storage:
             kind: mongo

@@ -1,16 +1,16 @@
-package http
+package kantokuhttp
 
 import (
 	"context"
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/data/storage"
-	"github.com/ischenkx/kantoku/pkg/core/task"
-	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/oas"
+	"github.com/ischenkx/kantoku/pkg/core"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/kantokuhttp/oas"
 	"github.com/samber/lo"
 	"net/http"
 )
 
-var _ task.Storage = (*taskStorage)(nil)
+var _ core.TaskDB = (*taskStorage)(nil)
 
 type taskStorage struct {
 	httpClient oas.ClientWithResponsesInterface
@@ -62,8 +62,8 @@ func (t taskStorage) Exec(ctx context.Context, command storage.Command) ([]stora
 	}
 }
 
-func (t taskStorage) Insert(ctx context.Context, tasks []task.Task) error {
-	res, err := t.httpClient.PostTasksStorageInsertWithResponse(ctx, lo.Map(tasks, func(t task.Task, _ int) oas.Task {
+func (t taskStorage) Insert(ctx context.Context, tasks []core.Task) error {
+	res, err := t.httpClient.PostTasksStorageInsertWithResponse(ctx, lo.Map(tasks, func(t core.Task, _ int) oas.Task {
 		return TaskToDto(t)
 	}))
 	if err != nil {
@@ -96,7 +96,7 @@ func (t taskStorage) Delete(ctx context.Context, ids []string) error {
 	}
 }
 
-func (t taskStorage) ByIDs(ctx context.Context, ids []string) ([]task.Task, error) {
+func (t taskStorage) ByIDs(ctx context.Context, ids []string) ([]core.Task, error) {
 	res, err := t.httpClient.PostTasksStorageGetByIdsWithResponse(ctx, ids)
 	if err != nil {
 		return nil, err
@@ -104,8 +104,8 @@ func (t taskStorage) ByIDs(ctx context.Context, ids []string) ([]task.Task, erro
 
 	switch res.StatusCode() {
 	case http.StatusOK:
-		return lo.Map(*res.JSON200, func(t oas.Task, _ int) task.Task {
-			return task.Task{
+		return lo.Map(*res.JSON200, func(t oas.Task, _ int) core.Task {
+			return core.Task{
 				Inputs:  t.Inputs,
 				Outputs: t.Outputs,
 				ID:      t.Id,
@@ -138,7 +138,7 @@ func (t taskStorage) UpdateByIDs(ctx context.Context, ids []string, properties m
 	}
 }
 
-func (t taskStorage) GetWithProperties(ctx context.Context, propertiesToValues map[string][]any) ([]task.Task, error) {
+func (t taskStorage) GetWithProperties(ctx context.Context, propertiesToValues map[string][]any) ([]core.Task, error) {
 	res, err := t.httpClient.PostTasksStorageGetWithPropertiesWithResponse(ctx, oas.PostTasksStorageGetWithPropertiesJSONRequestBody{
 		PropertiesToValues: propertiesToValues,
 	})
@@ -148,8 +148,8 @@ func (t taskStorage) GetWithProperties(ctx context.Context, propertiesToValues m
 
 	switch res.StatusCode() {
 	case http.StatusOK:
-		return lo.Map(*res.JSON200, func(t oas.Task, _ int) task.Task {
-			return task.Task{
+		return lo.Map(*res.JSON200, func(t oas.Task, _ int) core.Task {
+			return core.Task{
 				Inputs:  t.Inputs,
 				Outputs: t.Outputs,
 				ID:      t.Id,

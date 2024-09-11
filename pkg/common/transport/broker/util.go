@@ -4,29 +4,6 @@ import (
 	"context"
 )
 
-func Restrict[Item any](broker Broker[Item], topic string) RestrictedBroker[Item] {
-	return RestrictedBroker[Item]{
-		Topic:  topic,
-		Broker: broker,
-	}
-}
-
-type RestrictedBroker[Item any] struct {
-	Topic  string
-	Broker Broker[Item]
-}
-
-func (queue RestrictedBroker[Item]) Consume(ctx context.Context, group string) (<-chan Message[Item], error) {
-	return queue.Broker.Consume(ctx, TopicsInfo{
-		Group:  group,
-		Topics: []string{queue.Topic},
-	})
-}
-
-func (queue RestrictedBroker[Item]) Publish(ctx context.Context, item Item) error {
-	return queue.Broker.Publish(ctx, queue.Topic, item)
-}
-
 type HandlerFunc[Item any] func(ctx context.Context, ev Item) error
 
 func Process[Item any](ctx context.Context, message Message[Item], handler HandlerFunc[Item]) error {

@@ -4,13 +4,20 @@ import (
 	"context"
 )
 
-type TopicsInfo struct {
-	Group  string
-	Topics []string
+type ConsumerInitializationPolicy string
+
+var (
+	OldestOffset ConsumerInitializationPolicy = "oldest"
+	NewestOffset ConsumerInitializationPolicy = "newest"
+)
+
+type ConsumerSettings struct {
+	Group                string
+	InitializationPolicy ConsumerInitializationPolicy
 }
 
 type Consumer[Item any] interface {
-	Consume(ctx context.Context, info TopicsInfo) (<-chan Message[Item], error)
+	Consume(ctx context.Context, topics []string, settings ConsumerSettings) (<-chan Message[Item], error)
 }
 
 type Publisher[Item any] interface {

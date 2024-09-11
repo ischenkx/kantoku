@@ -6,8 +6,8 @@ import (
 	"github.com/ischenkx/kantoku/cmd/stand/sample_project/recursive"
 	"github.com/ischenkx/kantoku/cmd/stand/sample_project/scraper"
 	"github.com/ischenkx/kantoku/cmd/stand/sample_project/test"
-	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http"
-	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/oas"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/kantokuhttp"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/kantokuhttp/oas"
 	"github.com/ischenkx/kantoku/pkg/lib/tasks/fn"
 	"log"
 	"strings"
@@ -19,7 +19,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	client := http.NewClient(rawClient)
+	client := kantokuhttp.NewClient(rawClient)
 
 	register(client.Specifications(), http_tasks.Do{}.Function)
 	register(client.Specifications(), test.RandFail{}.Function)
@@ -29,27 +29,9 @@ func main() {
 	register(client.Specifications(), scraper.DownloadPage{}.Function)
 	register(client.Specifications(), scraper.ParsePage{}.Function)
 	register(client.Specifications(), scraper.ExtractImages{}.Function)
-
-	//fn.NewExecutor()
-	//
-	//httpDoTask := http_tasks.Do{}
-	//httpDoTask.ID = httpDoTask.
-	//httpDoSpec := fn.ToSpecification(httpDoTask.Function)
-	//
-	//randFailTask := test.RandFail{}
-	//randFailTask.ID = "test.RandFail"
-	//randFailSpec := fn.ToSpecification(randFailTask.Function)
-	//
-	//if err := client.Specifications().Add(context.Background(), httpDoSpec); err != nil {
-	//	log.Fatal("failed to add a specification:", err)
-	//}
-	//
-	//if err := client.Specifications().Add(context.Background(), randFailSpec); err != nil {
-	//	log.Fatal("failed to add a specification:", err)
-	//}
 }
 
-func register[F fn.AbstractFunction[I, O], I, O any](storage *http.SpecificationStorage, function fn.Function[F, I, O]) {
+func register[F fn.AbstractFunction[I, O], I, O any](storage *kantokuhttp.SpecificationStorage, function fn.Function[F, I, O]) {
 	var f F
 	e := fn.NewExecutor(f)
 

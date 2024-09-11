@@ -1,12 +1,12 @@
-package platform
+package builder
 
 import (
 	"context"
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/service"
-	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http"
-	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/oas"
+	"github.com/ischenkx/kantoku/pkg/core"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/kantokuhttp"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/kantokuhttp/oas"
 	"github.com/ischenkx/kantoku/pkg/lib/tasks/specification"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -20,7 +20,7 @@ type Deployment[S service.Service] struct {
 }
 
 type HttpApiService struct {
-	sys            system.AbstractSystem
+	sys            core.AbstractSystem
 	specifications *specification.Manager
 	port           int
 	loggerEnabled  bool
@@ -28,7 +28,7 @@ type HttpApiService struct {
 }
 
 func (srvc HttpApiService) Run(ctx context.Context) error {
-	srv := http.NewServer(
+	srv := kantokuhttp.NewServer(
 		srvc.sys,
 		srvc.specifications,
 	)

@@ -40,5 +40,12 @@ func (a B) Call(ctx *fn.Context, input BInput) (output BOutput, err error) {
 		return output, fmt.Errorf("failed to schedule A: %w", err)
 	}
 
+	_, err = fn.Sched[A](ctx, AInput{
+		Length: future.FromValue(length / 2),
+	})
+	if err != nil {
+		return output, fmt.Errorf("failed to schedule A: %w", err)
+	}
+
 	return BOutput{Calc: future.FromValue(1)}, nil
 }

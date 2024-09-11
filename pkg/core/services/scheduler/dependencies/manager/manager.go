@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/dependency"
-	"github.com/ischenkx/kantoku/pkg/core/system"
+	"github.com/ischenkx/kantoku/pkg/core"
 	"github.com/mitchellh/mapstructure"
 	"github.com/samber/lo"
 	"golang.org/x/sync/errgroup"
@@ -12,7 +12,7 @@ import (
 )
 
 type Manager struct {
-	System       system.AbstractSystem
+	System       core.AbstractSystem
 	Dependencies dependency.Manager
 	TaskToGroup  TaskToGroup
 	Resolvers    map[string]Resolver

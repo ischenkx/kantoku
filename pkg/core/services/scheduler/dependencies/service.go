@@ -5,18 +5,16 @@ import (
 	"fmt"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
-	"github.com/ischenkx/kantoku/pkg/core/event"
+	"github.com/ischenkx/kantoku/pkg/core"
 	"github.com/ischenkx/kantoku/pkg/core/services/scheduler/dependencies/manager"
-	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/ischenkx/kantoku/pkg/core/system/events"
 	"golang.org/x/sync/errgroup"
 	"log/slog"
 )
 
-var QueueName = "dependencies:simple"
+var QueueName = "dependencies.simple"
 
 type Service struct {
-	System  system.AbstractSystem
+	System  core.AbstractSystem
 	Manager *manager.Manager
 
 	service.Core
@@ -42,16 +40,17 @@ func (srvc *Service) Run(ctx context.Context) error {
 }
 
 func (srvc *Service) processNewTasks(ctx context.Context) error {
-	channel, err := srvc.System.Events().Consume(ctx, broker.TopicsInfo{
-		Group:  QueueName,
-		Topics: []string{events.OnTask.Created},
-	})
+	channel, err := srvc.System.Events().Consume(
+		ctx,
+		[]string{core.OnTask.Created},
+		broker.ConsumerSettings{Group: QueueName},
+	)
 	if err != nil {
 		return fmt.Errorf("failed to read events: %w", err)
 	}
 
-	broker.Processor[event.Event]{
-		Handler: func(ctx context.Context, ev event.Event) error {
+	broker.Processor[core.Event]{
+		Handler: func(ctx context.Context, ev core.Event) error {
 			taskId := string(ev.Data)
 			srvc.Logger().Debug("new task",
 				slog.String("id", taskId))
@@ -65,7 +64,7 @@ func (srvc *Service) processNewTasks(ctx context.Context) error {
 
 			return nil
 		},
-		ErrorHandler: func(ctx context.Context, ev event.Event, err error) {
+		ErrorHandler: func(ctx context.Context, ev core.Event, err error) {
 			//taskId := string(ev.Data)
 
 		},
@@ -87,11 +86,11 @@ func (srvc *Service) processReadyTasks(ctx context.Context) error {
 		case taskId := <-channel:
 			srvc.Logger().Debug("ready task",
 				slog.String("id", taskId))
-			err := srvc.System.Events().Send(ctx, event.New(events.OnTask.Ready, []byte(taskId)))
+			err := srvc.System.Events().Send(ctx, core.NewEvent(core.OnTask.Ready, []byte(taskId)))
 			if err != nil {
 				srvc.Logger().Error("failed to publish an event",
 					slog.String("id", taskId),
-					slog.String("event", events.OnTask.Ready),
+					slog.String("event", core.OnTask.Ready),
 					slog.String("error", err.Error()))
 			}
 		}

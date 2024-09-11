@@ -1,21 +1,21 @@
-package http
+package kantokuhttp
 
 import (
 	"context"
 	"fmt"
-	"github.com/ischenkx/kantoku/pkg/core/resource"
-	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/http/oas"
+	"github.com/ischenkx/kantoku/pkg/core"
+	"github.com/ischenkx/kantoku/pkg/lib/gateway/api/kantokuhttp/oas"
 	"github.com/samber/lo"
 	"net/http"
 )
 
-var _ resource.Storage = (*resourceStorage)(nil)
+var _ core.ResourceDB = (*resourceStorage)(nil)
 
 type resourceStorage struct {
 	httpClient oas.ClientWithResponsesInterface
 }
 
-func (storage resourceStorage) Load(ctx context.Context, ids ...string) ([]resource.Resource, error) {
+func (storage resourceStorage) Load(ctx context.Context, ids ...string) ([]core.Resource, error) {
 	res, err := storage.httpClient.PostResourcesLoadWithResponse(ctx, ids)
 	if err != nil {
 		return nil, fmt.Errorf("failed to make an http request: %w", err)
@@ -25,11 +25,11 @@ func (storage resourceStorage) Load(ctx context.Context, ids ...string) ([]resou
 
 	switch code {
 	case http.StatusOK:
-		return lo.Map(*res.JSON200, func(r oas.Resource, _ int) resource.Resource {
-			return resource.Resource{
+		return lo.Map(*res.JSON200, func(r oas.Resource, _ int) core.Resource {
+			return core.Resource{
 				Data:   []byte(r.Value),
 				ID:     r.Id,
-				Status: resource.Status(r.Status),
+				Status: r.Status,
 			}
 		}), nil
 	case http.StatusInternalServerError:
@@ -60,9 +60,9 @@ func (storage resourceStorage) Alloc(ctx context.Context, amount int) ([]string,
 	}
 }
 
-func (storage resourceStorage) Init(ctx context.Context, resources []resource.Resource) error {
+func (storage resourceStorage) Init(ctx context.Context, resources []core.Resource) error {
 	res, err := storage.httpClient.PostResourcesInitializeWithResponse(ctx,
-		lo.Map(resources, func(res resource.Resource, _ int) oas.ResourceInitializer {
+		lo.Map(resources, func(res core.Resource, _ int) oas.ResourceInitializer {
 			return oas.ResourceInitializer{
 				Id:    res.ID,
 				Value: string(res.Data),

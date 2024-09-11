@@ -2,22 +2,21 @@ package exe
 
 import (
 	"context"
-	"github.com/ischenkx/kantoku/pkg/core/system"
-	"github.com/ischenkx/kantoku/pkg/core/task"
+	"github.com/ischenkx/kantoku/pkg/core"
 	"time"
 )
 
 type Context struct {
-	system system.AbstractSystem
-	task   task.Task
+	system core.AbstractSystem
+	task   core.Task
 	ctx    context.Context
 }
 
-func (context *Context) System() system.AbstractSystem {
+func (context *Context) System() core.AbstractSystem {
 	return context.system
 }
 
-func (context *Context) Task() task.Task {
+func (context *Context) Task() core.Task {
 	return context.task
 }
 

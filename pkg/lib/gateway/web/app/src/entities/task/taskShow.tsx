@@ -9,7 +9,7 @@ import {
     useShow
 } from '@refinedev/core'
 import {Show, TextField} from '@refinedev/antd'
-import {Collapse, Descriptions, Spin, Steps, Table, Tag, Typography} from 'antd'
+import {Button, Collapse, Descriptions, Space, Spin, Steps, Table, Tag, Typography} from 'antd'
 import ReactJson from 'react-json-view'
 import {Link} from 'react-router-dom'
 import {ColorModeContext} from '../../contexts/color-mode'
@@ -199,6 +199,8 @@ export const TaskShow: React.FC<IResourceComponentsProps> = () => {
         }
     })
 
+    const go = useGo()
+
     if (areSpecificationsLoading || areResourcesLoading || isTaskLoading || !task) {
         return <Spin/>
     }
@@ -311,6 +313,21 @@ export const TaskShow: React.FC<IResourceComponentsProps> = () => {
                 {specification && <Descriptions.Item label='Spec'>{specification.id}</Descriptions.Item>}
                 {taskInfo.updated_at && <Descriptions.Item
                     label='Updated At'>{formatUnixTime(taskInfo.updated_at || 0)}</Descriptions.Item>}
+
+                <Space>
+                    {taskInfo['context_id'] && <Button onClick={() => {
+                        return go({
+                            to: {
+                                resource: "flow",
+                                action: "list",
+                            },
+                            query: {
+                                'context_id': taskInfo['context_id']
+                            },
+                            type: "replace",
+                        })
+                    }}>Go to context</Button>}
+                </Space>
             </Descriptions>
 
             <Title level={5}>Info</Title>

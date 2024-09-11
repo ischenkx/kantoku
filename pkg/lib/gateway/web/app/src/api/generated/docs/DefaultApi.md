@@ -80,7 +80,7 @@ Deallocate resources
 import KantokuApi from 'kantoku_api';
 
 let apiInstance = new KantokuApi.DefaultApi();
-let requestBody = ["null"]; // [String] | A list of resource identifiers
+let requestBody = ["null"]; // [String] | A list of resource_db identifiers
 apiInstance.resourcesDeallocatePost(requestBody, (error, data, response) => {
   if (error) {
     console.error(error);
@@ -166,7 +166,7 @@ Load resources
 import KantokuApi from 'kantoku_api';
 
 let apiInstance = new KantokuApi.DefaultApi();
-let requestBody = ["null"]; // [String] | A list of resource identifiers
+let requestBody = ["null"]; // [String] | A list of resource_db identifiers
 apiInstance.resourcesLoadPost(requestBody, (error, data, response) => {
   if (error) {
     console.error(error);

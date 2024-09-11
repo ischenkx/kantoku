@@ -7,7 +7,7 @@ import (
 	"github.com/ischenkx/kantoku/pkg/common/data/uid"
 	"github.com/ischenkx/kantoku/pkg/common/service"
 	"github.com/ischenkx/kantoku/pkg/common/transport/broker"
-	"github.com/ischenkx/kantoku/pkg/core/event"
+	"github.com/ischenkx/kantoku/pkg/core"
 	"golang.org/x/sync/errgroup"
 	"log/slog"
 	"time"
@@ -15,7 +15,7 @@ import (
 
 type Poller struct {
 	Hub           Hub
-	Events        *event.Broker
+	Events        core.Broker
 	RequestCodec  codec.Codec[Request, []byte]
 	ResponseCodec codec.Codec[Response, []byte]
 	Interval      time.Duration
@@ -60,27 +60,31 @@ loop:
 				continue
 			}
 
-			if err := poller.Events.Send(ctx, event.New(RequestsTopic, encodedRequest)); err != nil {
+			if err := poller.Events.Send(ctx, core.NewEvent(RequestsTopic, encodedRequest)); err != nil {
 				poller.Logger().Error("failed to send a discovery request",
 					slog.String("error", err.Error()))
+				continue
 			}
+
+			poller.Logger().Info("sent a poll request")
 		}
 	}
 }
 
 func (poller *Poller) collectResponses(ctx context.Context) error {
-	channel, err := poller.Events.Consume(ctx, broker.TopicsInfo{
-		Group: poller.Core.Name(),
-		Topics: []string{
-			ResponsesTopic,
+	channel, err := poller.Events.Consume(ctx,
+		[]string{ResponsesTopic},
+		broker.ConsumerSettings{
+			Group:                poller.Core.Name(),
+			InitializationPolicy: broker.NewestOffset,
 		},
-	})
+	)
 	if err != nil {
 		return fmt.Errorf("failed to consume responses: %w", err)
 	}
 
-	broker.Processor[event.Event]{
-		Handler: func(ctx context.Context, ev event.Event) error {
+	broker.Processor[core.Event]{
+		Handler: func(ctx context.Context, ev core.Event) error {
 			response, err := poller.ResponseCodec.Decode(ev.Data)
 			if err != nil {
 				poller.Logger().Error("failed to decode a discovery response",
@@ -89,11 +93,11 @@ func (poller *Poller) collectResponses(ctx context.Context) error {
 				return nil
 			}
 
-			//poller.Logger().Info("received a discovery response",
-			//	slog.String("event_id", ev.ID),
-			//	slog.String("request_id", response.RequestID),
-			//	slog.String("service.name", response.ServiceInfo.Name),
-			//	slog.String("service.id", response.ServiceInfo.ID))
+			poller.Logger().Info("received a discovery response",
+				slog.String("event_id", ev.ID),
+				slog.String("request_id", response.RequestID),
+				slog.String("service.name", response.ServiceInfo.Name),
+				slog.String("service.id", response.ServiceInfo.ID))
 
 			if err := poller.Hub.Register(ctx, response.ServiceInfo); err != nil {
 				poller.Logger().Error("failed to register a service",
